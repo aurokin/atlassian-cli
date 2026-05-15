@@ -51,5 +51,9 @@
 ## Phase 6: Monorepo/refactor review
 
 - Identify code repeated across Jira and Confluence.
-- Decide whether to migrate Bitbucket CLI into a shared Atlassian monorepo.
+- Read [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) before making any `bb` migration decision.
+- Inventory the current Bitbucket CLI into `bb-inventory.md`.
+- Score candidate shared packages in `shared-foundation-scorecard.md`.
+- Write `bb-compatibility-plan.md` covering binary behavior, config path/migration, JSON fields, generated docs, repo-local skill, and release transition.
+- Decide whether to migrate Bitbucket CLI into a shared Atlassian monorepo, consume shared code as a module, or leave it separate.
 - Extract only proven shared foundations.

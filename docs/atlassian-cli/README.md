@@ -14,6 +14,7 @@ Create two separate CLIs, `jira` and `confluence`, with shared foundations where
 - [jira-mvp.md](jira-mvp.md) — first Jira command surface.
 - [confluence-mvp.md](confluence-mvp.md) — first Confluence command surface.
 - [implementation-plan.md](implementation-plan.md) — phased build plan.
+- [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) — long-term plan for possibly bringing `bb` into the shared Atlassian CLI ecosystem.
 
 ## Naming
 

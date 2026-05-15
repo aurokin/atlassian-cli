@@ -46,3 +46,12 @@ internal/confluencecmd/ # confluence Cobra tree
 ## Long-term Bitbucket roadmap
 
 After Jira and Confluence stabilize, consider moving `bb` into the same Atlassian monorepo or extracting shared code. Do not constrain early design around this migration.
+
+The deeper roadmap lives in [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md). The short version:
+
+- inventory `bb` first
+- compare real shared seams after Jira/Confluence MVPs exist
+- design compatibility before moving code
+- extract only proven shared libraries
+- preserve `bb` binary behavior, config, JSON fields, generated docs, and repo-local skill behavior
+- choose full monorepo, shared module, or no migration based on evidence
