@@ -15,6 +15,7 @@ Create two separate CLIs, `atl-jira` and `atl-conf`, with shared foundations whe
 - [confluence-mvp.md](confluence-mvp.md) — first Confluence command surface.
 - [implementation-plan.md](implementation-plan.md) — phased build plan.
 - [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) — long-term plan for possibly bringing legacy `bb` into the shared `atl-*` Atlassian CLI ecosystem as `atl-bb`.
+- [bb-rewrite-plan.md](bb-rewrite-plan.md) — placeholder standards for the future Bitbucket import-and-rewrite period.
 
 ## Naming
 

@@ -45,13 +45,15 @@ internal/atlconfcmd/     # atl-conf Cobra tree
 
 ## Long-term Bitbucket roadmap
 
-After Jira and Confluence stabilize, consider moving legacy `bb` into the same Atlassian monorepo as `atl-bb` or extracting shared code. Do not constrain early design around this migration.
+After Jira and Confluence stabilize, consider importing legacy `bb` into the same Atlassian monorepo as `atl-bb` or extracting shared code. Do not constrain early design around this migration, but do expect a rewrite period where Bitbucket is brought up to the new standards set by `atl-jira` and `atl-conf`.
 
 The deeper roadmap lives in [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md). The short version:
 
 - inventory `bb` first
 - compare real shared seams after Jira/Confluence MVPs exist
+- write a `bb-rewrite-plan.md` before importing or replacing internals
 - design compatibility before moving code
 - extract only proven shared libraries
-- introduce `atl-bb` while preserving legacy `bb` behavior, config, JSON fields, generated docs, and repo-local skill behavior
-- choose full monorepo, shared module, or no migration based on evidence
+- introduce `atl-bb` while preserving legacy `bb` behavior, config, JSON fields, generated docs, and repo-local skill behavior where those are stable contracts
+- use the new foundation as the base for Bitbucket modernization: structure, error model, docs generation, tests, and performance
+- choose full monorepo import/rewrite, shared module, or no migration based on evidence

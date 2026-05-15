@@ -54,6 +54,8 @@
 - Read [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) before making any legacy `bb` to `atl-bb` migration decision.
 - Inventory the current Bitbucket CLI into `bb-inventory.md`, including legacy `bb` behavior and the desired `atl-bb` shape.
 - Score candidate shared packages in `shared-foundation-scorecard.md`.
+- Write `bb-rewrite-plan.md` defining how imported Bitbucket code will be brought up to the new `atl-*` standards for structure, tests, recovery UX, docs generation, and performance.
 - Write `bb-compatibility-plan.md` covering `atl-bb` behavior, legacy `bb` alias/wrapper strategy, config path/migration, JSON fields, generated docs, repo-local skill, and release transition.
-- Decide whether to migrate Bitbucket CLI into a shared Atlassian monorepo, consume shared code as a module, or leave it separate.
+- Decide whether to import Bitbucket CLI as a rewrite baseline in the shared Atlassian monorepo, consume shared code as a module, or leave it separate for now.
 - Extract only proven shared foundations.
+- If Bitbucket source is imported, treat legacy `bb` as a behavior oracle and refactor incrementally onto the new foundation rather than preserving old internals by default.

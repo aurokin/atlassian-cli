@@ -2,7 +2,7 @@
 
 ## Status
 
-Long-term roadmap, not an early implementation constraint. The existing legacy `bb` CLI is already useful and should not be destabilized to satisfy architecture aesthetics.
+Long-term roadmap, not an early implementation constraint. The existing legacy `bb` CLI is already useful and should not be destabilized to satisfy architecture aesthetics. There will likely be an explicit import-and-rewrite period where Bitbucket is brought into the new `atl-*` standards rather than copied over unchanged.
 
 ## Goal
 
@@ -10,9 +10,9 @@ Eventually bring the Bitbucket CLI into the same Atlassian CLI ecosystem if, and
 
 The target state could be either:
 
-1. **Full monorepo:** one repository builds `atl-bb`, `atl-jira`, and `atl-conf` binaries, with any legacy `bb` compatibility handled deliberately.
-2. **Shared foundation module:** legacy `bb` remains in its current repo but imports or vendors a shared Atlassian foundation.
-3. **No migration:** `atl-bb` is postponed and repeated code stays duplicated where product differences make sharing expensive.
+1. **Full monorepo with rewrite:** one repository builds `atl-bb`, `atl-jira`, and `atl-conf` binaries. Legacy `bb` is imported as source/reference material, then refactored onto the new foundation and standards.
+2. **Shared foundation module:** legacy `bb` remains in its current repo but imports or vendors a shared Atlassian foundation, with `atl-bb` added when the rewrite is ready.
+3. **No migration yet:** `atl-bb` is postponed and repeated code stays duplicated where product differences make sharing expensive.
 
 Do not choose the final shape until after Jira and Confluence MVPs are real.
 
@@ -26,6 +26,23 @@ Reasons to delay:
 - Jira and Confluence auth/routing are more complex than Bitbucket Cloud and may change the shared foundation shape.
 - Premature sharing can force fake abstractions over product-specific semantics.
 - A migration should improve Bitbucket CLI users and establish `atl-bb`, not merely relocate code.
+- The new Jira and Confluence CLIs should set the bar: better package structure, faster command startup where practical, clearer errors, stronger tests, and a cleaner agent-facing JSON contract.
+
+## Import-and-rewrite posture
+
+Expect a transition period where Bitbucket is imported, audited, and rewritten toward the new standards. Treat legacy `bb` as the working baseline and behavior oracle, not as the architecture to preserve wholesale.
+
+During this period:
+
+- keep legacy `bb` available until `atl-bb` reaches parity or has an explicit compatibility exception
+- use the new Jira/Confluence foundation as the preferred base for Bitbucket, not the other way around
+- preserve proven Bitbucket behaviors that users and agents rely on
+- replace weak internals when the new foundation is clearly better
+- add compatibility fixtures before changing output, config, auth, URL resolution, or recovery guidance
+- prefer measured performance improvements: fewer redundant API calls, bounded pagination, faster startup, streaming where useful, and no avoidable shell-outs
+- document intentional behavior changes in `bb-compatibility-plan.md`
+
+The rewrite should be allowed to improve command organization, package boundaries, docs generation, tests, and recovery UX. Compatibility means preserving user value and stable machine contracts, not freezing every internal design choice.
 
 ## Migration gates
 
@@ -37,6 +54,7 @@ Do not migrate legacy `bb` or introduce `atl-bb` until these gates pass:
 4. Access-aware UX has fixture coverage for low-access, missing-scope, non-admin, ambiguous 404, and product/license-missing cases.
 5. Generated docs/man/completions/metadata pipeline works for both new CLIs.
 6. `atl-bb` migration has a compatibility plan for legacy `bb` for config paths, binary name, docs, repo-local skill, releases, and existing user workflows.
+7. The new foundation has explicit quality/performance standards that Bitbucket can adopt without regressing existing workflows.
 
 ## Candidate shared code to extract before migration
 
@@ -91,6 +109,22 @@ For each candidate shared package, decide:
 
 Output: `docs/atlassian-cli/shared-foundation-scorecard.md`.
 
+### Phase B1.5: New-standards rewrite plan
+
+Before moving Bitbucket source, write the modernization plan that says what should be preserved, rewritten, or intentionally changed.
+
+Must cover:
+
+- package structure and command composition target
+- output/JSON compatibility guarantees
+- config/auth migration and fallback behavior
+- recovery/error model upgrades
+- performance opportunities and non-goals
+- docs/man/completion generation strategy
+- test coverage needed before replacing legacy internals
+
+Output: `docs/atlassian-cli/bb-rewrite-plan.md`.
+
 ### Phase B2: Compatibility design
 
 Design migration without breaking users.
@@ -122,9 +156,11 @@ Rules:
 
 Choose one:
 
-- move Bitbucket source into the monorepo as `atl-bb`, preserving Git history if practical
+- import Bitbucket source into the monorepo as a rewrite baseline for `atl-bb`, preserving Git history if practical
 - keep legacy `bb` in its repo and add/build `atl-bb` against a shared foundation
 - postpone migration if the compatibility cost is too high
+
+If source is imported, expect follow-up rewrite PRs rather than a single mechanical move. Each rewrite PR should keep tests green and clearly state whether behavior is preserved, improved compatibly, or intentionally changed.
 
 ### Phase B5: Release and docs transition
 
@@ -149,6 +185,7 @@ Before declaring migration done:
 - repo-local `bb-cli` skill still points to valid install/use instructions
 - live tests remain manual-only unless explicitly provisioned
 - `make check` passes in the migrated location
+- startup/API-call performance is no worse than legacy `bb` for core read paths, or any regression is documented and accepted
 
 ## Open questions
 
