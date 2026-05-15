@@ -10,15 +10,15 @@
 ## MVP command tree
 
 ```text
-confluence auth login|logout|status
-confluence api
-confluence resolve
-confluence browse
-confluence config
-confluence space list|view
-confluence page list|view|create|edit|children
-confluence search cql
-confluence status
+atl-conf auth login|logout|status
+atl-conf api
+atl-conf resolve
+atl-conf browse
+atl-conf config
+atl-conf space list|view
+atl-conf page list|view|create|edit|children
+atl-conf search cql
+atl-conf status
 ```
 
 ## Design notes

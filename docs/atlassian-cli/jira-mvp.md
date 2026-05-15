@@ -9,16 +9,16 @@
 ## MVP command tree
 
 ```text
-jira auth login|logout|status
-jira api
-jira resolve
-jira browse
-jira config
-jira project list|view
-jira issue list|view|create|edit|transition
-jira issue comment list|view|create|edit|delete
-jira search issues
-jira status
+atl-jira auth login|logout|status
+atl-jira api
+atl-jira resolve
+atl-jira browse
+atl-jira config
+atl-jira project list|view
+atl-jira issue list|view|create|edit|transition
+atl-jira issue comment list|view|create|edit|delete
+atl-jira search issues
+atl-jira status
 ```
 
 ## Design notes

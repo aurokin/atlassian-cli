@@ -30,7 +30,7 @@ Different users and tokens have different access levels. The CLI should work wel
   "api_base_url": "https://api.atlassian.com/ex/confluence/<cloudId>",
   "required_scope": "write:page:confluence",
   "required_permission": "page edit permission",
-  "next": "Ask a space admin for edit access, choose a token with the required scope, or retry with `confluence page view 123456 --json '*'`."
+  "next": "Ask a space admin for edit access, choose a token with the required scope, or retry with `atl-conf page view 123456 --json '*'`."
 }
 ```
 

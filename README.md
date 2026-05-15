@@ -4,10 +4,11 @@
 
 This repository is for designing and eventually implementing true-to-API Atlassian CLIs:
 
-- `jira` for Jira
-- `confluence` for Confluence
+- `atl-jira` for Jira
+- `atl-conf` for Confluence
+- `atl-bb` for Bitbucket, when/if the existing `bb` CLI is brought into the shared shape
 
-The posture is inherited from `bb`, Auro's Bitbucket Cloud CLI: official API behavior first, deterministic targeting, structured output for agents, no fake parity when Atlassian does not expose a real API path.
+The posture is inherited from `bb`, Auro's existing Bitbucket Cloud CLI, with `atl-bb` as the intended unified-name successor: official API behavior first, deterministic targeting, structured output for agents, no fake parity when Atlassian does not expose a real API path.
 
 ## Current status
 

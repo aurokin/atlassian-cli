@@ -12,7 +12,7 @@
 ## Phase 1: Shared foundation
 
 - Initialize Go module.
-- Add Cobra root commands for `jira` and `confluence`.
+- Add Cobra root commands for `atl-jira` and `atl-conf`.
 - Implement config loading/saving with safe file permissions.
 - Implement output renderer with table, `--json`, selected fields, and `--jq`.
 - Implement auth request signing for `cloud-classic`, `cloud-scoped`, and `data-center-pat`.
@@ -51,9 +51,9 @@
 ## Phase 6: Monorepo/refactor review
 
 - Identify code repeated across Jira and Confluence.
-- Read [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) before making any `bb` migration decision.
-- Inventory the current Bitbucket CLI into `bb-inventory.md`.
+- Read [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) before making any legacy `bb` to `atl-bb` migration decision.
+- Inventory the current Bitbucket CLI into `bb-inventory.md`, including legacy `bb` behavior and the desired `atl-bb` shape.
 - Score candidate shared packages in `shared-foundation-scorecard.md`.
-- Write `bb-compatibility-plan.md` covering binary behavior, config path/migration, JSON fields, generated docs, repo-local skill, and release transition.
+- Write `bb-compatibility-plan.md` covering `atl-bb` behavior, legacy `bb` alias/wrapper strategy, config path/migration, JSON fields, generated docs, repo-local skill, and release transition.
 - Decide whether to migrate Bitbucket CLI into a shared Atlassian monorepo, consume shared code as a module, or leave it separate.
 - Extract only proven shared foundations.

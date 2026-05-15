@@ -4,7 +4,7 @@
 
 ## Goal
 
-Create two separate CLIs, `jira` and `confluence`, with shared foundations where useful but separate product vocabularies where necessary.
+Create two separate CLIs, `atl-jira` and `atl-conf`, with shared foundations where useful but separate product vocabularies where necessary. If Bitbucket is migrated later, its unified binary shape is `atl-bb`.
 
 ## Design docs
 
@@ -14,8 +14,8 @@ Create two separate CLIs, `jira` and `confluence`, with shared foundations where
 - [jira-mvp.md](jira-mvp.md) — first Jira command surface.
 - [confluence-mvp.md](confluence-mvp.md) — first Confluence command surface.
 - [implementation-plan.md](implementation-plan.md) — phased build plan.
-- [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) — long-term plan for possibly bringing `bb` into the shared Atlassian CLI ecosystem.
+- [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) — long-term plan for possibly bringing legacy `bb` into the shared `atl-*` Atlassian CLI ecosystem as `atl-bb`.
 
 ## Naming
 
-`jira` and `confluence` are the current binary names. Avoid `jj`, `cc`, and `conf` because of collisions with Jujutsu, Claude Code, and config shorthand.
+`atl-jira`, `atl-conf`, and future `atl-bb` are the binary names. The `atl-` prefix avoids collisions with common packages and makes these feel like one CLI family. Avoid bare `jira`, bare `confluence`, `jj`, `cc`, and `conf` because of collisions or ambiguity.

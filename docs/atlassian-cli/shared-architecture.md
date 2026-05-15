@@ -19,8 +19,8 @@ internal/resolve/       # URL parser framework with product-specific parsers
 ```text
 internal/jira/          # Jira client/models
 internal/confluence/    # Confluence client/models
-internal/jiracmd/       # jira Cobra tree
-internal/confluencecmd/ # confluence Cobra tree
+internal/atljiracmd/    # atl-jira Cobra tree
+internal/atlconfcmd/     # atl-conf Cobra tree
 ```
 
 ## Shared commands
@@ -45,7 +45,7 @@ internal/confluencecmd/ # confluence Cobra tree
 
 ## Long-term Bitbucket roadmap
 
-After Jira and Confluence stabilize, consider moving `bb` into the same Atlassian monorepo or extracting shared code. Do not constrain early design around this migration.
+After Jira and Confluence stabilize, consider moving legacy `bb` into the same Atlassian monorepo as `atl-bb` or extracting shared code. Do not constrain early design around this migration.
 
 The deeper roadmap lives in [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md). The short version:
 
@@ -53,5 +53,5 @@ The deeper roadmap lives in [bitbucket-migration-roadmap.md](bitbucket-migration
 - compare real shared seams after Jira/Confluence MVPs exist
 - design compatibility before moving code
 - extract only proven shared libraries
-- preserve `bb` binary behavior, config, JSON fields, generated docs, and repo-local skill behavior
+- introduce `atl-bb` while preserving legacy `bb` behavior, config, JSON fields, generated docs, and repo-local skill behavior
 - choose full monorepo, shared module, or no migration based on evidence

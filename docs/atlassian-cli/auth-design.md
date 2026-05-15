@@ -64,13 +64,13 @@ Important: Atlassian says integrations generally cannot distinguish scoped from 
 ## Required commands
 
 ```bash
-jira auth login --token-style cloud-classic --site work --url https://example.atlassian.net --username user@example.com --with-token
-jira auth login --token-style cloud-scoped --site work --url https://example.atlassian.net --username user@example.com --cloud-id "$ATLASSIAN_CLOUD_ID" --with-token
-jira auth status --check --json '*'
+atl-jira auth login --token-style cloud-classic --site work --url https://example.atlassian.net --username user@example.com --with-token
+atl-jira auth login --token-style cloud-scoped --site work --url https://example.atlassian.net --username user@example.com --cloud-id "$ATLASSIAN_CLOUD_ID" --with-token
+atl-jira auth status --check --json '*'
 
-confluence auth login --token-style cloud-classic --site work --url https://example.atlassian.net/wiki --username user@example.com --with-token
-confluence auth login --token-style cloud-scoped --site work --url https://example.atlassian.net/wiki --username user@example.com --cloud-id "$ATLASSIAN_CLOUD_ID" --with-token
-confluence auth status --check --json '*'
+atl-conf auth login --token-style cloud-classic --site work --url https://example.atlassian.net/wiki --username user@example.com --with-token
+atl-conf auth login --token-style cloud-scoped --site work --url https://example.atlassian.net/wiki --username user@example.com --cloud-id "$ATLASSIAN_CLOUD_ID" --with-token
+atl-conf auth status --check --json '*'
 ```
 
 ## Recovery guidance requirements
