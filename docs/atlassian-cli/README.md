@@ -14,6 +14,8 @@ Create two separate CLIs, `atl-jira` and `atl-conf`, with shared foundations whe
 - [jira-mvp.md](jira-mvp.md) — first Jira command surface.
 - [confluence-mvp.md](confluence-mvp.md) — first Confluence command surface.
 - [implementation-plan.md](implementation-plan.md) — phased build plan.
+- [phase-1-foundation-plan.md](phase-1-foundation-plan.md) — concrete next implementation plan for the shared Go/Cobra foundation.
+- [continuation-handoff.md](continuation-handoff.md) — point-in-time handoff for continuing this work in the app or a fresh agent session.
 - [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) — long-term plan for possibly bringing legacy `bb` into the shared `atl-*` Atlassian CLI ecosystem as `atl-bb`.
 - [bb-rewrite-plan.md](bb-rewrite-plan.md) — placeholder standards for the future Bitbucket import-and-rewrite period.
 
