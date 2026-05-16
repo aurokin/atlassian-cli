@@ -12,23 +12,23 @@ The posture is inherited from `bb`, Auro's existing Bitbucket Cloud CLI, with `a
 
 ## Current status
 
-Design and implementation-plan scaffold only. No Go CLI implementation yet. The next implementation entry point is [docs/atlassian-cli/phase-1-foundation-plan.md](docs/atlassian-cli/phase-1-foundation-plan.md).
+Design and implementation-plan scaffold only. No Go CLI implementation yet. The next implementation entry point is [docs/phase-1-foundation-plan.md](docs/phase-1-foundation-plan.md).
 
 Start here:
 
-1. [docs/atlassian-cli/README.md](docs/atlassian-cli/README.md)
-2. [docs/atlassian-cli/auth-design.md](docs/atlassian-cli/auth-design.md)
-3. [docs/atlassian-cli/access-error-model.md](docs/atlassian-cli/access-error-model.md)
-4. [docs/atlassian-cli/shared-architecture.md](docs/atlassian-cli/shared-architecture.md)
-5. [docs/atlassian-cli/implementation-plan.md](docs/atlassian-cli/implementation-plan.md)
-6. [docs/atlassian-cli/phase-1-foundation-plan.md](docs/atlassian-cli/phase-1-foundation-plan.md)
-7. [docs/atlassian-cli/continuation-handoff.md](docs/atlassian-cli/continuation-handoff.md)
+1. [docs/README.md](docs/README.md)
+2. [docs/auth-design.md](docs/auth-design.md)
+3. [docs/access-error-model.md](docs/access-error-model.md)
+4. [docs/shared-architecture.md](docs/shared-architecture.md)
+5. [docs/implementation-plan.md](docs/implementation-plan.md)
+6. [docs/phase-1-foundation-plan.md](docs/phase-1-foundation-plan.md)
+7. [docs/continuation-handoff.md](docs/continuation-handoff.md)
 
 ## Guardrails
 
 - Keep Jira and Confluence as separate CLIs from the user's perspective.
 - Do not over-abstract before implementation teaches us the real seams.
 - Keep Bitbucket migration as a later roadmap item, not an early constraint.
-- Start implementation from `docs/atlassian-cli/phase-1-foundation-plan.md`.
-- Keep `docs/atlassian-cli/continuation-handoff.md` current when plans, status, or next actions change.
+- Start implementation from `docs/phase-1-foundation-plan.md`.
+- Keep `docs/continuation-handoff.md` current when plans, status, or next actions change.
 - Never store real tokens, passwords, OAuth refresh tokens, cookies, or private credential files in this repo.

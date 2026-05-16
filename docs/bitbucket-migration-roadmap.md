@@ -94,7 +94,7 @@ Run a focused inventory of the current Bitbucket CLI:
 - recovery catalog and error handling
 - test helpers and live-smoke conventions
 
-Output: `docs/atlassian-cli/bb-inventory.md`.
+Output: `docs/bb-inventory.md`.
 
 ### Phase B1: Shared-foundation comparison
 
@@ -107,7 +107,7 @@ For each candidate shared package, decide:
 - product-specific, keep separate
 - wrong abstraction, delete or redesign
 
-Output: `docs/atlassian-cli/shared-foundation-scorecard.md`.
+Output: `docs/shared-foundation-scorecard.md`.
 
 ### Phase B1.5: New-standards rewrite plan
 
@@ -123,7 +123,7 @@ Must cover:
 - docs/man/completion generation strategy
 - test coverage needed before replacing legacy internals
 
-Output: `docs/atlassian-cli/bb-rewrite-plan.md`.
+Output: `docs/bb-rewrite-plan.md`.
 
 ### Phase B2: Compatibility design
 
@@ -139,7 +139,7 @@ Must cover:
 - preserve generated docs URLs or redirects where applicable
 - preserve manual live-test boundaries
 
-Output: `docs/atlassian-cli/bb-compatibility-plan.md`.
+Output: `docs/bb-compatibility-plan.md`.
 
 ### Phase B3: Extract shared libraries
 

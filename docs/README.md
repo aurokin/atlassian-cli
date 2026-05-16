@@ -1,6 +1,6 @@
-# Atlassian CLI Design Package
+# Documentation
 
-> Point-in-time design package derived from the combined Jira/Confluence spec committed in `bitbucket_cli` on 2026-05-14.
+> Point-in-time design package derived from the combined Jira/Confluence spec committed in `bitbucket_cli` on 2026-05-14. This docs directory is already scoped to the `atlassian-cli` project, so docs live directly under `docs/`.
 
 ## Goal
 

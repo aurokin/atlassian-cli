@@ -37,25 +37,25 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 
 1. `README.md`
 2. `AGENTS.md`
-3. `docs/atlassian-cli/README.md`
-4. `docs/atlassian-cli/auth-design.md`
-5. `docs/atlassian-cli/access-error-model.md`
-6. `docs/atlassian-cli/shared-architecture.md`
-7. `docs/atlassian-cli/implementation-plan.md`
-8. `docs/atlassian-cli/phase-1-foundation-plan.md`
+3. `docs/README.md`
+4. `docs/auth-design.md`
+5. `docs/access-error-model.md`
+6. `docs/shared-architecture.md`
+7. `docs/implementation-plan.md`
+8. `docs/phase-1-foundation-plan.md`
 9. Product docs only after foundation work:
-   - `docs/atlassian-cli/jira-mvp.md`
-   - `docs/atlassian-cli/confluence-mvp.md`
+   - `docs/jira-mvp.md`
+   - `docs/confluence-mvp.md`
 10. Bitbucket future docs only when planning migration:
-   - `docs/atlassian-cli/bitbucket-migration-roadmap.md`
-   - `docs/atlassian-cli/bb-rewrite-plan.md`
+   - `docs/bitbucket-migration-roadmap.md`
+   - `docs/bb-rewrite-plan.md`
 
 ## Next action
 
 Start Phase 1 from:
 
 ```text
-docs/atlassian-cli/phase-1-foundation-plan.md
+docs/phase-1-foundation-plan.md
 ```
 
 Recommended first checkpoint:
@@ -81,9 +81,9 @@ Recommended first checkpoint:
 
 When implementation starts, update or create:
 
-- `docs/atlassian-cli/command-contract.md` for implemented command behavior
+- `docs/command-contract.md` for implemented command behavior
 - `README.md` current status
-- `docs/atlassian-cli/README.md` design-doc index if new docs are added
+- `docs/README.md` design-doc index if new docs are added
 - `AGENTS.md` if read order or guardrails change
 
 ## Verification commands

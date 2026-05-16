@@ -5,16 +5,16 @@ Agent instructions for this provisional Atlassian CLI workspace.
 ## Read order
 
 1. `README.md`
-2. `docs/atlassian-cli/README.md`
-3. `docs/atlassian-cli/auth-design.md`
-4. `docs/atlassian-cli/access-error-model.md`
-5. `docs/atlassian-cli/shared-architecture.md`
-6. `docs/atlassian-cli/implementation-plan.md`
-7. `docs/atlassian-cli/phase-1-foundation-plan.md` before starting Go implementation
-8. `docs/atlassian-cli/continuation-handoff.md` when resuming from the app or a fresh session
+2. `docs/README.md`
+3. `docs/auth-design.md`
+4. `docs/access-error-model.md`
+5. `docs/shared-architecture.md`
+6. `docs/implementation-plan.md`
+7. `docs/phase-1-foundation-plan.md` before starting Go implementation
+8. `docs/continuation-handoff.md` when resuming from the app or a fresh session
 9. Product MVP docs before product-specific work:
-   - `docs/atlassian-cli/jira-mvp.md`
-   - `docs/atlassian-cli/confluence-mvp.md`
+   - `docs/jira-mvp.md`
+   - `docs/confluence-mvp.md`
 
 ## Product posture
 
@@ -24,8 +24,8 @@ Agent instructions for this provisional Atlassian CLI workspace.
 - Raw `api` command is a first-class escape hatch.
 - Unsupported or ambiguous behavior should be documented and surfaced clearly.
 - Users have different access levels. Design for good behavior under low-access, scoped-token, service-account, contributor, and admin contexts.
-- Start implementation from `docs/atlassian-cli/phase-1-foundation-plan.md`.
-- Update `docs/atlassian-cli/continuation-handoff.md` whenever the next action, repo status, or implementation surface changes.
+- Start implementation from `docs/phase-1-foundation-plan.md`.
+- Update `docs/continuation-handoff.md` whenever the next action, repo status, or implementation surface changes.
 
 ## Secrets
 

@@ -16,12 +16,12 @@ Read these before implementation:
 
 1. `README.md`
 2. `AGENTS.md`
-3. `docs/atlassian-cli/README.md`
-4. `docs/atlassian-cli/auth-design.md`
-5. `docs/atlassian-cli/access-error-model.md`
-6. `docs/atlassian-cli/shared-architecture.md`
-7. `docs/atlassian-cli/implementation-plan.md`
-8. `docs/atlassian-cli/phase-1-foundation-plan.md` — this file
+3. `docs/README.md`
+4. `docs/auth-design.md`
+5. `docs/access-error-model.md`
+6. `docs/shared-architecture.md`
+7. `docs/implementation-plan.md`
+8. `docs/phase-1-foundation-plan.md` — this file
 
 Do not start Bitbucket migration work during Phase 1. `atl-bb` is documented as a future import/rewrite after the new foundation proves itself.
 
@@ -545,8 +545,8 @@ git commit -m "feat: add raw API command foundation"
 
 **Files:**
 
-- Create or update: `docs/atlassian-cli/command-contract.md`
-- Update: `docs/atlassian-cli/README.md`
+- Create or update: `docs/command-contract.md`
+- Update: `docs/README.md`
 - Update: `README.md`
 
 **Document:**
@@ -568,7 +568,7 @@ git diff --check
 **Commit:**
 
 ```bash
-git add README.md docs/atlassian-cli
+git add README.md docs
 git commit -m "docs: document Phase 1 command contract"
 ```
 
