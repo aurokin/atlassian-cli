@@ -54,6 +54,7 @@ func NewRoot(info appinfo.Info, short string) (*cobra.Command, *GlobalFlags) {
 
 	root.AddCommand(newVersionCommand(info, g))
 	root.AddCommand(newAuthCommand(info, g))
+	root.AddCommand(newAPICommand(info, g))
 	return root, g
 }
 
