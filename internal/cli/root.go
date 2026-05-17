@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // GlobalFlags holds the flags shared by every atl-* binary. A pointer to it is
@@ -52,5 +53,12 @@ func NewRoot(info appinfo.Info, short string) (*cobra.Command, *GlobalFlags) {
 	pf.BoolVar(&g.Trace, "trace", false, "emit verbose request tracing to stderr")
 
 	root.AddCommand(newVersionCommand(info, g))
+	root.AddCommand(newAuthCommand(info, g))
 	return root, g
+}
+
+// render writes v to the command's stdout honoring the global --json/--jq
+// flags. It is the single rendering entry point for shared subcommands.
+func render(cmd *cobra.Command, g *GlobalFlags, v any) error {
+	return output.Render(cmd.OutOrStdout(), v, output.Options{JSON: g.JSON, JQ: g.JQ})
 }
