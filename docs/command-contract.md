@@ -23,14 +23,17 @@ identity and build metadata differ.
 
 | Flag | Type | Behavior in Phase 1 |
 |---|---|---|
-| `--json` | string | JSON output. Bare `--json` means all fields. A value must be attached with `=`: `--json=*` (all) or `--json=field1,field2` (selected top-level fields). |
+| `--json` | string | JSON output. Bare `--json` renders all fields; `--json=field1,field2` selects top-level fields. |
 | `--jq` | string | Reserved. Returns a clear "not yet implemented" error if used. |
 | `--site` | string | Names the configured site profile a command targets. |
 | `--no-prompt` | bool | Accepted and reserved. Phase 1 has no interactive prompts, so it is currently a no-op. |
 | `--trace` | bool | Accepted and reserved. Request tracing is not implemented yet. |
 
-Because bare `--json` is valid, its value cannot be passed space-separated
-(`--json *` leaves `*` as a stray argument). Always attach with `=`.
+`--json` takes an *optional* value, so a value must be attached with `=`
+(`--json=field1,field2`) — passing it space-separated (`--json field1`) leaves
+`field1` as a stray argument. Bare `--json` already means "all fields"; the
+explicit all-fields form is `--json=*`, which must be quoted in shells that
+expand globs (`--json='*'` in zsh/bash).
 
 ## Commands
 
@@ -60,7 +63,7 @@ the token value is read from that environment variable at request time.
 ### `auth status`
 
 ```
-atl-jira auth status [--site <name>] [--json=*]
+atl-jira auth status [--site <name>] [--json]
 ```
 
 With `--site`, shows that profile; without it, lists every configured profile.
@@ -82,8 +85,8 @@ atl-jira api <path-or-url> --site <name> [-X <method>] [--data <body>]
 ```
 
 Sends a signed request to the `--site` profile and renders the response.
-`--method`/`-X` defaults to `GET`. With `--json=*` the response body is
-rendered as-is; `--json=field1,field2` selects top-level fields.
+`--method`/`-X` defaults to `GET`. With `--json` the full response body is
+rendered; `--json=field1,field2` selects top-level fields.
 
 ## Config file
 
