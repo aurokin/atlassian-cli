@@ -22,6 +22,7 @@ func newIssueCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	cmd.AddCommand(
 		newIssueListCommand(info, g),
 		newIssueViewCommand(info, g),
+		newCommentCommand(info, g),
 	)
 	return cmd
 }
