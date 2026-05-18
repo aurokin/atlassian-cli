@@ -20,6 +20,8 @@ func AddCommands(root *cobra.Command, info appinfo.Info, g *cli.GlobalFlags) {
 	root.AddCommand(
 		newProjectCommand(info, g),
 		newIssueCommand(info, g),
+		newSearchCommand(info, g),
+		newStatusCommand(info, g),
 	)
 }
 
