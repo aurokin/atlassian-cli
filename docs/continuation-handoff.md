@@ -10,14 +10,13 @@ Remote: `git@github.com:aurokin/atlassian-cli.git`
 
 Branch: `phase-2-resolve-browse` (Phase 2 work). Phase 1 is merged to `main`.
 
-Status at handoff: Phase 1 foundation is merged to `main` — Go module, both
-binaries, shared global flags, config store, output renderer, structured
-errors, auth signing, HTTP client, the `auth` subtree, and the raw `api`
-command, all with `go test ./...` passing. Phase 2 (URL resolution and the
-`resolve`/`browse` commands) is in progress on the `phase-2-resolve-browse`
-branch per `docs/phase-2-resolve-browse-plan.md`. Product-specific Jira and
-Confluence commands are not started. See `docs/command-contract.md` for the
-implemented surface.
+Status at handoff: Phase 1 foundation is merged to `main`. Phase 2 (URL
+resolution and the `resolve`/`browse` commands) is implemented on the
+`phase-2-resolve-browse` branch per `docs/phase-2-resolve-browse-plan.md` —
+the `internal/resolve` parser framework, the Jira and Confluence parsers, the
+`internal/browser` open helper, and the `resolve` and `browse` commands, all
+with `go test ./...` passing. Product-specific Jira and Confluence commands
+are not started. See `docs/command-contract.md` for the implemented surface.
 
 ## Canonical CLI names
 
@@ -60,12 +59,10 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 
 ## Next action
 
-Phase 1 is merged to `main`. Phase 2 is underway on `phase-2-resolve-browse`:
-implement `docs/phase-2-resolve-browse-plan.md` task by task — the
-`internal/resolve` parser framework, Jira and Confluence parsers, and the
-`resolve` and `browse` commands.
+Phase 1 is merged to `main`. Phase 2 (`resolve`/`browse`) is implemented on
+`phase-2-resolve-browse` and ready to merge.
 
-After Phase 2:
+Next:
 
 1. Phase 3 — Jira MVP commands (`project`, `issue`, `issue comment`,
    `search issues`, `status`), guided by `docs/jira-mvp.md`.
