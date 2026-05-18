@@ -28,11 +28,10 @@ type Project struct {
 	Lead           *User  `json:"lead"`
 }
 
-// ProjectPage is a page of project-search results.
+// ProjectPage is a page of project-search results. Only the values are
+// modelled; pagination cursors are deferred until --all support lands.
 type ProjectPage struct {
 	Values []Project `json:"values"`
-	Total  int       `json:"total"`
-	IsLast bool      `json:"isLast"`
 }
 
 // IssueFields is the subset of an issue's fields that human output renders.
@@ -54,12 +53,10 @@ type Issue struct {
 	Fields IssueFields `json:"fields"`
 }
 
-// IssuePage is a page of JQL search results. The Jira /search/jql endpoint
-// paginates with a nextPageToken and reports completion via isLast.
+// IssuePage is a page of JQL search results. Only the issues are modelled;
+// the /search/jql nextPageToken cursor is deferred until --all support lands.
 type IssuePage struct {
-	Issues        []Issue `json:"issues"`
-	NextPageToken string  `json:"nextPageToken"`
-	IsLast        bool    `json:"isLast"`
+	Issues []Issue `json:"issues"`
 }
 
 // Comment is the subset of a Jira comment that human output renders. Body is
@@ -73,12 +70,10 @@ type Comment struct {
 	Body    json.RawMessage `json:"body"`
 }
 
-// CommentPage is a page of an issue's comments.
+// CommentPage is a page of an issue's comments. Only the comments are
+// modelled; pagination cursors are deferred until --all support lands.
 type CommentPage struct {
-	Comments   []Comment `json:"comments"`
-	Total      int       `json:"total"`
-	StartAt    int       `json:"startAt"`
-	MaxResults int       `json:"maxResults"`
+	Comments []Comment `json:"comments"`
 }
 
 // Decode unmarshals a raw Jira response body into a model value, wrapping a

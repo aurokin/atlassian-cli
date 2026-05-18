@@ -27,7 +27,7 @@ func newCommentCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 func newCommentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	var limit int
 	cmd := &cobra.Command{
-		Use:   "list <ISSUE>",
+		Use:   "list <issue>",
 		Short: "List comments on an issue",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -56,7 +56,7 @@ func newCommentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 
 func newCommentViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	return &cobra.Command{
-		Use:   "view <ISSUE> <COMMENT-ID>",
+		Use:   "view <issue> <comment-id>",
 		Short: "View a single comment on an issue",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {

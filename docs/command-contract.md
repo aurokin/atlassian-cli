@@ -155,7 +155,7 @@ model below.
 
 ```
 atl-jira project list [--limit N]
-atl-jira project view <KEY>
+atl-jira project view <key>
 ```
 
 `list` returns projects visible to the authenticated account; `view` returns a
@@ -164,8 +164,8 @@ single project by id or key.
 ### `issue`
 
 ```
-atl-jira issue view <KEY>
-atl-jira issue list --project <KEY> [--status <name>] [--assignee <id>] [--limit N]
+atl-jira issue view <issue>
+atl-jira issue list --project <key> [--status <name>] [--assignee <id>] [--limit N]
 ```
 
 `view` returns one issue. `list` builds a JQL query from its flags — `--project`
@@ -176,7 +176,7 @@ literal `currentUser()`. Broader queries go through `search issues`.
 ### `search issues`
 
 ```
-atl-jira search issues <JQL> [--limit N]
+atl-jira search issues <jql> [--limit N]
 ```
 
 Runs a raw JQL query. JQL is the stable, expressive query surface; `issue list`
@@ -185,8 +185,8 @@ is a convenience wrapper over the same endpoint.
 ### `issue comment`
 
 ```
-atl-jira issue comment list <ISSUE> [--limit N]
-atl-jira issue comment view <ISSUE> <COMMENT-ID>
+atl-jira issue comment list <issue> [--limit N]
+atl-jira issue comment view <issue> <comment-id>
 ```
 
 Lists or views comments on an issue. Comment bodies are stored as Atlassian

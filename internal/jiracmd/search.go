@@ -21,7 +21,7 @@ func newSearchCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 func newSearchIssuesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	var limit int
 	cmd := &cobra.Command{
-		Use:   "issues <JQL>",
+		Use:   "issues <jql>",
 		Short: "Search issues with a raw JQL query",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

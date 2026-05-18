@@ -56,7 +56,7 @@ func newProjectListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 
 func newProjectViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	return &cobra.Command{
-		Use:   "view <KEY>",
+		Use:   "view <key>",
 		Short: "View a single Jira project",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

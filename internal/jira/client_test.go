@@ -201,23 +201,36 @@ func TestClientGetComment(t *testing.T) {
 	}
 }
 
-func TestClientMapsNonOKToStructuredError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte(`{"errorMessages":["Issue does not exist"]}`))
-	}))
-	defer srv.Close()
+func TestClientMapsHTTPStatusToStructuredError(t *testing.T) {
+	cases := []struct {
+		status int
+		want   string
+	}{
+		{http.StatusUnauthorized, apperr.CodeUnauthorized},
+		{http.StatusForbidden, apperr.CodeForbidden},
+		{http.StatusNotFound, apperr.CodeNotFoundOrNotVisible},
+		{http.StatusTooManyRequests, apperr.CodeRateLimited},
+	}
+	for _, tc := range cases {
+		t.Run(http.StatusText(tc.status), func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tc.status)
+				_, _ = w.Write([]byte(`{"errorMessages":["nope"]}`))
+			}))
+			defer srv.Close()
 
-	_, err := newTestClient(srv).GetIssue(context.Background(), "PROJ-404")
-	if err == nil {
-		t.Fatal("GetIssue of a missing issue returned no error")
-	}
-	var ae *apperr.Error
-	if !errors.As(err, &ae) {
-		t.Fatalf("error type = %T, want *apperr.Error", err)
-	}
-	if ae.Code != apperr.CodeNotFoundOrNotVisible {
-		t.Errorf("Code = %q, want %q", ae.Code, apperr.CodeNotFoundOrNotVisible)
+			_, err := newTestClient(srv).GetIssue(context.Background(), "PROJ-1")
+			if err == nil {
+				t.Fatalf("status %d returned no error", tc.status)
+			}
+			var ae *apperr.Error
+			if !errors.As(err, &ae) {
+				t.Fatalf("error type = %T, want *apperr.Error", err)
+			}
+			if ae.Code != tc.want {
+				t.Errorf("Code = %q, want %q", ae.Code, tc.want)
+			}
+		})
 	}
 }
 

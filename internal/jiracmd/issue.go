@@ -17,7 +17,7 @@ import (
 func newIssueCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "issue",
-		Short: "List, view, and manage Jira issues",
+		Short: "List and view Jira issues",
 	}
 	cmd.AddCommand(
 		newIssueListCommand(info, g),
@@ -35,7 +35,7 @@ func newIssueListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		limit    int
 	)
 	cmd := &cobra.Command{
-		Use:   "list --project <KEY>",
+		Use:   "list",
 		Short: "List issues in a project",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -71,7 +71,7 @@ func newIssueListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 
 func newIssueViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	return &cobra.Command{
-		Use:   "view <KEY>",
+		Use:   "view <issue>",
 		Short: "View a single Jira issue",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -167,6 +167,9 @@ func writeIssue(w io.Writer, iss jira.Issue) {
 	}
 	if f.Reporter != nil && f.Reporter.DisplayName != "" {
 		fmt.Fprintf(w, "%-9s %s\n", "reporter:", f.Reporter.DisplayName)
+	}
+	if f.Created != "" {
+		fmt.Fprintf(w, "%-9s %s\n", "created:", f.Created)
 	}
 	if f.Updated != "" {
 		fmt.Fprintf(w, "%-9s %s\n", "updated:", f.Updated)

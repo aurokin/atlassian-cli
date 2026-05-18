@@ -45,6 +45,26 @@ func TestTextOfNestedList(t *testing.T) {
 	}
 }
 
+func TestTextOfBoundsRecursionDepth(t *testing.T) {
+	// nest wraps a text leaf in depth layers of paragraph nodes.
+	nest := func(depth int, leaf string) json.RawMessage {
+		s := `{"type":"text","text":"` + leaf + `"}`
+		for i := 0; i < depth; i++ {
+			s = `{"type":"paragraph","content":[` + s + `]}`
+		}
+		return json.RawMessage(s)
+	}
+	// Text within the depth bound is still recovered.
+	if got := TextOf(nest(adfMaxDepth/2, "shallow")); got != "shallow" {
+		t.Errorf("TextOf(within bound) = %q, want %q", got, "shallow")
+	}
+	// Text nested past adfMaxDepth is abandoned rather than driving the walk
+	// into a stack overflow.
+	if got := TextOf(nest(adfMaxDepth+50, "deep")); got != "" {
+		t.Errorf("TextOf(past bound) = %q, want empty", got)
+	}
+}
+
 func TestTextOfSkipsUnknownNodeTypes(t *testing.T) {
 	doc := json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[` +
 		`{"type":"text","text":"hi "},{"type":"emoji","attrs":{}},{"type":"text","text":"there"}]}]}`)
