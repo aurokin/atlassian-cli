@@ -44,10 +44,10 @@ func TestJiraParseRecognizedForms(t *testing.T) {
 func TestJiraParseRejectsUnrecognizedInput(t *testing.T) {
 	for _, in := range []string{
 		"",
-		"proj-1",      // lowercase
-		"PROJ-",       // no issue number
-		"123",         // numeric (a Confluence id, not Jira)
-		"X",           // too short for a project key
+		"proj-1", // lowercase
+		"PROJ-",  // no issue number
+		"123",    // numeric (a Confluence id, not Jira)
+		"X",      // too short for a project key
 		"https://x.atlassian.net/wiki/spaces/DEV", // a Confluence URL
 		"https://x.atlassian.net/some/other/path",
 		"ftp://x.atlassian.net/browse/PROJ-1", // non-http scheme
