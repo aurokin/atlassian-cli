@@ -10,18 +10,17 @@ import (
 
 const short = "atl-conf is a true-to-API command-line interface for Atlassian Confluence"
 
-// NewRoot builds the root command for the atl-conf binary. The build metadata
-// is supplied by the binary's main package.
-func NewRoot(version, commit, date string) *cobra.Command {
+// NewRoot builds the root command for the atl-conf binary together with the
+// global flags bound to it. The build metadata is supplied by the binary's
+// main package.
+func NewRoot(version, commit, date string) (*cobra.Command, *cli.GlobalFlags) {
 	info := appinfo.New("atl-conf", appinfo.ProductConfluence, version, commit, date)
-	root, _ := cli.NewRoot(info, short)
-	return root
+	return cli.NewRoot(info, short)
 }
 
 // Run builds the atl-conf command tree, executes it, and returns the process
 // exit code.
 func Run(version, commit, date string) int {
-	info := appinfo.New("atl-conf", appinfo.ProductConfluence, version, commit, date)
-	root, g := cli.NewRoot(info, short)
+	root, g := NewRoot(version, commit, date)
 	return cli.Execute(root, g)
 }

@@ -8,14 +8,14 @@ import (
 )
 
 func TestNewRootUse(t *testing.T) {
-	root := NewRoot("test", "", "")
+	root, _ := NewRoot("test", "", "")
 	if root.Use != "atl-jira" {
 		t.Fatalf("Use = %q, want %q", root.Use, "atl-jira")
 	}
 }
 
 func TestRootHelpContainsBinaryName(t *testing.T) {
-	root := NewRoot("test", "", "")
+	root, _ := NewRoot("test", "", "")
 	var buf bytes.Buffer
 	root.SetOut(&buf)
 	root.SetErr(&buf)
@@ -29,7 +29,7 @@ func TestRootHelpContainsBinaryName(t *testing.T) {
 }
 
 func TestVersionJSON(t *testing.T) {
-	root := NewRoot("9.9.9", "", "")
+	root, _ := NewRoot("9.9.9", "", "")
 	var buf bytes.Buffer
 	root.SetOut(&buf)
 	root.SetErr(&buf)

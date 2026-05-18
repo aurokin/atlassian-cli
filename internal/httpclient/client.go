@@ -112,9 +112,25 @@ func (t Target) ResolveURL(ref string) (string, error) {
 				"absolute URL %s://%s is not the configured site or Atlassian API gateway for site %q",
 				cand.scheme, cand.host, t.SiteName))
 		}
+		// Requests are authenticated via the Authorization header, so URL
+		// userinfo is never needed; drop it so a credential can never travel
+		// in the URL or be echoed into an error message.
+		u.User = nil
 		return u.String(), nil
 	}
-	return strings.TrimRight(base, "/") + "/" + strings.TrimLeft(ref, "/"), nil
+	joined := strings.TrimRight(base, "/") + "/" + strings.TrimLeft(ref, "/")
+	return stripUserinfo(joined), nil
+}
+
+// stripUserinfo removes any embedded userinfo from a URL string. A string that
+// does not parse, or that carries no userinfo, is returned unchanged.
+func stripUserinfo(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.User == nil {
+		return raw
+	}
+	u.User = nil
+	return u.String()
 }
 
 // origin is a normalized scheme+host pair. Both fields are lower-cased so

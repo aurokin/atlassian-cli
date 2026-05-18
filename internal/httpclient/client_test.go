@@ -121,6 +121,19 @@ func TestResolveURLAllowsMixedCaseHost(t *testing.T) {
 	}
 }
 
+func TestResolveURLStripsUserinfoFromAbsoluteURL(t *testing.T) {
+	// Credentials embedded in a URL must not survive into the request URL,
+	// where they could travel on the wire or leak into an error message.
+	target := Target{Product: ProductJira, TokenStyle: auth.StyleCloudClassic, BaseURL: "https://example.atlassian.net"}
+	got, err := target.ResolveURL("https://user:s3cret@example.atlassian.net/rest/api/3/myself")
+	if err != nil {
+		t.Fatalf("ResolveURL: %v", err)
+	}
+	if got != "https://example.atlassian.net/rest/api/3/myself" {
+		t.Fatalf("ResolveURL kept URL userinfo: %q", got)
+	}
+}
+
 func TestDoSuccessReturnsBody(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("Authorization"); got == "" {
