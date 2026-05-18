@@ -1,6 +1,6 @@
 # Continuation Handoff
 
-> Last updated: 2026-05-17. Point-in-time handoff for continuing this work in the app or a fresh agent session.
+> Last updated: 2026-05-18. Point-in-time handoff for continuing this work in the app or a fresh agent session.
 
 ## Current repository state
 
@@ -8,14 +8,15 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `phase-1-foundation` (Phase 1 work; not yet merged to `main`).
+Branch: `phase-2-resolve-browse` (Phase 2 work). Phase 1 is merged to `main`.
 
-Status at handoff: Phase 1 foundation is implemented. The Go module, both
-binaries, shared global flags, config store, output renderer, structured
-errors, auth signing, HTTP client, the `auth` subtree, and the raw `api`
-command are in place with `go test ./...` passing. Product-specific Jira and
-Confluence commands are not started. See `docs/command-contract.md` for the
-implemented surface.
+Status at handoff: Phase 1 foundation is merged to `main`. Phase 2 (URL
+resolution and the `resolve`/`browse` commands) is implemented on the
+`phase-2-resolve-browse` branch per `docs/phase-2-resolve-browse-plan.md` —
+the `internal/resolve` parser framework, the Jira and Confluence parsers, the
+`internal/browser` open helper, and the `resolve` and `browse` commands, all
+with `go test ./...` passing. Product-specific Jira and Confluence commands
+are not started. See `docs/command-contract.md` for the implemented surface.
 
 ## Canonical CLI names
 
@@ -48,26 +49,29 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 6. `docs/shared-architecture.md`
 7. `docs/implementation-plan.md`
 8. `docs/phase-1-foundation-plan.md`
-9. Product docs only after foundation work:
+9. `docs/phase-2-resolve-browse-plan.md`
+10. Product docs only after foundation work:
    - `docs/jira-mvp.md`
    - `docs/confluence-mvp.md`
-10. Bitbucket future docs only when planning migration:
+11. Bitbucket future docs only when planning migration:
    - `docs/bitbucket-migration-roadmap.md`
    - `docs/bb-rewrite-plan.md`
 
 ## Next action
 
-Phase 1 (`docs/phase-1-foundation-plan.md`) is complete on the
-`phase-1-foundation` branch. Next:
+Phase 1 is merged to `main`. Phase 2 (`resolve`/`browse`) is implemented on
+`phase-2-resolve-browse` and ready to merge.
 
-1. Review and merge `phase-1-foundation` into `main`.
-2. Plan Phase 2: the first product commands, guided by `docs/jira-mvp.md` and
-   `docs/confluence-mvp.md`.
-3. Consider deferred foundation items when they become relevant: `--jq`
-   filtering, `--trace`, and secure token storage.
+Next:
 
-One Phase 1 architecture note: the shared root/version/auth/api wiring lives in
-`internal/cli` (a package not named in the original plan layout) so the
+1. Phase 3 — Jira MVP commands (`project`, `issue`, `issue comment`,
+   `search issues`, `status`), guided by `docs/jira-mvp.md`.
+2. Phase 4 — Confluence MVP commands, guided by `docs/confluence-mvp.md`.
+3. Deferred foundation items when relevant: `--jq` filtering, `--trace`, and
+   secure token storage.
+
+Architecture note: the shared command wiring (`root`, `version`, `auth`,
+`api`, and now `resolve`/`browse`) lives in `internal/cli`, so the
 `atljiracmd` and `atlconfcmd` packages stay thin product wrappers.
 
 ## Implementation guardrails

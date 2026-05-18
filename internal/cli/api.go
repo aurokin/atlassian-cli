@@ -45,18 +45,9 @@ func runAPI(cmd *cobra.Command, info appinfo.Info, g *GlobalFlags, pathOrURL, me
 	if g.Site == "" {
 		return apperr.InvalidInput("a site name is required; pass --site")
 	}
-
-	path, err := config.DefaultPath()
+	profile, err := loadSiteProfile(info, g.Site)
 	if err != nil {
 		return err
-	}
-	cfg, err := config.Load(path)
-	if err != nil {
-		return err
-	}
-	profile, ok := cfg.Sites[g.Site]
-	if !ok {
-		return apperr.New("site_not_configured", fmt.Sprintf("site %q is not configured; run %s auth login", g.Site, info.Binary))
 	}
 
 	style, err := auth.ParseTokenStyle(profile.TokenStyle)
@@ -100,6 +91,25 @@ func runAPI(cmd *cobra.Command, info appinfo.Info, g *GlobalFlags, pathOrURL, me
 		return nil
 	}
 	return render(cmd, g, json.RawMessage(resp.Body))
+}
+
+// loadSiteProfile reads the named site profile from the on-disk config,
+// returning a structured error when the config or the profile is absent.
+func loadSiteProfile(info appinfo.Info, site string) (config.SiteProfile, error) {
+	path, err := config.DefaultPath()
+	if err != nil {
+		return config.SiteProfile{}, err
+	}
+	cfg, err := config.Load(path)
+	if err != nil {
+		return config.SiteProfile{}, err
+	}
+	profile, ok := cfg.Sites[site]
+	if !ok {
+		return config.SiteProfile{}, apperr.New("site_not_configured",
+			fmt.Sprintf("site %q is not configured; run %s auth login", site, info.Binary))
+	}
+	return profile, nil
 }
 
 // resolveToken reads the token value referenced by a profile. Phase 1

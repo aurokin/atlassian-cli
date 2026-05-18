@@ -1,6 +1,6 @@
 # Command Contract
 
-> Implemented behavior as of Phase 1. This document describes what the
+> Implemented behavior as of Phase 2. This document describes what the
 > `atl-jira` and `atl-conf` binaries actually do today, not the long-term
 > design. Update it whenever the command surface changes.
 
@@ -8,8 +8,9 @@
 
 Phase 1 delivers the shared foundation: two binaries, global flags, config,
 structured output and errors, auth signing, an HTTP client, the `auth` command
-subtree, and the raw `api` escape hatch. Product-specific commands (Jira
-issues/projects, Confluence pages/spaces) are not implemented yet.
+subtree, and the raw `api` escape hatch. Phase 2 adds offline URL/key
+resolution: the `resolve` and `browse` commands. Product-specific commands
+(Jira issues/projects, Confluence pages/spaces) are not implemented yet.
 
 ## Binaries
 
@@ -26,7 +27,7 @@ identity and build metadata differ.
 | `--json` | string | JSON output. Bare `--json` renders all fields; `--json=field1,field2` selects top-level fields. |
 | `--jq` | string | Reserved. Returns a clear "not yet implemented" error if used. |
 | `--site` | string | Names the configured site profile a command targets. |
-| `--no-prompt` | bool | Accepted and reserved. Phase 1 has no interactive prompts, so it is currently a no-op. |
+| `--no-prompt` | bool | Forces non-interactive behavior. `browse` treats it as `--no-browser` (print the URL, never open one). No other command prompts yet. |
 | `--trace` | bool | Accepted and reserved. Request tracing is not implemented yet. |
 
 `--json` takes an *optional* value, so a value must be attached with `=`
@@ -91,6 +92,54 @@ atl-jira api <path-or-url> --site <name> [-X <method>] [--data <body>]
 Sends a signed request to the `--site` profile and renders the response.
 `--method`/`-X` defaults to `GET`. With `--json` the full response body is
 rendered; `--json=field1,field2` selects top-level fields.
+
+### `resolve`
+
+```
+atl-jira resolve <url-or-key> [--json]
+atl-conf resolve <url-or-id> [--json]
+```
+
+Parses an Atlassian URL or a bare key/id into a structured resource. Resolution
+is **offline string parsing** — no network request is made. Human output is a
+short label/value summary; `--json` emits the full resource object (`kind`,
+`product`, `input`, and the populated subset of `site_host`, `key`, `id`,
+`title`). An input matching no known form fails with a structured `unresolved`
+error.
+
+Recognized forms:
+
+| Product | Input | Resolves to |
+|---|---|---|
+| Jira | `PROJ-123` | issue |
+| Jira | `PROJ` | project |
+| Jira | `<site>/browse/PROJ-123` or `/browse/PROJ` | issue / project |
+| Jira | `<site>/jira/.../projects/PROJ` | project (an issue when a `selectedIssue=` or `/issues/PROJ-123` hint is present) |
+| Confluence | `123456` | page (by id) |
+| Confluence | `<site>/wiki/spaces/KEY/pages/<id>/<slug>` | page |
+| Confluence | `<site>/wiki/spaces/KEY[/overview]` | space |
+
+Each binary resolves only its own product's forms: `atl-jira resolve` rejects a
+Confluence URL, and vice versa.
+
+### `browse`
+
+```
+atl-jira browse <url-or-key> [--site <name>] [--no-browser]
+```
+
+Resolves the input, builds the canonical browser URL, and opens it in the
+default browser. A full URL carries its own host; a bare key/id needs `--site`
+to supply the site root — a bare key without `--site` is a structured error.
+Canonical URLs are the stable `<site>/browse/<KEY>` (Jira) and
+`<site>/wiki/spaces/<KEY>/pages/<id>` (Confluence) forms; a bare Confluence page
+id with no known space resolves to `<site>/wiki/pages/viewpage.action?pageId=<id>`.
+
+With `--no-browser`, or the global `--no-prompt`, the URL is printed to stdout
+instead of opened — keeping the command safe in non-interactive and agent
+contexts. Under `--json` it is emitted as a `{"url": "..."}` object. The
+browser is launched through the platform handler (`open`, `xdg-open`, or
+`rundll32`); only `http`/`https` URLs are ever passed to it.
 
 ## Config file
 
@@ -161,13 +210,18 @@ When `--json` is set and the error carries a structured `apperr.Error`, the
 full JSON envelope is written to stderr; otherwise errors are written as a
 plain `Error: <code>: <message>` line.
 
-## Known Phase 1 limitations
+## Known limitations
 
 - No OAuth 3LO; no browser/cookie login.
 - No Bitbucket (`atl-bb`).
-- No product commands beyond raw `api` — no Jira issue/project or Confluence
-  page/space commands.
-- `--jq` is a stub; `--trace` and `--no-prompt` are accepted but inert.
+- No product commands beyond raw `api` and `resolve`/`browse` — no Jira
+  issue/project or Confluence page/space commands.
+- `--jq` is a stub; `--trace` is accepted but inert. `--no-prompt` is honored
+  only by `browse`.
 - Tokens are referenced via `--token-env` only. Raw token storage and OS
   keychain support are not implemented.
-- Human (non-`--json`) output is minimal and falls back to indented JSON.
+- Human (non-`--json`) output is minimal: `resolve` prints a label/value
+  summary, other commands fall back to indented JSON.
+- URL resolution covers Atlassian **Cloud** canonical forms only. Confluence
+  tiny links (`/wiki/x/<token>`), Data Center URL shapes, and blog-post or
+  attachment URLs are not recognized; `browse` roots a URL input at `https`.
