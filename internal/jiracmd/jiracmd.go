@@ -17,7 +17,10 @@ import (
 
 // AddCommands registers the Jira product commands on the atl-jira root.
 func AddCommands(root *cobra.Command, info appinfo.Info, g *cli.GlobalFlags) {
-	root.AddCommand(newProjectCommand(info, g))
+	root.AddCommand(
+		newProjectCommand(info, g),
+		newIssueCommand(info, g),
+	)
 }
 
 // jiraClient builds a typed Jira client for the profile named by --site.
