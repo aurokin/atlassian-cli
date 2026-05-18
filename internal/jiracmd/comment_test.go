@@ -16,19 +16,24 @@ const adfComment = `{"id":"10","author":{"displayName":"Ada Lovelace"},` +
 	`"body":{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Looks good to me"}]}]}}`
 
 func TestCommentListHumanOutput(t *testing.T) {
+	var gotMax string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/issue/PROJ-1/comment" {
 			t.Errorf("path = %q, want /issue/PROJ-1/comment", r.URL.Path)
 		}
+		gotMax = r.URL.Query().Get("maxResults")
 		_, _ = w.Write([]byte(`{"comments":[` + adfComment + `],"total":1}`))
 	}))
 	defer srv.Close()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	loginJiraSite(t, srv.URL)
 
-	out, err := execJira(t, "issue", "comment", "list", "PROJ-1", "--site", "work")
+	out, err := execJira(t, "issue", "comment", "list", "PROJ-1", "--limit", "3", "--site", "work")
 	if err != nil {
 		t.Fatalf("issue comment list: %v", err)
+	}
+	if gotMax != "3" {
+		t.Errorf("comment list sent maxResults %q, want 3 (--limit not plumbed)", gotMax)
 	}
 	for _, want := range []string{"Ada Lovelace", "Looks good to me"} {
 		if !strings.Contains(out, want) {
@@ -70,6 +75,27 @@ func TestCommentViewHumanOutput(t *testing.T) {
 		t.Fatalf("issue comment view: %v", err)
 	}
 	for _, want := range []string{"10", "Ada Lovelace", "Looks good to me"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("comment view output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestCommentViewWithoutBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		// A system comment with no body, updated later than it was created.
+		_, _ = w.Write([]byte(`{"id":"11","author":{"displayName":"Automation"},` +
+			`"created":"2026-05-18T10:00:00.000+0000","updated":"2026-05-19T11:00:00.000+0000"}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "comment", "view", "PROJ-1", "11", "--site", "work")
+	if err != nil {
+		t.Fatalf("issue comment view: %v", err)
+	}
+	for _, want := range []string{"11", "Automation", "created:", "updated:"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("comment view output missing %q:\n%s", want, out)
 		}

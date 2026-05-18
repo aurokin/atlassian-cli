@@ -26,10 +26,13 @@ func TestStatusHumanOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("status: %v", err)
 	}
-	for _, want := range []string{"authenticated", "work", "Ada Lovelace", "5b10a2", "ada@example.com"} {
+	for _, want := range []string{"authenticated", "work", "Ada Lovelace", "5b10a2", "ada@example.com", "api base:"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("status output missing %q:\n%s", want, out)
 		}
+	}
+	if !strings.Contains(out, srv.URL) {
+		t.Errorf("status output missing the resolved API base %q:\n%s", srv.URL, out)
 	}
 }
 

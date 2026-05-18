@@ -26,11 +26,14 @@ func newTestClient(srv *httptest.Server) *Client {
 	return New(httpclient.New(target, cred, srv.Client()))
 }
 
-// serveJSON builds a test server that asserts the request path and replies
-// with body.
+// serveJSON builds a test server that asserts the request is a GET against
+// wantPath and replies with body.
 func serveJSON(t *testing.T, wantPath, body string) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("request method = %q, want GET", r.Method)
+		}
 		if r.URL.Path != wantPath {
 			t.Errorf("request path = %q, want %q", r.URL.Path, wantPath)
 		}
@@ -76,6 +79,9 @@ func TestClientGetProject(t *testing.T) {
 func TestClientSearchProjects(t *testing.T) {
 	var gotMax string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %q, want GET", r.Method)
+		}
 		if r.URL.Path != "/project/search" {
 			t.Errorf("path = %q, want /project/search", r.URL.Path)
 		}
@@ -122,13 +128,17 @@ func TestClientGetIssue(t *testing.T) {
 }
 
 func TestClientSearchIssues(t *testing.T) {
-	var gotJQL, gotMax string
+	var gotJQL, gotMax, gotFields string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %q, want GET", r.Method)
+		}
 		if r.URL.Path != "/search/jql" {
 			t.Errorf("path = %q, want /search/jql", r.URL.Path)
 		}
 		gotJQL = r.URL.Query().Get("jql")
 		gotMax = r.URL.Query().Get("maxResults")
+		gotFields = r.URL.Query().Get("fields")
 		_, _ = w.Write([]byte(`{"issues":[{"key":"PROJ-1","fields":{"summary":"First"}}],"isLast":true}`))
 	}))
 	defer srv.Close()
@@ -142,6 +152,9 @@ func TestClientSearchIssues(t *testing.T) {
 	}
 	if gotMax != "25" {
 		t.Errorf("maxResults param = %q, want 25", gotMax)
+	}
+	if gotFields != "*navigable" {
+		t.Errorf("fields param = %q, want *navigable", gotFields)
 	}
 	page, err := Decode[IssuePage](raw)
 	if err != nil {

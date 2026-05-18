@@ -35,3 +35,20 @@ func TestTextOfEmptyOrUnparseable(t *testing.T) {
 		}
 	}
 }
+
+func TestTextOfNestedList(t *testing.T) {
+	doc := json.RawMessage(`{"type":"doc","content":[{"type":"bulletList","content":[` +
+		`{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"one"}]}]},` +
+		`{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"two"}]}]}]}]}`)
+	if got := TextOf(doc); got != "one\ntwo" {
+		t.Errorf("TextOf = %q, want %q", got, "one\ntwo")
+	}
+}
+
+func TestTextOfSkipsUnknownNodeTypes(t *testing.T) {
+	doc := json.RawMessage(`{"type":"doc","content":[{"type":"paragraph","content":[` +
+		`{"type":"text","text":"hi "},{"type":"emoji","attrs":{}},{"type":"text","text":"there"}]}]}`)
+	if got := TextOf(doc); got != "hi there" {
+		t.Errorf("TextOf = %q, want %q", got, "hi there")
+	}
+}

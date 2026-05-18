@@ -84,24 +84,49 @@ func TestIssueViewJSON(t *testing.T) {
 }
 
 func TestIssueListBuildsJQLFromFlags(t *testing.T) {
-	var gotJQL string
+	var gotJQL, gotMax string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotJQL = r.URL.Query().Get("jql")
+		gotMax = r.URL.Query().Get("maxResults")
 		_, _ = w.Write([]byte(`{"issues":[{"key":"PROJ-1","fields":{"summary":"First","status":{"name":"To Do"}}}],"isLast":true}`))
 	}))
 	defer srv.Close()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	loginJiraSite(t, srv.URL)
 
-	out, err := execJira(t, "issue", "list", "--project", "PROJ", "--status", "To Do", "--site", "work")
+	out, err := execJira(t, "issue", "list", "--project", "PROJ", "--status", "To Do", "--limit", "7", "--site", "work")
 	if err != nil {
 		t.Fatalf("issue list: %v", err)
 	}
 	if gotJQL != `project = "PROJ" AND status = "To Do" ORDER BY created DESC` {
 		t.Fatalf("issue list sent jql %q", gotJQL)
 	}
+	if gotMax != "7" {
+		t.Errorf("issue list sent maxResults %q, want 7 (--limit not plumbed)", gotMax)
+	}
 	if !strings.Contains(out, "PROJ-1") || !strings.Contains(out, "First") {
 		t.Fatalf("issue list output:\n%s", out)
+	}
+}
+
+func TestIssueViewJSONFieldSelection(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"id":"1","key":"PROJ-1","fields":{"summary":"Fix the bug"}}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "view", "PROJ-1", "--site", "work", "--json=key")
+	if err != nil {
+		t.Fatalf("issue view --json=key: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("issue view --json=key output is not valid JSON: %v\n%s", err, out)
+	}
+	if len(got) != 1 || got["key"] != "PROJ-1" {
+		t.Fatalf("field selection result = %v, want only {key: PROJ-1}", got)
 	}
 }
 

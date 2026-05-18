@@ -12,16 +12,21 @@ import (
 )
 
 func TestProjectListHumanOutput(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	var gotMax string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMax = r.URL.Query().Get("maxResults")
 		_, _ = w.Write([]byte(`{"values":[{"key":"PROJ","name":"Project X"},{"key":"OPS","name":"Operations"}],"isLast":true}`))
 	}))
 	defer srv.Close()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	loginJiraSite(t, srv.URL)
 
-	out, err := execJira(t, "project", "list", "--site", "work")
+	out, err := execJira(t, "project", "list", "--limit", "5", "--site", "work")
 	if err != nil {
 		t.Fatalf("project list: %v", err)
+	}
+	if gotMax != "5" {
+		t.Errorf("project list sent maxResults %q, want 5 (--limit not plumbed)", gotMax)
 	}
 	for _, want := range []string{"PROJ", "Project X", "OPS", "Operations"} {
 		if !strings.Contains(out, want) {
@@ -106,6 +111,25 @@ func TestProjectViewMapsNotFound(t *testing.T) {
 	}
 	if ae.Code != apperr.CodeNotFoundOrNotVisible {
 		t.Errorf("Code = %q, want %q", ae.Code, apperr.CodeNotFoundOrNotVisible)
+	}
+}
+
+func TestProjectViewDecodeFailureIsStructured(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		// A 200 response with a truncated, undecodable JSON body.
+		_, _ = w.Write([]byte(`{"key":"PROJ",`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	_, err := execJira(t, "project", "view", "PROJ", "--site", "work")
+	if err == nil {
+		t.Fatal("project view of an undecodable 200 body returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != "response_decode_failed" {
+		t.Fatalf("error = %v, want a response_decode_failed *apperr.Error", err)
 	}
 }
 

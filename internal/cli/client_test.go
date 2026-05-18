@@ -19,6 +19,7 @@ func loginTestSite(t *testing.T, tokenEnv string) {
 }
 
 func TestSiteClientRequiresSiteFlag(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	_, err := SiteClient(jiraInfo(), &GlobalFlags{})
 	if err == nil {
 		t.Fatal("SiteClient with no --site returned no error")

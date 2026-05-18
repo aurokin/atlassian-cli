@@ -23,6 +23,11 @@ func New(c *httpclient.Client) *Client {
 	return &Client{http: c}
 }
 
+// APIBase returns the resolved Jira API base URL the client sends requests to.
+func (c *Client) APIBase() (string, error) {
+	return c.http.APIBase()
+}
+
 // get issues a GET against an API-relative path and returns the raw body. A
 // non-2xx response surfaces as the structured *apperr.Error from httpclient.
 func (c *Client) get(ctx context.Context, path string) (json.RawMessage, error) {
@@ -56,9 +61,14 @@ func (c *Client) GetIssue(ctx context.Context, idOrKey string) (json.RawMessage,
 }
 
 // SearchIssues runs a JQL query (GET /search/jql).
+//
+// The enhanced /search/jql endpoint returns only id and key unless fields are
+// requested explicitly, so the navigable field set is always asked for — that
+// is the standard set the issue models render.
 func (c *Client) SearchIssues(ctx context.Context, jql string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	q.Set("jql", jql)
+	q.Set("fields", "*navigable")
 	setLimit(q, limit)
 	return c.get(ctx, withQuery("/search/jql", q))
 }

@@ -13,6 +13,11 @@ type adfNode struct {
 	Content []adfNode `json:"content"`
 }
 
+// adfMaxDepth bounds the ADF walk. Real documents are shallow and the JSON
+// decoder already caps nesting, so this only guards a pathological body from
+// driving the recursion into a stack overflow.
+const adfMaxDepth = 100
+
 // TextOf extracts plain text from an Atlassian Document Format body,
 // best-effort. A body that is already a JSON string is returned verbatim;
 // block-level nodes are separated by newlines. An empty or unparseable body
@@ -29,24 +34,29 @@ func TextOf(body json.RawMessage) string {
 	if json.Unmarshal(body, &root) != nil {
 		return ""
 	}
-	return strings.TrimSpace(adfText(root))
+	return strings.TrimSpace(adfText(root, 0))
 }
 
 // adfText walks an ADF node, concatenating descendant text and inserting a
-// newline before each block-level child after the first.
-func adfText(n adfNode) string {
+// newline before each block-level child after the first. Recursion past
+// adfMaxDepth is abandoned so a pathologically nested body cannot exhaust the
+// stack.
+func adfText(n adfNode, depth int) string {
 	switch n.Type {
 	case "text":
 		return n.Text
 	case "hardBreak":
 		return "\n"
 	}
+	if depth >= adfMaxDepth {
+		return ""
+	}
 	var b strings.Builder
 	for i, child := range n.Content {
 		if i > 0 && adfIsBlock(child.Type) {
 			b.WriteByte('\n')
 		}
-		b.WriteString(adfText(child))
+		b.WriteString(adfText(child, depth+1))
 	}
 	return b.String()
 }

@@ -34,24 +34,30 @@ func newStatusCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			writeStatus(cmd.OutOrStdout(), g.Site, user)
+			// The client built successfully, so its target is valid; ignore
+			// any APIBase error and simply omit the line if it is empty.
+			apiBase, _ := jc.APIBase()
+			writeStatus(cmd.OutOrStdout(), g.Site, apiBase, user)
 			return nil
 		},
 	}
 }
 
 // writeStatus prints the resolved authentication state as label/value lines.
-func writeStatus(w io.Writer, site string, user jira.User) {
-	fmt.Fprintf(w, "%-9s %s\n", "status:", "authenticated")
-	fmt.Fprintf(w, "%-9s %s\n", "site:", site)
+func writeStatus(w io.Writer, site, apiBase string, user jira.User) {
+	fmt.Fprintf(w, "%-10s %s\n", "status:", "authenticated")
+	fmt.Fprintf(w, "%-10s %s\n", "site:", site)
 	account := user.DisplayName
 	if user.AccountID != "" {
 		account = fmt.Sprintf("%s (%s)", user.DisplayName, user.AccountID)
 	}
 	if account != "" {
-		fmt.Fprintf(w, "%-9s %s\n", "account:", account)
+		fmt.Fprintf(w, "%-10s %s\n", "account:", account)
 	}
 	if user.EmailAddress != "" {
-		fmt.Fprintf(w, "%-9s %s\n", "email:", user.EmailAddress)
+		fmt.Fprintf(w, "%-10s %s\n", "email:", user.EmailAddress)
+	}
+	if apiBase != "" {
+		fmt.Fprintf(w, "%-10s %s\n", "api base:", apiBase)
 	}
 }
