@@ -15,6 +15,12 @@ import (
 // can substitute a recorder for the real browser.Open.
 var browseOpener = browser.Open
 
+// browseResult is the JSON representation of a browse target. Wrapping the URL
+// in an object keeps --json field selection usable, as for every other command.
+type browseResult struct {
+	URL string `json:"url"`
+}
+
 // newBrowseCommand builds the "browse" subcommand: it resolves a URL or bare
 // key/id, builds the canonical browser URL, and opens it.
 func newBrowseCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
@@ -56,7 +62,11 @@ func runBrowse(cmd *cobra.Command, info appinfo.Info, g *GlobalFlags, input stri
 	// --no-browser and the global --no-prompt both force print-only, keeping
 	// the command safe in non-interactive and agent contexts.
 	if noBrowser || g.NoPrompt {
-		return render(cmd, g, canonical)
+		if g.JSON != "" || g.JQ != "" {
+			return render(cmd, g, browseResult{URL: canonical})
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), canonical)
+		return nil
 	}
 	if err := browseOpener(canonical); err != nil {
 		return err

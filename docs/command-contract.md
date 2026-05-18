@@ -137,8 +137,9 @@ id with no known space resolves to `<site>/wiki/pages/viewpage.action?pageId=<id
 
 With `--no-browser`, or the global `--no-prompt`, the URL is printed to stdout
 instead of opened — keeping the command safe in non-interactive and agent
-contexts. The browser is launched through the platform handler (`open`,
-`xdg-open`, or `rundll32`); only `http`/`https` URLs are ever passed to it.
+contexts. Under `--json` it is emitted as a `{"url": "..."}` object. The
+browser is launched through the platform handler (`open`, `xdg-open`, or
+`rundll32`); only `http`/`https` URLs are ever passed to it.
 
 ## Config file
 

@@ -14,6 +14,7 @@ func TestConfluenceParseRecognizedForms(t *testing.T) {
 	}{
 		{"bare page id", "123456", KindConfluencePage, "123456", "", "", ""},
 		{"page URL with slug", "https://x.atlassian.net/wiki/spaces/DEV/pages/789/Getting+Started", KindConfluencePage, "789", "DEV", "Getting Started", "x.atlassian.net"},
+		{"page URL plain slug", "https://x.atlassian.net/wiki/spaces/DEV/pages/790/Roadmap", KindConfluencePage, "790", "DEV", "Roadmap", "x.atlassian.net"},
 		{"page URL without slug", "https://x.atlassian.net/wiki/spaces/DEV/pages/789", KindConfluencePage, "789", "DEV", "", "x.atlassian.net"},
 		{"space URL", "https://x.atlassian.net/wiki/spaces/DEV", KindConfluenceSpace, "", "DEV", "", "x.atlassian.net"},
 		{"space URL with overview", "https://x.atlassian.net/wiki/spaces/DEV/overview", KindConfluenceSpace, "", "DEV", "", "x.atlassian.net"},
@@ -118,5 +119,19 @@ func TestConfluenceCanonicalURLMissingFieldsError(t *testing.T) {
 	}
 	if _, err := Confluence.CanonicalURL("https://x.atlassian.net", Resource{Kind: KindJiraIssue}); err == nil {
 		t.Error("CanonicalURL for a non-Confluence kind returned no error")
+	}
+}
+
+// TestConfluenceParseRejectsEmbeddedCredentials pins the security guard that a
+// URL carrying userinfo never resolves: url.Parse treats the text after "@" as
+// the host, so a credential-spoofed URL must be rejected outright.
+func TestConfluenceParseRejectsEmbeddedCredentials(t *testing.T) {
+	for _, in := range []string{
+		"https://x.atlassian.net@evil.com/wiki/spaces/DEV",
+		"https://user:pass@evil.com/wiki/spaces/DEV/pages/789/Title",
+	} {
+		if got, ok := Confluence.Parse(in); ok {
+			t.Errorf("Parse(%q) resolved to %+v; a userinfo URL must be rejected", in, got)
+		}
 	}
 }

@@ -33,12 +33,16 @@ func TestBrowseBareKeyWithSiteBuildsCanonicalURL(t *testing.T) {
 	var opened string
 	defer swapBrowseOpener(func(u string) error { opened = u; return nil })()
 
-	if _, err := execRoot(t, jiraInfo(), "browse", "PROJ-123", "--site", "work"); err != nil {
+	out, err := execRoot(t, jiraInfo(), "browse", "PROJ-123", "--site", "work")
+	if err != nil {
 		t.Fatalf("browse: %v", err)
 	}
 	const want = "https://example.atlassian.net/browse/PROJ-123"
 	if opened != want {
 		t.Fatalf("opened %q, want %q", opened, want)
+	}
+	if !strings.Contains(out, "Opened "+want) {
+		t.Errorf("missing the 'Opened' confirmation line:\n%s", out)
 	}
 }
 
@@ -46,13 +50,30 @@ func TestBrowseFullURLNormalizesToCanonical(t *testing.T) {
 	var opened string
 	defer swapBrowseOpener(func(u string) error { opened = u; return nil })()
 
-	if _, err := execRoot(t, jiraInfo(), "browse",
-		"https://x.atlassian.net/jira/software/projects/PROJ/boards/1"); err != nil {
+	out, err := execRoot(t, jiraInfo(), "browse",
+		"https://x.atlassian.net/jira/software/projects/PROJ/boards/1")
+	if err != nil {
 		t.Fatalf("browse: %v", err)
 	}
 	const want = "https://x.atlassian.net/browse/PROJ"
 	if opened != want {
 		t.Fatalf("opened %q, want %q", opened, want)
+	}
+	if !strings.Contains(out, "Opened "+want) {
+		t.Errorf("missing the 'Opened' confirmation line:\n%s", out)
+	}
+}
+
+func TestBrowseUpgradesHTTPURLInputToHTTPS(t *testing.T) {
+	var opened string
+	defer swapBrowseOpener(func(u string) error { opened = u; return nil })()
+
+	if _, err := execRoot(t, jiraInfo(), "browse",
+		"http://x.atlassian.net/browse/PROJ-7"); err != nil {
+		t.Fatalf("browse: %v", err)
+	}
+	if opened != "https://x.atlassian.net/browse/PROJ-7" {
+		t.Fatalf("opened %q, want the canonical URL rooted at https", opened)
 	}
 }
 
@@ -90,7 +111,7 @@ func TestBrowseNoPromptImpliesNoBrowser(t *testing.T) {
 	}
 }
 
-func TestBrowseNoBrowserJSONEmitsJSONString(t *testing.T) {
+func TestBrowseNoBrowserJSONEmitsURLObject(t *testing.T) {
 	called := false
 	defer swapBrowseOpener(func(string) error { called = true; return nil })()
 
@@ -102,12 +123,52 @@ func TestBrowseNoBrowserJSONEmitsJSONString(t *testing.T) {
 	if called {
 		t.Fatal("browse --no-browser invoked the opener")
 	}
-	var got string
-	if err := json.Unmarshal([]byte(out), &got); err != nil {
-		t.Fatalf("browse --json output is not a JSON string: %v\n%s", err, out)
+	var got struct {
+		URL string `json:"url"`
 	}
-	if got != "https://x.atlassian.net/browse/PROJ-7" {
-		t.Fatalf("decoded URL = %q, want the canonical browse URL", got)
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("browse --json output is not a JSON object: %v\n%s", err, out)
+	}
+	if got.URL != "https://x.atlassian.net/browse/PROJ-7" {
+		t.Fatalf("url = %q, want the canonical browse URL", got.URL)
+	}
+}
+
+func TestBrowseJSONHonorsFieldSelection(t *testing.T) {
+	defer swapBrowseOpener(func(string) error {
+		t.Error("browse invoked the opener in --no-browser mode")
+		return nil
+	})()
+
+	out, err := execRoot(t, jiraInfo(), "browse",
+		"https://x.atlassian.net/browse/PROJ-7", "--no-browser", "--json=url")
+	if err != nil {
+		t.Fatalf("browse --json=url: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("browse --json=url output is not valid JSON: %v\n%s", err, out)
+	}
+	if len(got) != 1 || got["url"] != "https://x.atlassian.net/browse/PROJ-7" {
+		t.Fatalf("field selection result = %v", got)
+	}
+}
+
+func TestBrowseOpenerFailureIsPropagated(t *testing.T) {
+	defer swapBrowseOpener(func(string) error {
+		return apperr.New("browser_failed", "no browser available")
+	})()
+
+	out, err := execRoot(t, jiraInfo(), "browse", "https://x.atlassian.net/browse/PROJ-7")
+	if err == nil {
+		t.Fatal("browse did not propagate the opener failure")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) {
+		t.Fatalf("error type = %T, want *apperr.Error", err)
+	}
+	if strings.Contains(out, "Opened") {
+		t.Errorf("browse printed a success line despite the opener failing:\n%s", out)
 	}
 }
 

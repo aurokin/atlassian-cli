@@ -3,6 +3,8 @@ package browser
 import (
 	"errors"
 	"testing"
+
+	"github.com/aurokin/atlassian-cli/internal/apperr"
 )
 
 // swapRunner replaces the package runner and returns a restore func.
@@ -50,6 +52,21 @@ func TestOpenMapsRunnerFailureToError(t *testing.T) {
 	defer swapRunner(func(string, ...string) error { return errors.New("boom") })()
 	if err := Open("https://x.atlassian.net/browse/PROJ-1"); err == nil {
 		t.Fatal("Open returned no error when the runner failed")
+	}
+}
+
+func TestOpenWithUnsupportedPlatformErrors(t *testing.T) {
+	defer swapRunner(func(string, ...string) error {
+		t.Error("runner invoked on an unsupported platform")
+		return nil
+	})()
+	err := openWith("plan9", "https://x.atlassian.net/browse/PROJ-1")
+	if err == nil {
+		t.Fatal("openWith returned no error on an unsupported platform")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != "unsupported_platform" {
+		t.Fatalf("error = %v, want an unsupported_platform *apperr.Error", err)
 	}
 }
 

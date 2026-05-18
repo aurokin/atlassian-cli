@@ -86,3 +86,17 @@ func TestJiraCanonicalURLWithoutKeyErrors(t *testing.T) {
 		t.Fatal("CanonicalURL without a key returned no error")
 	}
 }
+
+// TestJiraParseRejectsEmbeddedCredentials pins the security guard that a URL
+// carrying userinfo never resolves: url.Parse treats the text after "@" as the
+// host, so a credential-spoofed URL must be rejected outright.
+func TestJiraParseRejectsEmbeddedCredentials(t *testing.T) {
+	for _, in := range []string{
+		"https://x.atlassian.net@evil.com/browse/PROJ-1",
+		"https://user:pass@evil.com/browse/PROJ-1",
+	} {
+		if got, ok := Jira.Parse(in); ok {
+			t.Errorf("Parse(%q) resolved to %+v; a userinfo URL must be rejected", in, got)
+		}
+	}
+}

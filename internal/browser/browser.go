@@ -20,13 +20,19 @@ var runner = func(name string, args ...string) error {
 // whose scheme is not http(s), so a crafted value can never be handed to the
 // operating system's URL handler.
 func Open(rawURL string) error {
+	return openWith(runtime.GOOS, rawURL)
+}
+
+// openWith is Open with the platform made explicit so tests can exercise the
+// per-platform branches, including an unsupported platform.
+func openWith(goos, rawURL string) error {
 	u, err := url.Parse(rawURL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
 		return apperr.InvalidInput("refusing to open a non-http(s) URL")
 	}
-	name, args := openCommand(runtime.GOOS, rawURL)
+	name, args := openCommand(goos, rawURL)
 	if name == "" {
-		return apperr.New("unsupported_platform", "opening a browser is not supported on "+runtime.GOOS)
+		return apperr.New("unsupported_platform", "opening a browser is not supported on "+goos)
 	}
 	if err := runner(name, args...); err != nil {
 		return apperr.New("browser_failed", "could not open a browser: "+err.Error())
