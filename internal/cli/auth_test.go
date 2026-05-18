@@ -193,3 +193,38 @@ func TestAuthStatusUnknownSiteReturnsStructuredError(t *testing.T) {
 		t.Fatalf("error type = %T, want *apperr.Error", err)
 	}
 }
+
+func TestAuthLoginRejectsUnsafeSiteURLs(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{"embedded credentials", []string{"auth", "login", "--site", "work", "--url", "https://user:pw@example.atlassian.net", "--username", "u@e.com", "--token-style", "cloud-classic"}},
+		{"non-http scheme", []string{"auth", "login", "--site", "work", "--url", "ftp://example.atlassian.net", "--username", "u@e.com", "--token-style", "cloud-classic"}},
+		{"http for a cloud style", []string{"auth", "login", "--site", "work", "--url", "http://example.atlassian.net", "--username", "u@e.com", "--token-style", "cloud-classic"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Setenv("XDG_CONFIG_HOME", dir)
+			_, err := execRoot(t, jiraInfo(), tc.args...)
+			if err == nil {
+				t.Fatal("expected an error for an unsafe --url")
+			}
+			var ae *apperr.Error
+			if !errors.As(err, &ae) {
+				t.Fatalf("error type = %T, want *apperr.Error", err)
+			}
+		})
+	}
+}
+
+func TestAuthLoginAllowsHTTPForDataCenter(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	if _, err := execRoot(t, jiraInfo(), "auth", "login", "--site", "dc",
+		"--url", "http://jira.internal.example.com", "--token-style", "data-center-pat",
+		"--token-env", "ATL_TEST_TOKEN"); err != nil {
+		t.Fatalf("data-center login over http should be allowed: %v", err)
+	}
+}

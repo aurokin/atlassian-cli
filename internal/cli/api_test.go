@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
@@ -65,31 +64,6 @@ func TestAPICommandSendsBearerForDataCenter(t *testing.T) {
 	}
 	if gotAuth != "Bearer test-token" {
 		t.Fatalf("Authorization = %q, want Bearer style", gotAuth)
-	}
-}
-
-func TestAPICommandSendsBasicForCloudClassic(t *testing.T) {
-	var gotAuth string
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotAuth = r.Header.Get("Authorization")
-		_, _ = w.Write([]byte(`{}`))
-	}))
-	defer srv.Close()
-
-	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
-	t.Setenv("ATL_API_TOKEN", "test-token")
-	if _, err := execRoot(t, jiraInfo(), "auth", "login", "--site", "work",
-		"--url", srv.URL, "--username", "user@example.com",
-		"--token-style", "cloud-classic", "--token-env", "ATL_API_TOKEN"); err != nil {
-		t.Fatalf("login: %v", err)
-	}
-
-	if _, err := execRoot(t, jiraInfo(), "api", "/myself", "--site", "work"); err != nil {
-		t.Fatalf("api: %v", err)
-	}
-	if !strings.HasPrefix(gotAuth, "Basic ") {
-		t.Fatalf("Authorization = %q, want Basic style", gotAuth)
 	}
 }
 

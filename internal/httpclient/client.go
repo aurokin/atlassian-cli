@@ -47,7 +47,10 @@ func (t Target) APIBase() (string, error) {
 	if t.Product != ProductJira && t.Product != ProductConfluence {
 		return "", apperr.InvalidInput(fmt.Sprintf("unknown product %q", t.Product))
 	}
-	site := strings.TrimRight(t.BaseURL, "/")
+	// Strip any userinfo so a credential embedded in the configured URL can
+	// never survive into the API base, which is also surfaced in diagnostics
+	// (apperr.APIBaseURL) and persisted to config.
+	site := stripUserinfo(strings.TrimRight(t.BaseURL, "/"))
 
 	switch t.TokenStyle {
 	case auth.StyleCloudClassic:

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"sort"
 	"strings"
@@ -114,6 +115,9 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 			}
 			style, err := auth.ParseTokenStyle(tokenStyle)
 			if err != nil {
+				return err
+			}
+			if err := validateSiteURL(urlFlag, style); err != nil {
 				return err
 			}
 			if (style == auth.StyleCloudClassic || style == auth.StyleCloudScoped) && username == "" {
@@ -248,4 +252,28 @@ func deploymentFor(style auth.TokenStyle) string {
 		return "data-center"
 	}
 	return "cloud"
+}
+
+// validateSiteURL rejects site URLs that are unsafe to store: a missing host,
+// a non-http(s) scheme, embedded credentials (the token is supplied
+// separately), and a non-https scheme for cloud token styles, since Atlassian
+// Cloud is always reached over https.
+func validateSiteURL(raw string, style auth.TokenStyle) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return apperr.InvalidInput(fmt.Sprintf("invalid --url %q: %v", raw, err))
+	}
+	if u.Host == "" {
+		return apperr.InvalidInput(fmt.Sprintf("--url %q must include a host", raw))
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return apperr.InvalidInput(fmt.Sprintf("--url scheme %q must be http or https", u.Scheme))
+	}
+	if u.User != nil {
+		return apperr.InvalidInput("--url must not embed credentials; supply the token with --token-env")
+	}
+	if u.Scheme != "https" && style != auth.StyleDataCenterPAT {
+		return apperr.InvalidInput(fmt.Sprintf("token style %s requires an https --url", style))
+	}
+	return nil
 }

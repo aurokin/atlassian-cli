@@ -86,8 +86,13 @@ func Load(path string) (Config, error) {
 }
 
 // Save writes c to path as indented JSON, creating parent directories as
-// needed. The file is written with 0600 permissions and the directory with
-// 0700 so credentials references stay private to the user.
+// needed. The directory is created with 0700 and the file with 0600 so token
+// references stay private to the user.
+//
+// The write is atomic: data is written to a temporary file in the same
+// directory and renamed over path. A crash or concurrent run can never
+// observe a partial file, and the rename replaces a symlink at path rather
+// than following it to some other location.
 func Save(path string, c Config) error {
 	if c.Sites == nil {
 		c.Sites = map[string]SiteProfile{}
@@ -100,8 +105,27 @@ func Save(path string, c Config) error {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("config: create %s: %w", dir, err)
 	}
-	if err := os.WriteFile(path, append(data, '\n'), 0o600); err != nil {
-		return fmt.Errorf("config: write %s: %w", path, err)
+
+	tmp, err := os.CreateTemp(dir, ".config-*.json")
+	if err != nil {
+		return fmt.Errorf("config: create temp file: %w", err)
+	}
+	tmpName := tmp.Name()
+	defer func() { _ = os.Remove(tmpName) }() // no-op once the rename succeeds
+
+	if err := tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("config: set permissions on %s: %w", tmpName, err)
+	}
+	if _, err := tmp.Write(append(data, '\n')); err != nil {
+		_ = tmp.Close()
+		return fmt.Errorf("config: write %s: %w", tmpName, err)
+	}
+	if err := tmp.Close(); err != nil {
+		return fmt.Errorf("config: close %s: %w", tmpName, err)
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		return fmt.Errorf("config: replace %s: %w", path, err)
 	}
 	return nil
 }

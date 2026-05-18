@@ -57,6 +57,10 @@ Records a site profile under `--site`. Required: `--site`, `--url`,
 `--token-style`. `--username` is required for `cloud-classic` and
 `cloud-scoped`; `--cloud-id` is required for `cloud-scoped`.
 
+`--url` must be an `http`/`https` URL with a host and no embedded credentials.
+Cloud token styles (`cloud-classic`, `cloud-scoped`) require `https`;
+`data-center-pat` also accepts `http` for internal instances.
+
 No raw token is stored. `--token-env NAME` records the reference `env:NAME`;
 the token value is read from that environment variable at request time.
 
@@ -93,6 +97,9 @@ rendered; `--json=field1,field2` selects top-level fields.
 - Path: `$XDG_CONFIG_HOME/atlassian-cli/config.json`, or
   `~/.config/atlassian-cli/config.json` when `XDG_CONFIG_HOME` is unset.
 - The file is written `0600` and its directory `0700`.
+- Writes are atomic: a temporary file is renamed over the target, so a crash
+  never leaves a partial file and a symlink at the path is replaced, not
+  followed.
 - A missing file is treated as empty config; a malformed file is a structured
   error.
 

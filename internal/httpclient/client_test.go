@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
@@ -37,6 +38,30 @@ func TestAPIBaseConfluenceCloud(t *testing.T) {
 	scoped := Target{Product: ProductConfluence, TokenStyle: auth.StyleCloudScoped, CloudID: "cloud-123"}
 	if got, err := scoped.APIBase(); err != nil || got != "https://api.atlassian.com/ex/confluence/cloud-123/wiki/api/v2" {
 		t.Fatalf("scoped APIBase = (%q, %v)", got, err)
+	}
+}
+
+func TestAPIBaseStripsUserinfo(t *testing.T) {
+	// A credential embedded in the configured URL must not survive into the
+	// API base, which is surfaced in diagnostics and persisted to config.
+	target := Target{Product: ProductJira, TokenStyle: auth.StyleCloudClassic, BaseURL: "https://user:s3cret@example.atlassian.net"}
+	got, err := target.APIBase()
+	if err != nil {
+		t.Fatalf("APIBase: %v", err)
+	}
+	if got != "https://example.atlassian.net/rest/api/3" {
+		t.Fatalf("APIBase kept userinfo: %q", got)
+	}
+}
+
+func TestResolveURLRelativePathDropsBaseUserinfo(t *testing.T) {
+	target := Target{Product: ProductJira, TokenStyle: auth.StyleCloudClassic, BaseURL: "https://user:s3cret@example.atlassian.net"}
+	got, err := target.ResolveURL("/myself")
+	if err != nil {
+		t.Fatalf("ResolveURL: %v", err)
+	}
+	if got != "https://example.atlassian.net/rest/api/3/myself" {
+		t.Fatalf("ResolveURL kept base userinfo: %q", got)
 	}
 }
 
@@ -158,6 +183,27 @@ func TestDoSuccessReturnsBody(t *testing.T) {
 	}
 	if string(resp.Body) != `{"accountId":"abc"}` {
 		t.Fatalf("Body = %q", resp.Body)
+	}
+}
+
+func TestDoSignsBasicForCloudClassic(t *testing.T) {
+	var gotAuth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	client := New(
+		Target{Product: ProductJira, TokenStyle: auth.StyleCloudClassic, BaseURL: srv.URL},
+		auth.Credential{Style: auth.StyleCloudClassic, Username: "user@example.com", Token: "classic-token"},
+		srv.Client(),
+	)
+	if _, err := client.Do(context.Background(), http.MethodGet, "/myself", nil); err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	if !strings.HasPrefix(gotAuth, "Basic ") {
+		t.Fatalf("Authorization = %q, want Basic style", gotAuth)
 	}
 }
 
