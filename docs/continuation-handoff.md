@@ -8,15 +8,16 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `phase-2-resolve-browse` (Phase 2 work). Phase 1 is merged to `main`.
+Branch: `phase-3-jira-mvp` (Phase 3A work). Phases 1 and 2 are merged to `main`.
 
-Status at handoff: Phase 1 foundation is merged to `main`. Phase 2 (URL
-resolution and the `resolve`/`browse` commands) is implemented on the
-`phase-2-resolve-browse` branch per `docs/phase-2-resolve-browse-plan.md` —
-the `internal/resolve` parser framework, the Jira and Confluence parsers, the
-`internal/browser` open helper, and the `resolve` and `browse` commands, all
-with `go test ./...` passing. Product-specific Jira and Confluence commands
-are not started. See `docs/command-contract.md` for the implemented surface.
+Status at handoff: Phases 1 (foundation) and 2 (`resolve`/`browse`) are merged
+to `main`. Phase 3A — the read-only Jira commands — is implemented on the
+`phase-3-jira-mvp` branch per `docs/phase-3-jira-mvp-plan.md`: a typed Jira API
+client (`internal/jira`), the Jira command tree (`internal/jiracmd`), and the
+`project`, `issue` view/list, `issue comment` list/view, `search issues`, and
+`status` commands, all with `go test ./...` passing. Jira mutating commands
+(Phase 3B) and the Confluence product commands are not started. See
+`docs/command-contract.md` for the implemented surface.
 
 ## Canonical CLI names
 
@@ -50,29 +51,34 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 7. `docs/implementation-plan.md`
 8. `docs/phase-1-foundation-plan.md`
 9. `docs/phase-2-resolve-browse-plan.md`
-10. Product docs only after foundation work:
+10. `docs/phase-3-jira-mvp-plan.md`
+11. Product docs only after foundation work:
    - `docs/jira-mvp.md`
    - `docs/confluence-mvp.md`
-11. Bitbucket future docs only when planning migration:
+12. Bitbucket future docs only when planning migration:
    - `docs/bitbucket-migration-roadmap.md`
    - `docs/bb-rewrite-plan.md`
 
 ## Next action
 
-Phase 1 is merged to `main`. Phase 2 (`resolve`/`browse`) is implemented on
-`phase-2-resolve-browse` and ready to merge.
+Phases 1 and 2 are merged to `main`. Phase 3A (read-only Jira commands) is
+implemented on `phase-3-jira-mvp` and ready for PR.
 
 Next:
 
-1. Phase 3 — Jira MVP commands (`project`, `issue`, `issue comment`,
-   `search issues`, `status`), guided by `docs/jira-mvp.md`.
+1. Phase 3B — Jira mutating commands (`issue create`/`edit`/`transition`,
+   `issue comment create`/`edit`/`delete`), the second half of
+   `docs/phase-3-jira-mvp-plan.md`.
 2. Phase 4 — Confluence MVP commands, guided by `docs/confluence-mvp.md`.
 3. Deferred foundation items when relevant: `--jq` filtering, `--trace`, and
    secure token storage.
 
 Architecture note: the shared command wiring (`root`, `version`, `auth`,
-`api`, and now `resolve`/`browse`) lives in `internal/cli`, so the
-`atljiracmd` and `atlconfcmd` packages stay thin product wrappers.
+`api`, `resolve`, `browse`) lives in `internal/cli`, which now also exports
+`SiteClient` and `Render` as the seam for product commands. The Jira command
+tree lives in `internal/jiracmd` over a typed `internal/jira` client, layered
+onto the shared root by `atljiracmd`. `atlconfcmd` stays a thin wrapper until
+Phase 4.
 
 ## Implementation guardrails
 

@@ -1,6 +1,6 @@
 # Command Contract
 
-> Implemented behavior as of Phase 2. This document describes what the
+> Implemented behavior as of Phase 3A. This document describes what the
 > `atl-jira` and `atl-conf` binaries actually do today, not the long-term
 > design. Update it whenever the command surface changes.
 
@@ -9,8 +9,10 @@
 Phase 1 delivers the shared foundation: two binaries, global flags, config,
 structured output and errors, auth signing, an HTTP client, the `auth` command
 subtree, and the raw `api` escape hatch. Phase 2 adds offline URL/key
-resolution: the `resolve` and `browse` commands. Product-specific commands
-(Jira issues/projects, Confluence pages/spaces) are not implemented yet.
+resolution: the `resolve` and `browse` commands. Phase 3A adds the read-only
+Jira product commands: `project`, `issue` (view/list), `issue comment`
+(list/view), `search issues`, and `status`. Jira mutating commands and the
+Confluence product commands are not implemented yet.
 
 ## Binaries
 
@@ -141,6 +143,66 @@ contexts. Under `--json` it is emitted as a `{"url": "..."}` object. The
 browser is launched through the platform handler (`open`, `xdg-open`, or
 `rundll32`); only `http`/`https` URLs are ever passed to it.
 
+## Jira commands
+
+These commands exist only on `atl-jira`. Each needs `--site` to name a
+configured profile and makes a live, authenticated request. Under `--json` the
+raw Jira REST v3 response body is emitted verbatim; human output is a compact
+per-command summary. A non-2xx response is mapped to the structured error
+model below.
+
+### `project`
+
+```
+atl-jira project list [--limit N]
+atl-jira project view <KEY>
+```
+
+`list` returns projects visible to the authenticated account; `view` returns a
+single project by id or key.
+
+### `issue`
+
+```
+atl-jira issue view <KEY>
+atl-jira issue list --project <KEY> [--status <name>] [--assignee <id>] [--limit N]
+```
+
+`view` returns one issue. `list` builds a JQL query from its flags — `--project`
+is required, `--status` and `--assignee` are optional filters, and results are
+ordered newest-first by creation date. `--assignee` takes an account id or the
+literal `currentUser()`. Broader queries go through `search issues`.
+
+### `search issues`
+
+```
+atl-jira search issues <JQL> [--limit N]
+```
+
+Runs a raw JQL query. JQL is the stable, expressive query surface; `issue list`
+is a convenience wrapper over the same endpoint.
+
+### `issue comment`
+
+```
+atl-jira issue comment list <ISSUE> [--limit N]
+atl-jira issue comment view <ISSUE> <COMMENT-ID>
+```
+
+Lists or views comments on an issue. Comment bodies are stored as Atlassian
+Document Format; human output renders a best-effort plain-text extraction,
+while `--json` preserves the raw ADF body.
+
+### `status`
+
+```
+atl-jira status
+```
+
+A live authentication check: it calls `/myself` with the `--site` credential
+and reports the authenticated account. This is distinct from `auth status`,
+which inspects local config offline and makes no request.
+
 ## Config file
 
 - Path: `$XDG_CONFIG_HOME/atlassian-cli/config.json`, or
@@ -214,8 +276,15 @@ plain `Error: <code>: <message>` line.
 
 - No OAuth 3LO; no browser/cookie login.
 - No Bitbucket (`atl-bb`).
-- No product commands beyond raw `api` and `resolve`/`browse` — no Jira
-  issue/project or Confluence page/space commands.
+- Jira commands are read-only so far (`project`, `issue` view/list, `issue
+  comment` list/view, `search issues`, `status`); Jira mutations (create,
+  edit, transition, comment writes) and all Confluence product commands are
+  not implemented yet.
+- Jira list commands fetch a single page bounded by `--limit`; there is no
+  follow-all-pages flag yet.
+- Jira commands target the Jira **Cloud** REST v3 API. Against a Data Center
+  instance the API base is the configured URL verbatim, so the Cloud paths
+  these commands use will not match; use the raw `api` command there.
 - `--jq` is a stub; `--trace` is accepted but inert. `--no-prompt` is honored
   only by `browse`.
 - Tokens are referenced via `--token-env` only. Raw token storage and OS
