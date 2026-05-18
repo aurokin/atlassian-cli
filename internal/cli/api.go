@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/apperr"
+	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/auth"
 	"github.com/aurokin/atlassian-cli/internal/config"
 	"github.com/aurokin/atlassian-cli/internal/httpclient"
@@ -89,6 +89,11 @@ func runAPI(cmd *cobra.Command, info appinfo.Info, g *GlobalFlags, pathOrURL, me
 	client := httpclient.New(target, cred, nil)
 	resp, err := client.Do(cmd.Context(), method, pathOrURL, body)
 	if err != nil {
+		// Surface the server's response body when it is JSON, so the raw api
+		// command stays faithful to the underlying API even on failure.
+		if resp != nil && json.Valid(bytes.TrimSpace(resp.Body)) {
+			_ = render(cmd, g, json.RawMessage(resp.Body))
+		}
 		return err
 	}
 	if len(bytes.TrimSpace(resp.Body)) == 0 {

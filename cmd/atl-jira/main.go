@@ -17,7 +17,5 @@ var (
 )
 
 func main() {
-	if err := atljiracmd.NewRoot(version, commit, date).Execute(); err != nil {
-		os.Exit(1)
-	}
+	os.Exit(atljiracmd.Run(version, commit, date))
 }

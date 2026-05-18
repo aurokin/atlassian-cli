@@ -150,8 +150,9 @@ serializes under the `error` key, alongside `message` and optional
 responses are mapped to `unauthorized`, `forbidden`, `not_found_or_not_visible`,
 and `rate_limited`.
 
-In Phase 1, command errors are printed to stderr as text (`Error: <code>:
-<message>`). Rendering the full JSON error envelope on `--json` is deferred.
+When `--json` is set and the error carries a structured `apperr.Error`, the
+full JSON envelope is written to stderr; otherwise errors are written as a
+plain `Error: <code>: <message>` line.
 
 ## Known Phase 1 limitations
 
@@ -162,5 +163,4 @@ In Phase 1, command errors are printed to stderr as text (`Error: <code>:
 - `--jq` is a stub; `--trace` and `--no-prompt` are accepted but inert.
 - Tokens are referenced via `--token-env` only. Raw token storage and OS
   keychain support are not implemented.
-- Command errors render as text, not as the JSON error envelope.
 - Human (non-`--json`) output is minimal and falls back to indented JSON.

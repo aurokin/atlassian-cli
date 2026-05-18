@@ -63,8 +63,8 @@ Phase 1 (`docs/phase-1-foundation-plan.md`) is complete on the
 1. Review and merge `phase-1-foundation` into `main`.
 2. Plan Phase 2: the first product commands, guided by `docs/jira-mvp.md` and
    `docs/confluence-mvp.md`.
-3. Consider deferred foundation items when they become relevant: JSON error
-   envelope rendering, `--jq` filtering, `--trace`, and secure token storage.
+3. Consider deferred foundation items when they become relevant: `--jq`
+   filtering, `--trace`, and secure token storage.
 
 One Phase 1 architecture note: the shared root/version/auth/api wiring lives in
 `internal/cli` (a package not named in the original plan layout) so the

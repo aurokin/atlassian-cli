@@ -8,8 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/apperr"
+	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/auth"
 	"github.com/aurokin/atlassian-cli/internal/config"
 	"github.com/aurokin/atlassian-cli/internal/httpclient"
@@ -142,9 +142,11 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 				BaseURL:    urlFlag,
 				CloudID:    cloudID,
 			}
-			if base, err := target.APIBase(); err == nil {
-				profile.APIBaseURL = base
+			base, err := target.APIBase()
+			if err != nil {
+				return err
 			}
+			profile.APIBaseURL = base
 
 			path, err := config.DefaultPath()
 			if err != nil {

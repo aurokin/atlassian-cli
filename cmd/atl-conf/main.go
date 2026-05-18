@@ -17,7 +17,5 @@ var (
 )
 
 func main() {
-	if err := atlconfcmd.NewRoot(version, commit, date).Execute(); err != nil {
-		os.Exit(1)
-	}
+	os.Exit(atlconfcmd.Run(version, commit, date))
 }

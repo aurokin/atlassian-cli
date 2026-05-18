@@ -17,3 +17,11 @@ func NewRoot(version, commit, date string) *cobra.Command {
 	root, _ := cli.NewRoot(info, short)
 	return root
 }
+
+// Run builds the atl-conf command tree, executes it, and returns the process
+// exit code.
+func Run(version, commit, date string) int {
+	info := appinfo.New("atl-conf", appinfo.ProductConfluence, version, commit, date)
+	root, g := cli.NewRoot(info, short)
+	return cli.Execute(root, g)
+}

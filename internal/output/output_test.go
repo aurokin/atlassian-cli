@@ -57,7 +57,11 @@ func TestRenderSelectedFieldsPreservesRequestedOrder(t *testing.T) {
 		t.Fatalf("Render: %v", err)
 	}
 	out := buf.String()
-	if strings.Index(out, "version") > strings.Index(out, "binary") {
+	vi, bi := strings.Index(out, "version"), strings.Index(out, "binary")
+	if vi < 0 || bi < 0 {
+		t.Fatalf("expected both selected fields to be present:\n%s", out)
+	}
+	if vi > bi {
 		t.Fatalf("fields not in requested order:\n%s", out)
 	}
 }

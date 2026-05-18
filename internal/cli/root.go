@@ -5,8 +5,14 @@
 package cli
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+
 	"github.com/spf13/cobra"
 
+	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/output"
 )
@@ -37,10 +43,12 @@ type GlobalFlags struct {
 func NewRoot(info appinfo.Info, short string) (*cobra.Command, *GlobalFlags) {
 	g := &GlobalFlags{}
 	root := &cobra.Command{
-		Use:           info.Binary,
-		Short:         short,
+		Use:   info.Binary,
+		Short: short,
+		// Errors are rendered by Execute so they can use the structured
+		// apperr envelope; cobra must not also print them.
 		SilenceUsage:  true,
-		SilenceErrors: false,
+		SilenceErrors: true,
 	}
 
 	pf := root.PersistentFlags()
@@ -62,4 +70,29 @@ func NewRoot(info appinfo.Info, short string) (*cobra.Command, *GlobalFlags) {
 // flags. It is the single rendering entry point for shared subcommands.
 func render(cmd *cobra.Command, g *GlobalFlags, v any) error {
 	return output.Render(cmd.OutOrStdout(), v, output.Options{JSON: g.JSON, JQ: g.JQ})
+}
+
+// Execute runs root and renders any resulting error, returning the process
+// exit code. It is the entry point used by each binary's main package.
+func Execute(root *cobra.Command, g *GlobalFlags) int {
+	if err := root.Execute(); err != nil {
+		renderError(root.ErrOrStderr(), g, err)
+		return 1
+	}
+	return 0
+}
+
+// renderError writes err to w. When --json is set and err carries a
+// structured *apperr.Error, the full machine-readable envelope is emitted;
+// otherwise a plain text line is written.
+func renderError(w io.Writer, g *GlobalFlags, err error) {
+	var ae *apperr.Error
+	if g.JSON != "" && errors.As(err, &ae) {
+		enc := json.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		if enc.Encode(ae) == nil {
+			return
+		}
+	}
+	fmt.Fprintln(w, "Error:", err)
 }

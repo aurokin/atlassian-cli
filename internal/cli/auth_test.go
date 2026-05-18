@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/apperr"
+	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/config"
 )
 
@@ -30,10 +30,8 @@ func execRoot(t *testing.T, info appinfo.Info, args ...string) (string, error) {
 	root.SetOut(&buf)
 	root.SetErr(&buf)
 	root.SetArgs(args)
-	return func() (string, error) {
-		err := root.Execute()
-		return buf.String(), err
-	}()
+	err := root.Execute()
+	return buf.String(), err
 }
 
 func configPath(t *testing.T, dir string) string {
