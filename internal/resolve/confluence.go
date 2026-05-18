@@ -2,7 +2,6 @@ package resolve
 
 import (
 	"fmt"
-	"net/url"
 	"regexp"
 	"strings"
 
@@ -30,8 +29,8 @@ func (confluenceParser) Parse(input string) (Resource, bool) {
 }
 
 func parseConfluenceURL(input string) (Resource, bool) {
-	u, err := url.Parse(input)
-	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
+	u, ok := parseHTTPSiteURL(input)
+	if !ok {
 		return Resource{}, false
 	}
 	segs := pathSegments(u.Path)
@@ -43,7 +42,8 @@ func parseConfluenceURL(input string) (Resource, bool) {
 			continue
 		}
 		spaceKey := segs[i+1]
-		if !confluenceSpaceKeyRe.MatchString(spaceKey) {
+		// "pages" and "overview" are reserved path words, never space keys.
+		if !confluenceSpaceKeyRe.MatchString(spaceKey) || spaceKey == "pages" || spaceKey == "overview" {
 			continue
 		}
 		rest := segs[i+2:]

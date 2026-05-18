@@ -3,6 +3,7 @@ package resolve
 import (
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
@@ -32,8 +33,8 @@ func (jiraParser) Parse(input string) (Resource, bool) {
 }
 
 func parseJiraURL(input string) (Resource, bool) {
-	u, err := url.Parse(input)
-	if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
+	u, ok := parseHTTPSiteURL(input)
+	if !ok {
 		return Resource{}, false
 	}
 	segs := pathSegments(u.Path)
@@ -48,9 +49,11 @@ func parseJiraURL(input string) (Resource, bool) {
 		}
 	}
 
-	// /jira/.../projects/<KEY>[/...] — a project, unless an issue hint is present.
+	// /jira/.../projects/<KEY>[/...] — a project, unless an issue hint is
+	// present. A "jira" prefix segment is required so an unrelated path that
+	// merely contains "projects/<KEY>" does not resolve as a Jira project.
 	for i, s := range segs {
-		if s != "projects" || i+1 >= len(segs) {
+		if s != "projects" || i+1 >= len(segs) || !slices.Contains(segs[:i], "jira") {
 			continue
 		}
 		key := segs[i+1]
@@ -90,6 +93,20 @@ func (jiraParser) CanonicalURL(baseURL string, r Resource) (string, error) {
 		return "", apperr.InvalidInput("cannot build a Jira URL without a key")
 	}
 	return strings.TrimRight(baseURL, "/") + "/browse/" + r.Key, nil
+}
+
+// parseHTTPSiteURL parses input as an absolute http(s) URL. It returns false
+// for a non-URL, a non-http(s) scheme, a missing host, or an embedded
+// credential (userinfo), none of which belong in a resource locator.
+func parseHTTPSiteURL(input string) (*url.URL, bool) {
+	u, err := url.Parse(input)
+	if err != nil || u.Host == "" || u.User != nil {
+		return nil, false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return nil, false
+	}
+	return u, true
 }
 
 // pathSegments splits a URL path into its non-empty segments.

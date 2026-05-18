@@ -56,8 +56,10 @@ func TestConfluenceParseRejectsUnrecognizedInput(t *testing.T) {
 		"12.3",                                  // not a whole number
 		"https://x.atlassian.net/browse/PROJ-1", // a Jira URL
 		"https://x.atlassian.net/wiki/spaces",   // no space key
+		"https://x.atlassian.net/wiki/spaces/overview", // reserved word, not a space key
 		"https://x.atlassian.net/some/other/path",
-		"ftp://x.atlassian.net/wiki/spaces/DEV", // non-http scheme
+		"https://x.atlassian.net@evil.com/wiki/spaces/DEV", // embedded credential
+		"ftp://x.atlassian.net/wiki/spaces/DEV",            // non-http scheme
 	} {
 		if got, ok := Confluence.Parse(in); ok {
 			t.Errorf("Parse(%q) unexpectedly resolved to %+v", in, got)
@@ -112,5 +114,8 @@ func TestConfluenceCanonicalURLMissingFieldsError(t *testing.T) {
 	}
 	if _, err := Confluence.CanonicalURL("https://x.atlassian.net", Resource{Kind: KindConfluenceSpace}); err == nil {
 		t.Error("space CanonicalURL without a key returned no error")
+	}
+	if _, err := Confluence.CanonicalURL("https://x.atlassian.net", Resource{Kind: KindJiraIssue}); err == nil {
+		t.Error("CanonicalURL for a non-Confluence kind returned no error")
 	}
 }

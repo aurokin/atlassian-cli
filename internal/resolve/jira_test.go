@@ -17,6 +17,7 @@ func TestJiraParseRecognizedForms(t *testing.T) {
 		{"browse project URL", "https://x.atlassian.net/browse/PROJ", KindJiraProject, "PROJ", "x.atlassian.net"},
 		{"nav project URL", "https://x.atlassian.net/jira/software/projects/PROJ/boards/1", KindJiraProject, "PROJ", "x.atlassian.net"},
 		{"nav URL with selectedIssue", "https://x.atlassian.net/jira/software/projects/PROJ/boards/1?selectedIssue=PROJ-9", KindJiraIssue, "PROJ-9", "x.atlassian.net"},
+		{"nav URL ignores junk selectedIssue", "https://x.atlassian.net/jira/software/projects/PROJ/boards/1?selectedIssue=nope", KindJiraProject, "PROJ", "x.atlassian.net"},
 		{"nav URL with issues segment", "https://x.atlassian.net/jira/software/c/projects/PROJ/issues/PROJ-42", KindJiraIssue, "PROJ-42", "x.atlassian.net"},
 	}
 	for _, tc := range cases {
@@ -50,7 +51,9 @@ func TestJiraParseRejectsUnrecognizedInput(t *testing.T) {
 		"X",      // too short for a project key
 		"https://x.atlassian.net/wiki/spaces/DEV", // a Confluence URL
 		"https://x.atlassian.net/some/other/path",
-		"ftp://x.atlassian.net/browse/PROJ-1", // non-http scheme
+		"https://x.atlassian.net/projects/PROJ",          // "projects" without a /jira/ prefix
+		"https://x.atlassian.net@evil.com/browse/PROJ-1", // embedded credential
+		"ftp://x.atlassian.net/browse/PROJ-1",            // non-http scheme
 	} {
 		if got, ok := Jira.Parse(in); ok {
 			t.Errorf("Parse(%q) unexpectedly resolved to %+v", in, got)
