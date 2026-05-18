@@ -56,7 +56,8 @@ func TestConfluenceParseRejectsUnrecognizedInput(t *testing.T) {
 		"12.3",                                  // not a whole number
 		"https://x.atlassian.net/browse/PROJ-1", // a Jira URL
 		"https://x.atlassian.net/wiki/spaces",   // no space key
-		"https://x.atlassian.net/wiki/spaces/overview", // reserved word, not a space key
+		"https://x.atlassian.net/wiki/spaces/overview",      // reserved word, not a space key
+		"https://x.atlassian.net/wiki/spaces/pages/pages/9", // "pages" reserved word, not a space key
 		"https://x.atlassian.net/some/other/path",
 		"https://x.atlassian.net@evil.com/wiki/spaces/DEV", // embedded credential
 		"ftp://x.atlassian.net/wiki/spaces/DEV",            // non-http scheme
