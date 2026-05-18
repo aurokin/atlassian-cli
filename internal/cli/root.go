@@ -64,6 +64,7 @@ func NewRoot(info appinfo.Info, short string) (*cobra.Command, *GlobalFlags) {
 	root.AddCommand(newAuthCommand(info, g))
 	root.AddCommand(newAPICommand(info, g))
 	root.AddCommand(newResolveCommand(info, g))
+	root.AddCommand(newBrowseCommand(info, g))
 	return root, g
 }
 
