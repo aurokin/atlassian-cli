@@ -88,8 +88,10 @@ func (t Target) APIBase() (string, error) {
 // ResolveURL turns a user-supplied path or absolute URL into a request URL.
 //
 // A relative path is appended to the API base; a leading slash is cosmetic.
-// An absolute URL is allowed only when its host matches the configured site
-// or the Atlassian API gateway for this target.
+// An absolute URL is allowed only when its scheme and host match the
+// configured site or the Atlassian API gateway for this target, so a request
+// can never be retargeted to another host or downgraded to a non-matching
+// scheme (for example plaintext http that would expose the signed token).
 func (t Target) ResolveURL(ref string) (string, error) {
 	base, err := t.APIBase()
 	if err != nil {
@@ -100,37 +102,60 @@ func (t Target) ResolveURL(ref string) (string, error) {
 		return "", apperr.InvalidInput(fmt.Sprintf("invalid request path %q: %v", ref, err))
 	}
 	if u.IsAbs() {
-		ok, err := t.hostAllowed(u.Host)
+		origins, err := t.allowedOrigins()
 		if err != nil {
 			return "", err
 		}
-		if !ok {
+		cand := originOf(u)
+		if !originAllowed(origins, cand) {
 			return "", apperr.New("untrusted_url", fmt.Sprintf(
-				"absolute URL host %q is not the configured site or Atlassian API gateway for site %q",
-				u.Host, t.SiteName))
+				"absolute URL %s://%s is not the configured site or Atlassian API gateway for site %q",
+				cand.scheme, cand.host, t.SiteName))
 		}
 		return u.String(), nil
 	}
 	return strings.TrimRight(base, "/") + "/" + strings.TrimLeft(ref, "/"), nil
 }
 
-// hostAllowed reports whether host belongs to the API base or the configured
-// site URL.
-func (t Target) hostAllowed(host string) (bool, error) {
+// origin is a normalized scheme+host pair. Both fields are lower-cased so
+// comparisons are case-insensitive, matching how DNS and URL schemes behave.
+type origin struct {
+	scheme string
+	host   string
+}
+
+// originOf normalizes the scheme and host of a parsed URL.
+func originOf(u *url.URL) origin {
+	return origin{scheme: strings.ToLower(u.Scheme), host: strings.ToLower(u.Host)}
+}
+
+// allowedOrigins lists the scheme+host origins an absolute request URL may
+// target: the resolved API base and the configured site URL.
+func (t Target) allowedOrigins() ([]origin, error) {
 	base, err := t.APIBase()
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	allowed := map[string]bool{}
-	if u, err := url.Parse(base); err == nil && u.Host != "" {
-		allowed[u.Host] = true
-	}
-	if t.BaseURL != "" {
-		if u, err := url.Parse(t.BaseURL); err == nil && u.Host != "" {
-			allowed[u.Host] = true
+	var origins []origin
+	for _, raw := range []string{base, t.BaseURL} {
+		if raw == "" {
+			continue
+		}
+		if u, err := url.Parse(raw); err == nil && u.Host != "" {
+			origins = append(origins, originOf(u))
 		}
 	}
-	return allowed[host], nil
+	return origins, nil
+}
+
+// originAllowed reports whether cand exactly matches one of the origins.
+func originAllowed(origins []origin, cand origin) bool {
+	for _, o := range origins {
+		if o == cand {
+			return true
+		}
+	}
+	return false
 }
 
 // Response is the outcome of an executed request.

@@ -96,6 +96,31 @@ func TestResolveURLAllowsConfiguredSiteAbsoluteURL(t *testing.T) {
 	}
 }
 
+func TestResolveURLRejectsSchemeDowngrade(t *testing.T) {
+	// An https site must not accept a plaintext-http absolute URL: the signed
+	// token would otherwise travel in cleartext.
+	target := Target{Product: ProductJira, TokenStyle: auth.StyleCloudClassic, BaseURL: "https://example.atlassian.net", SiteName: "work"}
+	_, err := target.ResolveURL("http://example.atlassian.net/rest/api/3/myself")
+	if err == nil {
+		t.Fatal("ResolveURL accepted an http:// downgrade of an https site")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) {
+		t.Fatalf("error type = %T, want *apperr.Error", err)
+	}
+}
+
+func TestResolveURLAllowsMixedCaseHost(t *testing.T) {
+	target := Target{Product: ProductJira, TokenStyle: auth.StyleCloudClassic, BaseURL: "https://example.atlassian.net"}
+	got, err := target.ResolveURL("https://Example.Atlassian.NET/rest/api/3/myself")
+	if err != nil {
+		t.Fatalf("ResolveURL rejected a same-host URL on host-case difference: %v", err)
+	}
+	if got != "https://Example.Atlassian.NET/rest/api/3/myself" {
+		t.Fatalf("ResolveURL = %q", got)
+	}
+}
+
 func TestDoSuccessReturnsBody(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("Authorization"); got == "" {
