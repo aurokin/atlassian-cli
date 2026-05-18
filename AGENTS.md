@@ -6,13 +6,14 @@ Agent instructions for this provisional Atlassian CLI workspace.
 
 1. `README.md`
 2. `docs/README.md`
-3. `docs/auth-design.md`
-4. `docs/access-error-model.md`
-5. `docs/shared-architecture.md`
-6. `docs/implementation-plan.md`
-7. `docs/phase-1-foundation-plan.md` before starting Go implementation
-8. `docs/continuation-handoff.md` when resuming from the app or a fresh session
-9. Product MVP docs before product-specific work:
+3. `docs/command-contract.md` for currently implemented command behavior
+4. `docs/auth-design.md`
+5. `docs/access-error-model.md`
+6. `docs/shared-architecture.md`
+7. `docs/implementation-plan.md`
+8. `docs/phase-1-foundation-plan.md` before starting Go implementation
+9. `docs/continuation-handoff.md` when resuming from the app or a fresh session
+10. Product MVP docs before product-specific work:
    - `docs/jira-mvp.md`
    - `docs/confluence-mvp.md`
 

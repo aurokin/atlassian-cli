@@ -1,6 +1,6 @@
 # Continuation Handoff
 
-> Last updated: 2026-05-15. Point-in-time handoff for continuing this work in the app or a fresh agent session.
+> Last updated: 2026-05-17. Point-in-time handoff for continuing this work in the app or a fresh agent session.
 
 ## Current repository state
 
@@ -8,9 +8,14 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `main`
+Branch: `phase-1-foundation` (Phase 1 work; not yet merged to `main`).
 
-Status at handoff: documentation scaffold only. No Go implementation has been written yet.
+Status at handoff: Phase 1 foundation is implemented. The Go module, both
+binaries, shared global flags, config store, output renderer, structured
+errors, auth signing, HTTP client, the `auth` subtree, and the raw `api`
+command are in place with `go test ./...` passing. Product-specific Jira and
+Confluence commands are not started. See `docs/command-contract.md` for the
+implemented surface.
 
 ## Canonical CLI names
 
@@ -52,18 +57,18 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 
 ## Next action
 
-Start Phase 1 from:
+Phase 1 (`docs/phase-1-foundation-plan.md`) is complete on the
+`phase-1-foundation` branch. Next:
 
-```text
-docs/phase-1-foundation-plan.md
-```
+1. Review and merge `phase-1-foundation` into `main`.
+2. Plan Phase 2: the first product commands, guided by `docs/jira-mvp.md` and
+   `docs/confluence-mvp.md`.
+3. Consider deferred foundation items when they become relevant: `--jq`
+   filtering, `--trace`, and secure token storage.
 
-Recommended first checkpoint:
-
-1. Initialize Go module.
-2. Add app metadata package.
-3. Add root Cobra commands for `atl-jira` and `atl-conf`.
-4. Stop and review command architecture before config/auth/API work.
+One Phase 1 architecture note: the shared root/version/auth/api wiring lives in
+`internal/cli` (a package not named in the original plan layout) so the
+`atljiracmd` and `atlconfcmd` packages stay thin product wrappers.
 
 ## Implementation guardrails
 

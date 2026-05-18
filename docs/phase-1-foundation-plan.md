@@ -184,8 +184,8 @@ git commit -m "feat: add app metadata package"
 
 **Implementation shape:**
 
-- `cmd/atl-jira/main.go` calls `atljiracmd.NewRoot(...).Execute()`.
-- `cmd/atl-conf/main.go` calls `atlconfcmd.NewRoot(...).Execute()`.
+- `cmd/atl-jira/main.go` calls `atljiracmd.Run(...)`.
+- `cmd/atl-conf/main.go` calls `atlconfcmd.Run(...)`.
 - Root commands define:
   - `Use: "atl-jira"` or `Use: "atl-conf"`
   - short description
