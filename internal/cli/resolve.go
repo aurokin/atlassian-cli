@@ -31,7 +31,7 @@ func newResolveCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 				return err
 			}
 			if g.JSON != "" || g.JQ != "" {
-				return render(cmd, g, r)
+				return Render(cmd, g, r)
 			}
 			writeResourceHuman(cmd.OutOrStdout(), r)
 			return nil

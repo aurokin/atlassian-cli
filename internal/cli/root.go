@@ -68,9 +68,10 @@ func NewRoot(info appinfo.Info, short string) (*cobra.Command, *GlobalFlags) {
 	return root, g
 }
 
-// render writes v to the command's stdout honoring the global --json/--jq
-// flags. It is the single rendering entry point for shared subcommands.
-func render(cmd *cobra.Command, g *GlobalFlags, v any) error {
+// Render writes v to the command's stdout honoring the global --json/--jq
+// flags. It is the single rendering entry point for both shared subcommands
+// and product command packages.
+func Render(cmd *cobra.Command, g *GlobalFlags, v any) error {
 	return output.Render(cmd.OutOrStdout(), v, output.Options{JSON: g.JSON, JQ: g.JQ})
 }
 

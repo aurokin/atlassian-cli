@@ -166,7 +166,7 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 			}
 
 			if g.JSON != "" {
-				return render(cmd, g, toView(g.Site, profile))
+				return Render(cmd, g, toView(g.Site, profile))
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "Saved %s site profile %q (%s).\n", info.Product, g.Site, style)
 			return nil
@@ -200,7 +200,7 @@ func newAuthStatusCommand(g *GlobalFlags) *cobra.Command {
 				if !ok {
 					return apperr.New("site_not_configured", fmt.Sprintf("site %q is not configured", g.Site))
 				}
-				return render(cmd, g, toView(g.Site, p))
+				return Render(cmd, g, toView(g.Site, p))
 			}
 			names := make([]string, 0, len(cfg.Sites))
 			for name := range cfg.Sites {
@@ -211,7 +211,7 @@ func newAuthStatusCommand(g *GlobalFlags) *cobra.Command {
 			for _, name := range names {
 				views = append(views, toView(name, cfg.Sites[name]))
 			}
-			return render(cmd, g, statusAll{Sites: views})
+			return Render(cmd, g, statusAll{Sites: views})
 		},
 	}
 }

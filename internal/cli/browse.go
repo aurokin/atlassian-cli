@@ -63,7 +63,7 @@ func runBrowse(cmd *cobra.Command, info appinfo.Info, g *GlobalFlags, input stri
 	// the command safe in non-interactive and agent contexts.
 	if noBrowser || g.NoPrompt {
 		if g.JSON != "" || g.JQ != "" {
-			return render(cmd, g, browseResult{URL: canonical})
+			return Render(cmd, g, browseResult{URL: canonical})
 		}
 		fmt.Fprintln(cmd.OutOrStdout(), canonical)
 		return nil
