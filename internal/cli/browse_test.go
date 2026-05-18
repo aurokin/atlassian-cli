@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -86,6 +87,27 @@ func TestBrowseNoPromptImpliesNoBrowser(t *testing.T) {
 	}
 	if !strings.Contains(out, "https://x.atlassian.net/browse/PROJ-7") {
 		t.Fatalf("browse --no-prompt did not print the URL:\n%s", out)
+	}
+}
+
+func TestBrowseNoBrowserJSONEmitsJSONString(t *testing.T) {
+	called := false
+	defer swapBrowseOpener(func(string) error { called = true; return nil })()
+
+	out, err := execRoot(t, jiraInfo(), "browse",
+		"https://x.atlassian.net/browse/PROJ-7", "--no-browser", "--json")
+	if err != nil {
+		t.Fatalf("browse --no-browser --json: %v", err)
+	}
+	if called {
+		t.Fatal("browse --no-browser invoked the opener")
+	}
+	var got string
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("browse --json output is not a JSON string: %v\n%s", err, out)
+	}
+	if got != "https://x.atlassian.net/browse/PROJ-7" {
+		t.Fatalf("decoded URL = %q, want the canonical browse URL", got)
 	}
 }
 

@@ -69,6 +69,9 @@ func runBrowse(cmd *cobra.Command, info appinfo.Info, g *GlobalFlags, input stri
 // carries its own host; a bare key/id needs the --site profile's base URL.
 func browseBaseURL(info appinfo.Info, g *GlobalFlags, r resolve.Resource) (string, error) {
 	if r.SiteHost != "" {
+		// A URL input records only its host. Phase 2 targets Atlassian Cloud,
+		// which is always https, so the canonical URL is rooted at https even
+		// if the input used http. Data Center URL shapes are a Phase 2 non-goal.
 		return "https://" + r.SiteHost, nil
 	}
 	if g.Site == "" {
