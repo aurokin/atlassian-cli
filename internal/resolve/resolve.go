@@ -48,6 +48,20 @@ type Parser interface {
 	CanonicalURL(baseURL string, r Resource) (string, error)
 }
 
+// ParserFor returns the resolver for an Atlassian product. It accepts the
+// appinfo product values "jira" and "confluence"; any other value yields a
+// structured error.
+func ParserFor(product string) (Parser, error) {
+	switch product {
+	case productJira:
+		return Jira, nil
+	case productConfluence:
+		return Confluence, nil
+	default:
+		return nil, apperr.InvalidInput(fmt.Sprintf("unknown product %q", product))
+	}
+}
+
 // Resolve trims input and resolves it with p. An empty input, or one that the
 // parser does not recognize, yields a structured "unresolved" error.
 func Resolve(p Parser, input string) (Resource, error) {
