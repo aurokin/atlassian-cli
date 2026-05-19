@@ -3,6 +3,7 @@ package jiracmd
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -153,6 +154,193 @@ func TestIssueViewMapsNotFound(t *testing.T) {
 	_, err := execJira(t, "issue", "view", "PROJ-404", "--site", "work")
 	if err == nil {
 		t.Fatal("issue view of a missing issue returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeNotFoundOrNotVisible {
+		t.Fatalf("error = %v, want a not_found_or_not_visible *apperr.Error", err)
+	}
+}
+
+func TestIssueCreateHumanOutput(t *testing.T) {
+	var gotMethod, gotPath, gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"1001","key":"PROJ-9"}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "create", "--project", "PROJ", "--type", "Bug",
+		"--summary", "It broke", "--description", "Steps to reproduce", "--site", "work")
+	if err != nil {
+		t.Fatalf("issue create: %v", err)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/issue" {
+		t.Errorf("request = %s %s, want POST /issue", gotMethod, gotPath)
+	}
+	for _, want := range []string{`"key":"PROJ"`, `"name":"Bug"`, `"summary":"It broke"`} {
+		if !strings.Contains(gotBody, want) {
+			t.Errorf("create request body missing %s:\n%s", want, gotBody)
+		}
+	}
+	// A plain --description is wrapped as an ADF document.
+	if !strings.Contains(gotBody, `"description":{"type":"doc"`) ||
+		!strings.Contains(gotBody, `"text":"Steps to reproduce"`) {
+		t.Errorf("--description not wrapped as ADF:\n%s", gotBody)
+	}
+	if !strings.Contains(out, "PROJ-9") {
+		t.Errorf("issue create output missing the new key:\n%s", out)
+	}
+}
+
+func TestIssueCreateJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"1001","key":"PROJ-9"}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "create", "--project", "PROJ", "--type", "Bug",
+		"--summary", "S", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("issue create --json: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("issue create --json output is not valid JSON: %v\n%s", err, out)
+	}
+	if got["key"] != "PROJ-9" {
+		t.Fatalf("unexpected create JSON: %v", got)
+	}
+}
+
+func TestIssueCreateRequiresFlags(t *testing.T) {
+	_, err := execJira(t, "issue", "create", "--project", "PROJ", "--site", "work")
+	if err == nil {
+		t.Fatal("issue create without --type and --summary returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+		t.Fatalf("error = %v, want an invalid_input *apperr.Error", err)
+	}
+}
+
+func TestIssueCreateParsesFieldFlag(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"key":"PROJ-9"}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	_, err := execJira(t, "issue", "create", "--project", "PROJ", "--type", "Task",
+		"--summary", "S", "--field", `labels=["urgent","ops"]`, "--field", "note=hello",
+		"--site", "work")
+	if err != nil {
+		t.Fatalf("issue create --field: %v", err)
+	}
+	// A valid-JSON value is sent as parsed JSON; a plain value stays a string.
+	if !strings.Contains(gotBody, `"labels":["urgent","ops"]`) {
+		t.Errorf("--field JSON value not parsed as an array:\n%s", gotBody)
+	}
+	if !strings.Contains(gotBody, `"note":"hello"`) {
+		t.Errorf("--field plain value not kept as a string:\n%s", gotBody)
+	}
+}
+
+func TestIssueCreateRejectsMalformedFieldFlag(t *testing.T) {
+	_, err := execJira(t, "issue", "create", "--project", "PROJ", "--type", "Task",
+		"--summary", "S", "--field", "noequalsign", "--site", "work")
+	if err == nil {
+		t.Fatal("issue create with a malformed --field returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+		t.Fatalf("error = %v, want an invalid_input *apperr.Error", err)
+	}
+}
+
+func TestIssueEditHumanOutput(t *testing.T) {
+	var gotMethod, gotPath, gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "edit", "PROJ-1", "--summary", "Renamed", "--site", "work")
+	if err != nil {
+		t.Fatalf("issue edit: %v", err)
+	}
+	if gotMethod != http.MethodPut || gotPath != "/issue/PROJ-1" {
+		t.Errorf("request = %s %s, want PUT /issue/PROJ-1", gotMethod, gotPath)
+	}
+	if !strings.Contains(gotBody, `"summary":"Renamed"`) {
+		t.Errorf("edit request body missing the new summary:\n%s", gotBody)
+	}
+	if !strings.Contains(out, "updated PROJ-1") {
+		t.Errorf("issue edit output:\n%s", out)
+	}
+}
+
+func TestIssueEditJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "edit", "PROJ-1", "--summary", "X", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("issue edit --json: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("issue edit --json output is not valid JSON: %v\n%s", err, out)
+	}
+	if got["key"] != "PROJ-1" || got["updated"] != true {
+		t.Fatalf("unexpected edit JSON: %v", got)
+	}
+}
+
+func TestIssueEditRequiresAChange(t *testing.T) {
+	_, err := execJira(t, "issue", "edit", "PROJ-1", "--site", "work")
+	if err == nil {
+		t.Fatal("issue edit with no field flags returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+		t.Fatalf("error = %v, want an invalid_input *apperr.Error", err)
+	}
+}
+
+func TestIssueEditMapsNotFound(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"errorMessages":["Issue does not exist."]}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	_, err := execJira(t, "issue", "edit", "PROJ-404", "--summary", "X", "--site", "work")
+	if err == nil {
+		t.Fatal("issue edit of a missing issue returned no error")
 	}
 	var ae *apperr.Error
 	if !errors.As(err, &ae) || ae.Code != apperr.CodeNotFoundOrNotVisible {
