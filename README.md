@@ -12,11 +12,11 @@ The posture is inherited from `bb`, Auro's existing Bitbucket Cloud CLI, with `a
 
 ## Current status
 
-Phase 1 (shared foundation) and Phase 2 (offline URL resolution) are merged to
-`main`. Phase 3A adds the read-only Jira commands — `project`, `issue`
-view/list, `issue comment` list/view, `search issues`, and `status` — backed by
-a typed Jira API client. Jira mutating commands and the Confluence product
-commands are not implemented yet.
+Phase 1 (shared foundation), Phase 2 (offline URL resolution), and Phase 3A
+(read-only Jira commands) are merged to `main`. Phase 3B adds the Jira mutating
+commands — `issue` create/edit/transition and `issue comment`
+create/edit/delete — completing the Jira MVP surface over a typed Jira API
+client. The Confluence product commands are not implemented yet.
 
 ```bash
 go test ./...
