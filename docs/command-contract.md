@@ -65,8 +65,8 @@ with `--jq` is allowed and equivalent to `--jq` alone.
 
 The list and search commands — `project list`, `issue list`, `search issues`,
 `issue comment list` (Jira) and `space list`, `page list`, `page children`,
-`search cql` (Confluence) — fetch a single page by default, sized by
-`--limit`.
+`page comment list`, `page label list`, `attachment list`, `search cql`
+(Confluence) — fetch a single page by default, sized by `--limit`.
 
 Passing `--all` follows pagination to completion and emits one aggregated
 result; `--limit` then sets the per-request page size rather than a total cap.
@@ -330,6 +330,52 @@ rather than risk clearing the body — pass `--body` with `--body-format` to set
 the body explicitly. A version conflict surfaces as the structured error model
 below.
 
+### `page comment`
+
+```
+atl-conf page comment list <page-id> [--limit N]
+atl-conf page comment view <comment-id>
+atl-conf page comment create <page-id> --body <text> --body-format <fmt>
+atl-conf page comment edit <comment-id> --body <text> --body-format <fmt>
+atl-conf page comment delete <comment-id>
+```
+
+Operates on a page's **footer** comments. `list` returns the footer comments
+on a page. `view` returns one comment by id with its storage-format body.
+`create` adds a footer comment; `--body` and `--body-format` are required.
+`edit` replaces a comment's body — like `page edit`, Confluence v2 treats the
+update as a full replacement, so `edit` first GETs the comment for its version
+and PUTs the body with the version incremented by one. `delete` removes a
+comment. `--body-format` is one of `storage`, `atlas_doc_format`, or `wiki`,
+and the body is sent verbatim. Inline comments are out of scope.
+
+### `page label`
+
+```
+atl-conf page label list <page-id> [--limit N]
+atl-conf page label add <page-id> <label>
+atl-conf page label remove <page-id> <label>
+```
+
+`list` returns a page's content labels. `add` attaches a label and `remove`
+detaches one. Confluence v2 has no page-label write endpoint, so `add` and
+`remove` use the REST **v1** content-label surface.
+
+### `attachment`
+
+```
+atl-conf attachment list <page-id> [--limit N]
+atl-conf attachment download <attachment-id> --out <path>
+```
+
+`list` returns a page's attachments. `download` fetches an attachment's binary
+content: `--out` is required and names the destination file, or `--out -`
+streams the bytes to stdout. The v2 `downloadLink` is rooted at the Confluence
+context path rather than the API base, so it is resolved against the API base
+with the trailing `/api/v2` segment removed. Under `--json` or `--jq` the
+attachment metadata is printed and no binary is fetched. The response body is
+buffered in full like every other response — there is no streaming download.
+
 ### `search cql`
 
 ```
@@ -435,7 +481,12 @@ plain `Error: <code>: <message>` line.
   title-only `page edit` re-sends the page's current storage body; if the page
   has no storage-format body the edit is refused, so pass `--body` explicitly.
 - Confluence page delete, move, and restore are not implemented; the page
-  surface is list/view/children plus create/edit.
+  surface is list/view/children, create/edit, and the comment/label
+  sub-groups.
+- Confluence comment support is footer comments only — inline comments need
+  text-anchor properties unsuited to a flag-based CLI. Attachment support is
+  list and download only; attachment upload (a multipart write) is not
+  implemented.
 - Without `--all`, list and search commands fetch a single page bounded by
   `--limit`. `--all` follows every page but caps at 100 pages.
 - Jira and Confluence commands target the Atlassian **Cloud** REST APIs (Jira
