@@ -374,3 +374,45 @@ func TestAuthLoginFallsBackToFileWhenKeyringUnavailable(t *testing.T) {
 		t.Fatalf("file store Get = %q, want %q", got, secret)
 	}
 }
+
+func TestAuthStatusReportsStoredKeyringCredential(t *testing.T) {
+	keyring.MockInit()
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	const secret = "status-keyring-secret"
+
+	if _, err := execRoot(t, jiraInfo(), "auth", "login", "--site", "work",
+		"--url", "https://example.atlassian.net", "--username", "user@example.com",
+		"--token-style", "cloud-classic", "--token", secret); err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	out, err := execRoot(t, jiraInfo(), "auth", "status", "--site", "work", "--json=*")
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if strings.Contains(out, secret) {
+		t.Fatalf("status output leaked the token value:\n%s", out)
+	}
+	if !strings.Contains(out, "OS keychain") {
+		t.Errorf("status output missing keychain availability:\n%s", out)
+	}
+}
+
+func TestAuthLogoutClearsStoredToken(t *testing.T) {
+	keyring.MockInit()
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	if _, err := execRoot(t, jiraInfo(), "auth", "login", "--site", "work",
+		"--url", "https://example.atlassian.net", "--username", "user@example.com",
+		"--token-style", "cloud-classic", "--token", "logout-secret"); err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	if _, err := execRoot(t, jiraInfo(), "auth", "logout", "--site", "work"); err != nil {
+		t.Fatalf("logout: %v", err)
+	}
+	store, _ := secrets.ForRef(secrets.BackendKeyring, credentialsFilePath(t, dir))
+	if _, err := store.Get("work"); err == nil {
+		t.Fatal("logout did not clear the stored keyring credential")
+	}
+}

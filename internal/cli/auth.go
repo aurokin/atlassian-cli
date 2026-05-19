@@ -58,13 +58,13 @@ func toView(name string, p config.SiteProfile) siteView {
 		TokenStyle:  p.TokenStyle,
 		AuthType:    p.AuthType,
 		TokenRef:    p.TokenRef,
-		TokenStatus: tokenStatus(p.TokenRef),
+		TokenStatus: tokenStatus(name, p.TokenRef),
 	}
 }
 
-// tokenStatus describes whether a referenced token is currently resolvable.
-// It never includes the token value.
-func tokenStatus(ref string) string {
+// tokenStatus describes whether the token a profile points at is currently
+// resolvable for the named site. It never includes the token value.
+func tokenStatus(site, ref string) string {
 	if ref == "" {
 		return "no token reference configured"
 	}
@@ -74,7 +74,25 @@ func tokenStatus(ref string) string {
 		}
 		return fmt.Sprintf("environment variable %s is not set", name)
 	}
-	return "token reference configured"
+	credPath, err := config.CredentialsPath()
+	if err != nil {
+		return "token reference configured"
+	}
+	store, err := secrets.ForRef(ref, credPath)
+	if err != nil {
+		return fmt.Sprintf("unrecognized token reference %q", ref)
+	}
+	if _, err := store.Get(site); err != nil {
+		return "token reference configured but no stored credential was found"
+	}
+	switch ref {
+	case secrets.BackendKeyring:
+		return "token available from the OS keychain"
+	case secrets.BackendFile:
+		return "token available from the local credentials file"
+	default:
+		return "token reference configured"
+	}
 }
 
 // newAuthCommand builds the "auth" subtree shared by every atl-* binary.
@@ -281,8 +299,12 @@ func newAuthLogoutCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if _, ok := cfg.Sites[g.Site]; !ok {
+			profile, ok := cfg.Sites[g.Site]
+			if !ok {
 				return apperr.New("site_not_configured", fmt.Sprintf("site %q is not configured", g.Site))
+			}
+			if err := clearStoredToken(g.Site, profile.TokenRef); err != nil {
+				return err
 			}
 			delete(cfg.Sites, g.Site)
 			if err := config.Save(path, cfg); err != nil {
@@ -291,6 +313,26 @@ func newAuthLogoutCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 			fmt.Fprintf(cmd.OutOrStdout(), "Removed %s site profile %q.\n", info.Product, g.Site)
 			return nil
 		},
+	}
+}
+
+// clearStoredToken removes the credential a profile's token_ref points at.
+// "env:" and empty references hold nothing on disk to clear; only the keyring
+// and file backends have a stored secret to delete.
+func clearStoredToken(site, ref string) error {
+	switch ref {
+	case secrets.BackendKeyring, secrets.BackendFile:
+		credPath, err := config.CredentialsPath()
+		if err != nil {
+			return err
+		}
+		store, err := secrets.ForRef(ref, credPath)
+		if err != nil {
+			return err
+		}
+		return store.Delete(site)
+	default:
+		return nil
 	}
 }
 
