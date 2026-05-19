@@ -160,6 +160,89 @@ func (c *Client) DeleteComment(ctx context.Context, issue, commentID string) err
 	return err
 }
 
+// AssignIssue sets or clears the issue's assignee
+// (PUT /issue/{idOrKey}/assignee). A nil accountID sends
+// `{"accountId": null}`, which Jira treats as unassigned. Jira returns no
+// body on success.
+func (c *Client) AssignIssue(ctx context.Context, idOrKey string, accountID *string) error {
+	var v any
+	if accountID != nil {
+		v = *accountID
+	}
+	_, err := c.send(ctx, "PUT", "/issue/"+url.PathEscape(idOrKey)+"/assignee",
+		map[string]any{"accountId": v})
+	return err
+}
+
+// AddWatcher adds accountID as a watcher of the issue
+// (POST /issue/{idOrKey}/watchers). The request body is the bare account id
+// as a JSON string; an empty accountID sends no body, which Jira treats as
+// "the authenticated user". Jira returns no body on success.
+func (c *Client) AddWatcher(ctx context.Context, idOrKey, accountID string) error {
+	var payload any
+	if accountID != "" {
+		payload = accountID
+	}
+	_, err := c.send(ctx, "POST", "/issue/"+url.PathEscape(idOrKey)+"/watchers", payload)
+	return err
+}
+
+// RemoveWatcher removes accountID from the issue's watchers
+// (DELETE /issue/{idOrKey}/watchers?accountId=<id>). accountID is required;
+// Jira does not infer the caller for the DELETE form. Returns no body on
+// success.
+func (c *Client) RemoveWatcher(ctx context.Context, idOrKey, accountID string) error {
+	q := url.Values{}
+	q.Set("accountId", accountID)
+	_, err := c.send(ctx, "DELETE",
+		withQuery("/issue/"+url.PathEscape(idOrKey)+"/watchers", q), nil)
+	return err
+}
+
+// ListWatchers returns the issue's watcher list
+// (GET /issue/{idOrKey}/watchers).
+func (c *Client) ListWatchers(ctx context.Context, idOrKey string) (json.RawMessage, error) {
+	return c.get(ctx, "/issue/"+url.PathEscape(idOrKey)+"/watchers")
+}
+
+// CreateIssueLink creates a directional link between two issues
+// (POST /issueLink). inward and outward are issue keys; linkType is the name
+// of the link type (e.g. "Blocks"). Jira returns no body on success.
+func (c *Client) CreateIssueLink(ctx context.Context, inward, outward, linkType string) error {
+	_, err := c.send(ctx, "POST", "/issueLink", map[string]any{
+		"type":         map[string]string{"name": linkType},
+		"inwardIssue":  map[string]string{"key": inward},
+		"outwardIssue": map[string]string{"key": outward},
+	})
+	return err
+}
+
+// ListIssueLinkTypes returns the issue link types available on the site
+// (GET /issueLinkType).
+func (c *Client) ListIssueLinkTypes(ctx context.Context) (json.RawMessage, error) {
+	return c.get(ctx, "/issueLinkType")
+}
+
+// ListWorklogs returns a page of an issue's worklog entries
+// (GET /issue/{idOrKey}/worklog).
+func (c *Client) ListWorklogs(ctx context.Context, idOrKey string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.get(ctx, withQuery("/issue/"+url.PathEscape(idOrKey)+"/worklog", q))
+}
+
+// AddWorklog appends a worklog entry to an issue
+// (POST /issue/{idOrKey}/worklog). timeSpent is passed through verbatim, so
+// callers supply the Jira duration form (e.g. "3h 30m"). commentADF is the
+// ADF document for the optional comment; a nil RawMessage omits it.
+func (c *Client) AddWorklog(ctx context.Context, idOrKey, timeSpent string, commentADF json.RawMessage) (json.RawMessage, error) {
+	payload := map[string]any{"timeSpent": timeSpent}
+	if commentADF != nil {
+		payload["comment"] = commentADF
+	}
+	return c.send(ctx, "POST", "/issue/"+url.PathEscape(idOrKey)+"/worklog", payload)
+}
+
 // maxFollowPages caps how many pages an --all request follows, guarding
 // against an unbounded loop from a malformed cursor.
 const maxFollowPages = 100
@@ -306,6 +389,40 @@ func (c *Client) ListCommentsAll(ctx context.Context, issue string, limit int) (
 		return nil, err
 	}
 	return synthesize("comments", items)
+}
+
+// ListWorklogsAll follows an issue's worklog list to completion and returns
+// an aggregated {"worklogs": [...]} body. The endpoint is offset paginated.
+func (c *Client) ListWorklogsAll(ctx context.Context, idOrKey string, limit int) (json.RawMessage, error) {
+	items, err := followAll(ctx,
+		func(ctx context.Context, cursor string) (json.RawMessage, error) {
+			q := url.Values{}
+			setLimit(q, limit)
+			if cursor != "" {
+				q.Set("startAt", cursor)
+			}
+			return c.get(ctx, withQuery("/issue/"+url.PathEscape(idOrKey)+"/worklog", q))
+		},
+		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
+			var pg struct {
+				Worklogs []json.RawMessage `json:"worklogs"`
+				StartAt  int               `json:"startAt"`
+				Total    int               `json:"total"`
+			}
+			if err := json.Unmarshal(raw, &pg); err != nil {
+				return nil, "", decodeError(err)
+			}
+			next := ""
+			if end := pg.StartAt + len(pg.Worklogs); len(pg.Worklogs) > 0 && end < pg.Total {
+				next = strconv.Itoa(end)
+			}
+			return pg.Worklogs, next, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return synthesize("worklogs", items)
 }
 
 // setLimit records a positive limit as the API maxResults parameter.

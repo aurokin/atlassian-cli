@@ -88,6 +88,46 @@ type TransitionList struct {
 	Transitions []Transition `json:"transitions"`
 }
 
+// Watchers is the watcher list returned by GET /issue/{idOrKey}/watchers.
+type Watchers struct {
+	IsWatching bool   `json:"isWatching"`
+	WatchCount int    `json:"watchCount"`
+	Watchers   []User `json:"watchers"`
+}
+
+// LinkType is one entry from GET /issueLinkType. Inward and Outward are the
+// human phrases that describe each direction of the relationship (e.g.
+// "is blocked by" / "blocks").
+type LinkType struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Inward  string `json:"inward"`
+	Outward string `json:"outward"`
+}
+
+// LinkTypeList is the body of GET /issueLinkType.
+type LinkTypeList struct {
+	Types []LinkType `json:"issueLinkTypes"`
+}
+
+// Worklog is the subset of a Jira worklog entry that human output renders.
+// Comment is kept raw because Jira Cloud v3 stores it as an ADF object.
+type Worklog struct {
+	ID               string          `json:"id"`
+	Author           *User           `json:"author"`
+	Created          string          `json:"created"`
+	Updated          string          `json:"updated"`
+	Started          string          `json:"started"`
+	TimeSpent        string          `json:"timeSpent"`
+	TimeSpentSeconds int             `json:"timeSpentSeconds"`
+	Comment          json.RawMessage `json:"comment"`
+}
+
+// WorklogPage is a page of an issue's worklogs.
+type WorklogPage struct {
+	Worklogs []Worklog `json:"worklogs"`
+}
+
 // Decode unmarshals a raw Jira response body into a model value, wrapping a
 // decode failure as a structured error.
 func Decode[T any](raw json.RawMessage) (T, error) {
