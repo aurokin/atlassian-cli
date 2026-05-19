@@ -77,9 +77,13 @@ type CommentList struct {
 	Results []Comment `json:"results"`
 }
 
-// Label is a single Confluence content label.
+// Label is a single Confluence content label. Only the fields human output
+// renders are modeled; the label id is intentionally omitted so the decoder
+// is agnostic to whether the API serializes it as a string or a number, and
+// because labels are addressed by name throughout the command surface. The
+// raw id is still available under --json, which passes the body through
+// verbatim.
 type Label struct {
-	ID     string `json:"id"`
 	Name   string `json:"name"`
 	Prefix string `json:"prefix"`
 }

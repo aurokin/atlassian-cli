@@ -414,7 +414,9 @@ func (c *Client) FetchAttachmentData(ctx context.Context, downloadLink string) (
 // downloadURL resolves an attachment downloadLink to an absolute URL. A v2
 // downloadLink is rooted at the Confluence context path (.../wiki), not the
 // API base, so the context base is the API base minus the trailing /api/v2
-// segment. An already-absolute link is returned unchanged.
+// segment. An already-absolute link is returned unchanged. Either form is
+// still subject to the httpclient's same-origin check at request time, so an
+// absolute link pointing off the configured site is rejected when fetched.
 func (c *Client) downloadURL(link string) (string, error) {
 	if link == "" {
 		return "", apperr.InvalidInput("attachment has no downloadLink")
