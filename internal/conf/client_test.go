@@ -249,8 +249,9 @@ func TestClientCreatePage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreatePage: %v", err)
 	}
-	if gotBody["spaceId"] != "1" || gotBody["title"] != "New" {
-		t.Errorf("CreatePage sent spaceId/title = %v/%v", gotBody["spaceId"], gotBody["title"])
+	if gotBody["spaceId"] != "1" || gotBody["title"] != "New" || gotBody["status"] != "current" {
+		t.Errorf("CreatePage sent spaceId/title/status = %v/%v/%v",
+			gotBody["spaceId"], gotBody["title"], gotBody["status"])
 	}
 	body, _ := gotBody["body"].(map[string]any)
 	if body["representation"] != "storage" || body["value"] != "<p>hi</p>" {

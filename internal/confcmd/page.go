@@ -217,16 +217,20 @@ func newPageEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if titleSet {
 				newTitle = title
 			}
-			newFormat, newBody := "storage", cur.Body.Storage.Value
-			if bodySet {
-				newFormat, newBody = bodyFormat, body
-			}
-			status := cur.Status
-			if status == "" {
-				status = "current"
+			newFormat, newBody := bodyFormat, body
+			if !bodySet {
+				// A title-only edit must re-send the existing body, since a v2
+				// update replaces the whole page. Refuse rather than PUT an
+				// empty body when the page has no storage body to reuse.
+				if cur.Body.Storage.Value == "" {
+					return apperr.InvalidInput(fmt.Sprintf(
+						"page %s has no storage-format body to preserve; pass "+
+							"--body with --body-format to set the body explicitly", args[0]))
+				}
+				newFormat, newBody = "storage", cur.Body.Storage.Value
 			}
 			updated, err := cc.UpdatePage(cmd.Context(), args[0],
-				status, newTitle, newFormat, newBody, cur.Version.Number+1)
+				cur.Status, newTitle, newFormat, newBody, cur.Version.Number+1)
 			if err != nil {
 				return err
 			}

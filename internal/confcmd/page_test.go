@@ -444,6 +444,48 @@ func TestPageEditBodyRequiresFormat(t *testing.T) {
 	}
 }
 
+func TestPageEditBodyFormatRequiresBody(t *testing.T) {
+	_, err := execConf(t, "page", "edit", "10", "--body-format", "storage", "--site", "work")
+	if err == nil {
+		t.Fatal("page edit --body-format without --body returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+		t.Fatalf("error = %v, want an invalid_input *apperr.Error", err)
+	}
+}
+
+func TestPageEditTitleOnlyRejectsEmptyBody(t *testing.T) {
+	putCalled := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			// A page whose GET response carries no storage body.
+			_, _ = w.Write([]byte(`{"id":"10","title":"Old","status":"current","version":{"number":3}}`))
+		case http.MethodPut:
+			putCalled = true
+			_, _ = w.Write([]byte(`{"id":"10"}`))
+		default:
+			t.Errorf("method = %q, want GET or PUT", r.Method)
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	_, err := execConf(t, "page", "edit", "10", "--title", "New", "--site", "work")
+	if err == nil {
+		t.Fatal("title-only edit of a page with no storage body returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+		t.Fatalf("error = %v, want an invalid_input *apperr.Error", err)
+	}
+	if putCalled {
+		t.Error("title-only edit issued a PUT despite having no body to preserve")
+	}
+}
+
 func TestPageEditMapsError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
