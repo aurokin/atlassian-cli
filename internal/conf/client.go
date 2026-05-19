@@ -191,41 +191,36 @@ func decodeError(err error) error {
 		"could not decode the Confluence API response: "+err.Error())
 }
 
-// absoluteURL resolves a _links.next reference to an absolute, same-origin URL
-// the httpclient will accept. Confluence returns next as a root-relative path
-// (e.g. /wiki/api/v2/spaces?cursor=...), which is rooted at the API origin; an
-// already-absolute reference is returned unchanged.
-func (c *Client) absoluteURL(ref string) (string, error) {
-	u, err := url.Parse(ref)
+// nextCursor extracts the opaque pagination cursor from a _links.next
+// reference. An empty reference — the final page — yields an empty cursor, as
+// does a reference that carries no cursor query parameter.
+func nextCursor(next string) (string, error) {
+	if next == "" {
+		return "", nil
+	}
+	u, err := url.Parse(next)
 	if err != nil {
-		return "", apperr.InvalidInput("invalid pagination link " + ref + ": " + err.Error())
+		return "", apperr.InvalidInput("invalid pagination link " + next + ": " + err.Error())
 	}
-	if u.IsAbs() {
-		return ref, nil
-	}
-	base, err := c.http.APIBase()
-	if err != nil {
-		return "", err
-	}
-	bu, err := url.Parse(base)
-	if err != nil {
-		return "", apperr.InvalidInput("could not parse the API base URL: " + err.Error())
-	}
-	bu.Path = u.Path
-	bu.RawQuery = u.RawQuery
-	return bu.String(), nil
+	return u.Query().Get("cursor"), nil
 }
 
-// followList follows a Confluence list endpoint to completion, starting from
-// first (a path or absolute URL), and returns an aggregated {"results": [...]}
-// body. Confluence list responses page via the _links.next cursor; items are
-// kept verbatim so every field each page returned is preserved. Following
-// stops at maxFollowPages.
-func (c *Client) followList(ctx context.Context, first string) (json.RawMessage, error) {
+// followList follows a Confluence cursor-paginated endpoint to completion and
+// returns an aggregated {"results": [...]} body. fetch issues the request for
+// a given cursor ("" for the first page); the next cursor is read from each
+// response's _links.next. Following pages from the opaque cursor — rather than
+// replaying the server's _links.next URL — keeps the caller in control of the
+// request, so --limit governs every page and resolution is unaffected by any
+// API base path prefix (such as a cloud-scoped /ex/{product}/{cloudId}
+// gateway). Confluence list responses — v2 spaces/pages/children and the v1
+// CQL search — all page via the cursor query parameter. Items are kept
+// verbatim, so every field each page returned is preserved. Following stops at
+// maxFollowPages.
+func (c *Client) followList(ctx context.Context, fetch func(context.Context, string) (json.RawMessage, error)) (json.RawMessage, error) {
 	all := []json.RawMessage{}
-	reqURL := first
+	cursor := ""
 	for page := 0; page < maxFollowPages; page++ {
-		raw, err := c.get(ctx, reqURL)
+		raw, err := fetch(ctx, cursor)
 		if err != nil {
 			return nil, err
 		}
@@ -239,11 +234,11 @@ func (c *Client) followList(ctx context.Context, first string) (json.RawMessage,
 			return nil, decodeError(err)
 		}
 		all = append(all, pg.Results...)
-		if pg.Links.Next == "" {
-			break
-		}
-		if reqURL, err = c.absoluteURL(pg.Links.Next); err != nil {
+		if cursor, err = nextCursor(pg.Links.Next); err != nil {
 			return nil, err
+		}
+		if cursor == "" {
+			break
 		}
 	}
 	out, err := json.Marshal(map[string][]json.RawMessage{"results": all})
@@ -253,38 +248,51 @@ func (c *Client) followList(ctx context.Context, first string) (json.RawMessage,
 	return out, nil
 }
 
-// ListSpacesAll follows GET /spaces to completion.
-func (c *Client) ListSpacesAll(ctx context.Context, limit int) (json.RawMessage, error) {
+// pageQuery seeds a query with the page size and, when set, the follow-up
+// cursor shared by every cursor-paginated Confluence endpoint.
+func pageQuery(limit int, cursor string) url.Values {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.followList(ctx, withQuery("/spaces", q))
+	if cursor != "" {
+		q.Set("cursor", cursor)
+	}
+	return q
+}
+
+// ListSpacesAll follows GET /spaces to completion.
+func (c *Client) ListSpacesAll(ctx context.Context, limit int) (json.RawMessage, error) {
+	return c.followList(ctx, func(ctx context.Context, cursor string) (json.RawMessage, error) {
+		return c.get(ctx, withQuery("/spaces", pageQuery(limit, cursor)))
+	})
 }
 
 // ListPagesAll follows GET /pages for a space to completion.
 func (c *Client) ListPagesAll(ctx context.Context, spaceID string, limit int) (json.RawMessage, error) {
-	q := url.Values{}
-	q.Set("space-id", spaceID)
-	setLimit(q, limit)
-	return c.followList(ctx, withQuery("/pages", q))
+	return c.followList(ctx, func(ctx context.Context, cursor string) (json.RawMessage, error) {
+		q := pageQuery(limit, cursor)
+		q.Set("space-id", spaceID)
+		return c.get(ctx, withQuery("/pages", q))
+	})
 }
 
 // GetChildPagesAll follows a page's children list to completion.
 func (c *Client) GetChildPagesAll(ctx context.Context, id string, limit int) (json.RawMessage, error) {
-	q := url.Values{}
-	setLimit(q, limit)
-	return c.followList(ctx, withQuery("/pages/"+url.PathEscape(id)+"/children", q))
+	return c.followList(ctx, func(ctx context.Context, cursor string) (json.RawMessage, error) {
+		return c.get(ctx, withQuery("/pages/"+url.PathEscape(id)+"/children", pageQuery(limit, cursor)))
+	})
 }
 
 // SearchCQLAll follows the v1 CQL search to completion.
 func (c *Client) SearchCQLAll(ctx context.Context, cql string, limit int) (json.RawMessage, error) {
-	q := url.Values{}
-	q.Set("cql", cql)
-	setLimit(q, limit)
-	u, err := c.v1URL("/search", q)
-	if err != nil {
-		return nil, err
-	}
-	return c.followList(ctx, u)
+	return c.followList(ctx, func(ctx context.Context, cursor string) (json.RawMessage, error) {
+		q := pageQuery(limit, cursor)
+		q.Set("cql", cql)
+		u, err := c.v1URL("/search", q)
+		if err != nil {
+			return nil, err
+		}
+		return c.get(ctx, u)
+	})
 }
 
 // setLimit records a positive limit as the API limit parameter.

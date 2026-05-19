@@ -367,6 +367,11 @@ func TestClientListSpacesAllFollowsCursor(t *testing.T) {
 		if r.URL.Path != "/spaces" {
 			t.Errorf("path = %q, want /spaces", r.URL.Path)
 		}
+		// --limit governs every page, not just the first: the cursor is
+		// rebuilt into a fresh request rather than replayed from _links.next.
+		if got := r.URL.Query().Get("limit"); got != "2" {
+			t.Errorf("limit = %q, want 2 on every page", got)
+		}
 		switch r.URL.Query().Get("cursor") {
 		case "":
 			_, _ = w.Write([]byte(`{"results":[{"id":"1"},{"id":"2"}],` +
