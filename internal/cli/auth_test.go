@@ -398,6 +398,30 @@ func TestAuthStatusReportsStoredKeyringCredential(t *testing.T) {
 	}
 }
 
+func TestAuthLoginClearsStoredTokenWhenSwitchingBackends(t *testing.T) {
+	keyring.MockInit()
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	// First login stores a token in the keyring.
+	if _, err := execRoot(t, jiraInfo(), "auth", "login", "--site", "work",
+		"--url", "https://example.atlassian.net", "--username", "user@example.com",
+		"--token-style", "cloud-classic", "--token", "first-secret"); err != nil {
+		t.Fatalf("first login: %v", err)
+	}
+	// Re-login with --token-env switches the profile to an env reference.
+	if _, err := execRoot(t, jiraInfo(), "auth", "login", "--site", "work",
+		"--url", "https://example.atlassian.net", "--username", "user@example.com",
+		"--token-style", "cloud-classic", "--token-env", "ATL_TEST_TOKEN"); err != nil {
+		t.Fatalf("second login: %v", err)
+	}
+	// The keyring secret orphaned by the switch must have been removed.
+	store, _ := secrets.ForRef(secrets.BackendKeyring, credentialsFilePath(t, dir))
+	if _, err := store.Get("work"); err == nil {
+		t.Fatal("re-login did not clear the previously stored keyring credential")
+	}
+}
+
 func TestAuthLogoutClearsStoredToken(t *testing.T) {
 	keyring.MockInit()
 	dir := t.TempDir()

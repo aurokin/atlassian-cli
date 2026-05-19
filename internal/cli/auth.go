@@ -224,9 +224,20 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			prevRef := cfg.Sites[g.Site].TokenRef
 			cfg.Sites[g.Site] = profile
 			if err := config.Save(path, cfg); err != nil {
 				return err
+			}
+			// A re-login that switches token backends leaves the previous
+			// secret unreferenced; drop it so it does not linger in the
+			// keychain or fallback file. Best-effort: a cleanup failure must
+			// not fail an otherwise successful login.
+			if prevRef != "" && prevRef != profile.TokenRef {
+				if err := clearStoredToken(g.Site, prevRef); err != nil {
+					fmt.Fprintf(cmd.ErrOrStderr(),
+						"Warning: could not remove the previously stored credential (%v).\n", err)
+				}
 			}
 
 			if g.JSON != "" {
