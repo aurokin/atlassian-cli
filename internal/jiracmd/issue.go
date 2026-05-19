@@ -25,6 +25,7 @@ func newIssueCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		newIssueViewCommand(info, g),
 		newIssueCreateCommand(info, g),
 		newIssueEditCommand(info, g),
+		newIssueTransitionCommand(info, g),
 		newCommentCommand(info, g),
 	)
 	return cmd
@@ -238,6 +239,111 @@ func parseFieldFlags(entries []string) (map[string]any, error) {
 		}
 	}
 	return out, nil
+}
+
+func newIssueTransitionCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var to string
+	cmd := &cobra.Command{
+		Use:   "transition <issue>",
+		Short: "List or apply workflow transitions on a Jira issue",
+		Long: "With no --to flag, lists the transitions available from the issue's\n" +
+			"current status. With --to, applies the matching transition.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			jc, err := jiraClient(info, g)
+			if err != nil {
+				return err
+			}
+			raw, err := jc.GetTransitions(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			if !cmd.Flags().Changed("to") {
+				if g.JSON != "" || g.JQ != "" {
+					return cli.Render(cmd, g, raw)
+				}
+				list, err := jira.Decode[jira.TransitionList](raw)
+				if err != nil {
+					return err
+				}
+				writeTransitionList(cmd.OutOrStdout(), list.Transitions)
+				return nil
+			}
+			list, err := jira.Decode[jira.TransitionList](raw)
+			if err != nil {
+				return err
+			}
+			tr, err := resolveTransition(args[0], list.Transitions, to)
+			if err != nil {
+				return err
+			}
+			if err := jc.DoTransition(cmd.Context(), args[0], tr.ID); err != nil {
+				return err
+			}
+			if g.JSON != "" || g.JQ != "" {
+				return cli.Render(cmd, g, transitionResult{Key: args[0], Transition: tr.Name})
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "transitioned %s to %q\n", args[0], tr.Name)
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&to, "to", "", "transition to apply, by name or id")
+	return cmd
+}
+
+// transitionResult is the synthesized outcome of an applied transition, whose
+// API call returns no body, so --json has a stable object to render.
+type transitionResult struct {
+	Key        string `json:"key"`
+	Transition string `json:"transition"`
+}
+
+// resolveTransition finds the single transition matching to by id or
+// (case-insensitive) name, reporting a structured error when none or several
+// match.
+func resolveTransition(issue string, transitions []jira.Transition, to string) (jira.Transition, error) {
+	if len(transitions) == 0 {
+		return jira.Transition{}, apperr.InvalidInput(
+			"issue " + issue + " has no available transitions")
+	}
+	var matches []jira.Transition
+	for _, tr := range transitions {
+		if tr.ID == to || strings.EqualFold(tr.Name, to) {
+			matches = append(matches, tr)
+		}
+	}
+	switch len(matches) {
+	case 1:
+		return matches[0], nil
+	case 0:
+		return jira.Transition{}, apperr.InvalidInput(fmt.Sprintf(
+			"no transition matches %q; available: %s", to, transitionNames(transitions)))
+	default:
+		return jira.Transition{}, apperr.InvalidInput(fmt.Sprintf(
+			"%q is ambiguous; it matches %d transitions", to, len(matches)))
+	}
+}
+
+// transitionNames joins transition names for an error message.
+func transitionNames(transitions []jira.Transition) string {
+	names := make([]string, len(transitions))
+	for i, tr := range transitions {
+		names[i] = tr.Name
+	}
+	return strings.Join(names, ", ")
+}
+
+// writeTransitionList prints transitions as aligned id/name rows.
+func writeTransitionList(w io.Writer, transitions []jira.Transition) {
+	if len(transitions) == 0 {
+		fmt.Fprintln(w, "No transitions available.")
+		return
+	}
+	tw := tabWriter(w)
+	for _, tr := range transitions {
+		fmt.Fprintf(tw, "%s\t%s\n", tr.ID, tr.Name)
+	}
+	_ = tw.Flush()
 }
 
 // buildIssueListJQL turns the issue-list filter flags into a JQL query. The

@@ -347,3 +347,136 @@ func TestIssueEditMapsNotFound(t *testing.T) {
 		t.Fatalf("error = %v, want a not_found_or_not_visible *apperr.Error", err)
 	}
 }
+
+// transitionServer replies to the GET transitions request with a fixed list
+// and records the POST apply request's path and body.
+func transitionServer(gotPath, gotBody *string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(
+				`{"transitions":[{"id":"31","name":"Done"},{"id":"11","name":"To Do"}]}`))
+			return
+		}
+		b, _ := io.ReadAll(r.Body)
+		*gotPath, *gotBody = r.URL.Path, string(b)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+}
+
+func TestIssueTransitionListsTransitions(t *testing.T) {
+	var path, body string
+	srv := transitionServer(&path, &body)
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "transition", "PROJ-1", "--site", "work")
+	if err != nil {
+		t.Fatalf("issue transition: %v", err)
+	}
+	for _, want := range []string{"31", "Done", "11", "To Do"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("transition list output missing %q:\n%s", want, out)
+		}
+	}
+	if body != "" {
+		t.Errorf("listing transitions should not POST; sent body %q", body)
+	}
+}
+
+func TestIssueTransitionAppliesByName(t *testing.T) {
+	var path, body string
+	srv := transitionServer(&path, &body)
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	// A case-insensitive name match resolves to the transition id.
+	out, err := execJira(t, "issue", "transition", "PROJ-1", "--to", "done", "--site", "work")
+	if err != nil {
+		t.Fatalf("issue transition --to: %v", err)
+	}
+	if path != "/issue/PROJ-1/transitions" {
+		t.Errorf("apply path = %q, want /issue/PROJ-1/transitions", path)
+	}
+	if body != `{"transition":{"id":"31"}}` {
+		t.Errorf("apply request body = %q, want the resolved transition id", body)
+	}
+	if !strings.Contains(out, `transitioned PROJ-1 to "Done"`) {
+		t.Errorf("issue transition output:\n%s", out)
+	}
+}
+
+func TestIssueTransitionAppliesByID(t *testing.T) {
+	var path, body string
+	srv := transitionServer(&path, &body)
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	if _, err := execJira(t, "issue", "transition", "PROJ-1", "--to", "11", "--site", "work"); err != nil {
+		t.Fatalf("issue transition --to id: %v", err)
+	}
+	if body != `{"transition":{"id":"11"}}` {
+		t.Errorf("apply request body = %q, want id 11", body)
+	}
+}
+
+func TestIssueTransitionJSON(t *testing.T) {
+	var path, body string
+	srv := transitionServer(&path, &body)
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "transition", "PROJ-1", "--to", "Done", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("issue transition --json: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("issue transition --json output is not valid JSON: %v\n%s", err, out)
+	}
+	if got["key"] != "PROJ-1" || got["transition"] != "Done" {
+		t.Fatalf("unexpected transition JSON: %v", got)
+	}
+}
+
+func TestIssueTransitionRejectsUnknownTarget(t *testing.T) {
+	var path, body string
+	srv := transitionServer(&path, &body)
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	_, err := execJira(t, "issue", "transition", "PROJ-1", "--to", "Nonexistent", "--site", "work")
+	if err == nil {
+		t.Fatal("issue transition to an unknown target returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+		t.Fatalf("error = %v, want an invalid_input *apperr.Error", err)
+	}
+	if body != "" {
+		t.Errorf("an unresolved transition should not POST; sent body %q", body)
+	}
+}
+
+func TestIssueTransitionMapsNotFound(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`{"errorMessages":["Issue does not exist."]}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	_, err := execJira(t, "issue", "transition", "PROJ-404", "--site", "work")
+	if err == nil {
+		t.Fatal("issue transition of a missing issue returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeNotFoundOrNotVisible {
+		t.Fatalf("error = %v, want a not_found_or_not_visible *apperr.Error", err)
+	}
+}
