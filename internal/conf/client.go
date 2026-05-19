@@ -9,12 +9,15 @@
 package conf
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/url"
 	"strconv"
 	"strings"
 
+	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/httpclient"
 )
 
@@ -56,6 +59,26 @@ func (c *Client) v1URL(path string, q url.Values) (string, error) {
 		return "", err
 	}
 	return withQuery(strings.TrimSuffix(base, "/api/v2")+"/rest/api"+path, q), nil
+}
+
+// send marshals payload as a JSON request body, issues method against an
+// API-relative path or absolute URL, and returns the raw response body. A
+// non-2xx response surfaces as the structured *apperr.Error from httpclient.
+func (c *Client) send(ctx context.Context, method, pathOrURL string, payload any) (json.RawMessage, error) {
+	var body io.Reader
+	if payload != nil {
+		b, err := json.Marshal(payload)
+		if err != nil {
+			return nil, apperr.New("request_encode_failed",
+				"could not encode the Confluence API request body: "+err.Error())
+		}
+		body = bytes.NewReader(b)
+	}
+	resp, err := c.http.Do(ctx, method, pathOrURL, body)
+	if err != nil {
+		return nil, err
+	}
+	return json.RawMessage(resp.Body), nil
 }
 
 // CurrentUser returns the authenticated account. Confluence REST v2 has no
@@ -124,6 +147,38 @@ func (c *Client) SearchCQL(ctx context.Context, cql string, limit int) (json.Raw
 		return nil, err
 	}
 	return c.get(ctx, u)
+}
+
+// CreatePage creates a page in a space (POST /pages) and returns the created
+// page. The body is sent verbatim under the named representation; Confluence
+// never converts it.
+func (c *Client) CreatePage(ctx context.Context, spaceID, title, bodyFormat, body string) (json.RawMessage, error) {
+	return c.send(ctx, "POST", "/pages", map[string]any{
+		"spaceId": spaceID,
+		"status":  "current",
+		"title":   title,
+		"body": map[string]string{
+			"representation": bodyFormat,
+			"value":          body,
+		},
+	})
+}
+
+// UpdatePage replaces a page (PUT /pages/{id}) and returns the updated page.
+// Confluence v2 treats an update as a full replacement, so the caller supplies
+// the complete post-edit state: status, title, body, and the next version
+// number (the current number plus one).
+func (c *Client) UpdatePage(ctx context.Context, id, status, title, bodyFormat, body string, version int) (json.RawMessage, error) {
+	return c.send(ctx, "PUT", "/pages/"+url.PathEscape(id), map[string]any{
+		"id":     id,
+		"status": status,
+		"title":  title,
+		"body": map[string]string{
+			"representation": bodyFormat,
+			"value":          body,
+		},
+		"version": map[string]int{"number": version},
+	})
 }
 
 // setLimit records a positive limit as the API limit parameter.

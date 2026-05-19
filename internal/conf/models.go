@@ -32,13 +32,28 @@ type PageVersion struct {
 	Number int `json:"number"`
 }
 
-// Page is the subset of a Confluence page that human output renders.
+// Page is the subset of a Confluence page that human output renders, plus the
+// fields a versioned edit needs to reconstruct the page.
 type Page struct {
 	ID      string      `json:"id"`
 	Title   string      `json:"title"`
 	Status  string      `json:"status"`
 	SpaceID string      `json:"spaceId"`
 	Version PageVersion `json:"version"`
+	Body    PageBody    `json:"body"`
+}
+
+// PageBody holds the body representations a v2 page GET returns. Only the
+// representation named by the request's body-format parameter is populated;
+// the CLI requests storage, so Storage carries the current body.
+type PageBody struct {
+	Storage PageRepresentation `json:"storage"`
+}
+
+// PageRepresentation is a page body expressed in one representation.
+type PageRepresentation struct {
+	Representation string `json:"representation"`
+	Value          string `json:"value"`
 }
 
 // PageList is a page of page-list results.
