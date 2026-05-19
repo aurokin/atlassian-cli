@@ -28,6 +28,7 @@ go run ./cmd/atl-conf space list --site work
 go run ./cmd/atl-conf search cql 'type = page' --site work
 go run ./cmd/atl-conf page create --space DEV --title Notes \
   --body '<p>hi</p>' --body-format storage --site work
+go run ./cmd/atl-jira issue view PROJ-1 --site work --jq '.fields.status.name'
 ```
 
 See [docs/command-contract.md](docs/command-contract.md) for the implemented
