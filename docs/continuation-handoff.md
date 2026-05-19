@@ -8,20 +8,20 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `phase-4-confluence-mvp` (Phase 4 work). Phases 1, 2, and 3 are
-merged to `main`.
+Branch: `phase-4b-confluence-writes` (Phase 4B work). Phases 1, 2, 3, and 4A
+are merged to `main`.
 
-Status at handoff: Phases 1 (foundation), 2 (`resolve`/`browse`), and 3 (the
-Jira MVP — read-only `project`/`issue`/`search`/`status` plus the mutating
-`issue` create/edit/transition and `issue comment` create/edit/delete) are
-merged to `main`. Phase 4A — the read-only Confluence product commands — is
-implemented on the `phase-4-confluence-mvp` branch per
-`docs/phase-4-confluence-mvp-plan.md`: a typed Confluence API client
-(`internal/conf`, REST v2 primary with a v1 fallback for CQL search and the
-current-user lookup) and the `space` (list/view), `page` (list/view/children),
-`search cql`, and `status` commands (`internal/confcmd`), all with
-`go test ./...` passing. The Confluence page write commands (Phase 4B) are not
-started. See `docs/command-contract.md` for the implemented surface.
+Status at handoff: Phases 1 (foundation), 2 (`resolve`/`browse`), 3 (the Jira
+MVP — read-only `project`/`issue`/`search`/`status` plus the mutating `issue`
+create/edit/transition and `issue comment` create/edit/delete), and 4A (the
+read-only Confluence commands — `space`, `page` list/view/children,
+`search cql`, `status`, over a typed `internal/conf` client) are merged to
+`main`. Phase 4B — the Confluence page write commands — is implemented on the
+`phase-4b-confluence-writes` branch per `docs/phase-4-confluence-mvp-plan.md`:
+`CreatePage`/`UpdatePage` on the Confluence client and the `page create` and
+`page edit` commands (`internal/confcmd`), both requiring an explicit
+`--body-format`, with `go test ./...` passing. This completes the Confluence
+MVP. See `docs/command-contract.md` for the implemented surface.
 
 ## Canonical CLI names
 
@@ -66,21 +66,19 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 
 ## Next action
 
-Phases 1, 2, and 3 are merged to `main`. Phase 4A (read-only Confluence
-commands) is implemented on `phase-4-confluence-mvp` and ready for PR.
+Phases 1, 2, 3, and 4A are merged to `main`. Phase 4B (Confluence page write
+commands) is implemented on `phase-4b-confluence-writes` and ready for PR.
+With Phase 4B the Jira and Confluence MVPs are both complete.
 
 Next:
 
-1. Phase 4B — Confluence page write commands: a Confluence write client
-   (`CreatePage`, `UpdatePage`) plus `page create` and `page edit`, guided by
-   `docs/phase-4-confluence-mvp-plan.md` (Tasks 6-7). `page create`/`edit`
-   require an explicit `--body-format` (`storage` | `atlas_doc_format` |
-   `wiki`); the body is passed verbatim and never converted. `page edit` reads
-   the current version and sends `version + 1`.
+1. Phase 5 — broader product coverage as needed: Confluence attachments,
+   comments, labels, versions, and properties; deeper Jira issue/project
+   surface. Scope a Phase 5 plan before implementing.
 2. Deferred foundation items when relevant: `--jq` filtering, `--trace`, and
    secure token storage.
-3. Deferred Jira items: a follow-all-pages `--all` flag for the list/search
-   commands.
+3. Deferred list items: a follow-all-pages `--all` flag for the Jira and
+   Confluence list/search commands.
 
 Architecture note: the shared command wiring (`root`, `version`, `auth`,
 `api`, `resolve`, `browse`) lives in `internal/cli`, which also exports

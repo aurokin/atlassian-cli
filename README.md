@@ -12,21 +12,21 @@ The posture is inherited from `bb`, Auro's existing Bitbucket Cloud CLI, with `a
 
 ## Current status
 
-Phase 1 (shared foundation), Phase 2 (offline URL resolution), and Phase 3
-(the Jira MVP — read-only `project`/`issue`/`search`/`status` plus the
-mutating `issue` create/edit/transition and `issue comment`
-create/edit/delete) are merged to `main`. Phase 4A adds the read-only
-Confluence product commands — `space` (list/view), `page` (list/view/children),
-`search cql`, and `status` — over a typed Confluence API client. The Confluence
-page write commands are not implemented yet.
+Phase 1 (shared foundation), Phase 2 (offline URL resolution), Phase 3 (the
+Jira MVP — read-only `project`/`issue`/`search`/`status` plus the mutating
+`issue` create/edit/transition and `issue comment` create/edit/delete), and
+Phase 4A (the read-only Confluence commands — `space`, `page`,
+`search cql`, `status`) are merged to `main`. Phase 4B adds the Confluence
+mutating commands — `page create` and `page edit` — completing the Confluence
+MVP over a typed Confluence API client.
 
 ```bash
 go test ./...
-go run ./cmd/atl-jira --help
-go run ./cmd/atl-jira resolve PROJ-123 --json
 go run ./cmd/atl-jira project list --site work
 go run ./cmd/atl-conf space list --site work
 go run ./cmd/atl-conf search cql 'type = page' --site work
+go run ./cmd/atl-conf page create --space DEV --title Notes \
+  --body '<p>hi</p>' --body-format storage --site work
 ```
 
 See [docs/command-contract.md](docs/command-contract.md) for the implemented
