@@ -12,13 +12,14 @@ The posture is inherited from `bb`, Auro's existing Bitbucket Cloud CLI, with `a
 
 ## Current status
 
-Phase 1 (shared foundation), Phase 2 (offline URL resolution), Phase 3 (the
-Jira MVP — read-only `project`/`issue`/`search`/`status` plus the mutating
-`issue` create/edit/transition and `issue comment` create/edit/delete), and
-Phase 4A (the read-only Confluence commands — `space`, `page`,
-`search cql`, `status`) are merged to `main`. Phase 4B adds the Confluence
-mutating commands — `page create` and `page edit` — completing the Confluence
-MVP over a typed Confluence API client.
+Phases 1–4 are merged to `main`: the shared foundation, offline URL
+resolution, the Jira MVP (`project`/`issue`/`search`/`status` plus the
+mutating `issue` create/edit/transition and `issue comment`
+create/edit/delete), and the Confluence MVP (`space`/`page`/`search cql`/
+`status` plus `page create` and `page edit`). Both product CLIs now have a
+full MVP command surface. The post-MVP work — `--jq`/`--all`, secure token
+storage, and deeper Confluence and Jira coverage — is sequenced in
+[docs/post-mvp-roadmap.md](docs/post-mvp-roadmap.md).
 
 ```bash
 go test ./...
@@ -44,7 +45,8 @@ Start here:
 8. [docs/phase-2-resolve-browse-plan.md](docs/phase-2-resolve-browse-plan.md)
 9. [docs/phase-3-jira-mvp-plan.md](docs/phase-3-jira-mvp-plan.md)
 10. [docs/phase-4-confluence-mvp-plan.md](docs/phase-4-confluence-mvp-plan.md)
-11. [docs/continuation-handoff.md](docs/continuation-handoff.md)
+11. [docs/post-mvp-roadmap.md](docs/post-mvp-roadmap.md)
+12. [docs/continuation-handoff.md](docs/continuation-handoff.md)
 
 ## Guardrails
 
