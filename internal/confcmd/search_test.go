@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
-	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 func TestSearchCQLHumanOutput(t *testing.T) {
@@ -107,18 +106,22 @@ func TestSearchCQLRequiresExactlyOneArg(t *testing.T) {
 	}
 }
 
-func TestSearchCQLJQReachesRenderer(t *testing.T) {
+func TestSearchCQLJQFiltersOutput(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"results":[]}`))
+		_, _ = w.Write([]byte(`{"results":[{"content":{"title":"Home"}},{"content":{"title":"Docs"}}]}`))
 	}))
 	defer srv.Close()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	loginConfSite(t, srv.URL)
 
-	// --jq is plumbed through to the shared renderer, which currently reports
-	// jq filtering as unimplemented; this guards the --jq render branch.
-	_, err := execConf(t, "search", "cql", "type = page", "--site", "work", "--jq", ".")
-	if !errors.Is(err, output.ErrJQNotImplemented) {
-		t.Fatalf("error = %v, want output.ErrJQNotImplemented", err)
+	// --jq is plumbed through to the shared renderer; it filters the raw API
+	// response and prints each result on its own line.
+	out, err := execConf(t, "search", "cql", "type = page", "--site", "work",
+		"--jq", ".results[].content.title")
+	if err != nil {
+		t.Fatalf("search cql --jq: %v", err)
+	}
+	if out != "\"Home\"\n\"Docs\"\n" {
+		t.Fatalf("--jq output = %q, want each title on its own line", out)
 	}
 }
