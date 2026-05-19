@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"sort"
@@ -14,6 +15,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/auth"
 	"github.com/aurokin/atlassian-cli/internal/config"
 	"github.com/aurokin/atlassian-cli/internal/httpclient"
+	"github.com/aurokin/atlassian-cli/internal/secrets"
 )
 
 // tokenRefEnvPrefix marks a token reference that names an environment
@@ -96,12 +98,19 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 		tokenStyle string
 		cloudID    string
 		tokenEnv   string
+		tokenValue string
+		tokenStdin bool
 	)
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Record a site profile for later authenticated requests",
-		Long: "Record a site profile under --site. No raw token is stored: pass " +
-			"--token-env to reference an environment variable holding the token.",
+		Long: "Record a site profile under --site.\n\n" +
+			"For the token, pass exactly one of:\n" +
+			"  --token-env NAME  reference an environment variable (nothing is stored)\n" +
+			"  --token-stdin     read the token from stdin and store it securely\n" +
+			"  --token VALUE     store the token securely (visible in shell history)\n\n" +
+			"A stored token goes to the OS keychain, or to a 0600 file when no " +
+			"keychain is available. config.json never holds a raw token.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if g.Site == "" {
@@ -126,6 +135,15 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 			if style == auth.StyleCloudScoped && cloudID == "" {
 				return apperr.InvalidInput("token style cloud-scoped requires --cloud-id")
 			}
+			sources := 0
+			for _, set := range []bool{tokenEnv != "", tokenValue != "", tokenStdin} {
+				if set {
+					sources++
+				}
+			}
+			if sources > 1 {
+				return apperr.InvalidInput("pass at most one of --token-env, --token-stdin, or --token")
+			}
 
 			profile := config.SiteProfile{
 				Product:    string(info.Product),
@@ -136,8 +154,36 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 				TokenStyle: string(style),
 				AuthType:   style.AuthType(),
 			}
-			if tokenEnv != "" {
+			switch {
+			case tokenEnv != "":
 				profile.TokenRef = tokenRefEnvPrefix + tokenEnv
+			case tokenValue != "" || tokenStdin:
+				token := tokenValue
+				if tokenStdin {
+					raw, err := io.ReadAll(cmd.InOrStdin())
+					if err != nil {
+						return apperr.InvalidInput("could not read the token from standard input: " + err.Error())
+					}
+					token = strings.TrimSpace(string(raw))
+				}
+				if token == "" {
+					return apperr.InvalidInput("the token to store is empty")
+				}
+				credPath, err := config.CredentialsPath()
+				if err != nil {
+					return err
+				}
+				res, err := secrets.Save(credPath, g.Site, token)
+				if err != nil {
+					return err
+				}
+				profile.TokenRef = res.Backend
+				if res.FellBack {
+					fmt.Fprintf(cmd.ErrOrStderr(),
+						"Warning: no OS keychain is available (%v); stored the token in %s "+
+							"with 0600 permissions instead. It is not keychain-protected.\n",
+						res.KeyringErr, credPath)
+				}
 			}
 			target := httpclient.Target{
 				Product:    string(info.Product),
@@ -178,6 +224,8 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 	f.StringVar(&tokenStyle, "token-style", "", "token style: cloud-classic, cloud-scoped, or data-center-pat")
 	f.StringVar(&cloudID, "cloud-id", "", "Atlassian cloud ID (required for cloud-scoped)")
 	f.StringVar(&tokenEnv, "token-env", "", "name of the environment variable holding the token")
+	f.BoolVar(&tokenStdin, "token-stdin", false, "read the token from stdin and store it securely")
+	f.StringVar(&tokenValue, "token", "", "token value to store securely (prefer --token-stdin to keep it out of shell history)")
 	return cmd
 }
 
