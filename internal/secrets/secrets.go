@@ -110,7 +110,7 @@ func (keyringStore) Get(site string) (string, error) {
 			fmt.Sprintf("no stored credential for site %q in the OS keychain", site))
 	}
 	if err != nil {
-		return "", apperr.New("token_unavailable",
+		return "", apperr.New("credential_read_failed",
 			"could not read the credential from the OS keychain: "+err.Error())
 	}
 	return v, nil
@@ -141,7 +141,8 @@ func (f fileStore) load() (credentialsDoc, error) {
 		return credentialsDoc{Version: credentialsVersion, Tokens: map[string]string{}}, nil
 	}
 	if err != nil {
-		return credentialsDoc{}, fmt.Errorf("secrets: read %s: %w", f.path, err)
+		return credentialsDoc{}, apperr.New("credential_read_failed",
+			fmt.Sprintf("could not read the credentials file %s: %v", f.path, err))
 	}
 	var doc credentialsDoc
 	if err := json.Unmarshal(data, &doc); err != nil {

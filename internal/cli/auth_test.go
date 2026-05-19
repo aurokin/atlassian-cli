@@ -446,6 +446,29 @@ func TestAuthStatusReportsCorruptCredentialsFile(t *testing.T) {
 	}
 }
 
+func TestAuthStatusReportsUnreadableKeychain(t *testing.T) {
+	keyring.MockInit()
+	t.Cleanup(keyring.MockInit)
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	if _, err := execRoot(t, jiraInfo(), "auth", "login", "--site", "work",
+		"--url", "https://example.atlassian.net", "--username", "user@example.com",
+		"--token-style", "cloud-classic", "--token", "secret"); err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	// The keychain becomes unreadable after the credential was stored.
+	keyring.MockInitWithError(errors.New("keychain is locked"))
+
+	out, err := execRoot(t, jiraInfo(), "auth", "status", "--site", "work", "--json=*")
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if !strings.Contains(out, "could not be read") {
+		t.Errorf("status should distinguish an unreadable keychain from a missing credential, got:\n%s", out)
+	}
+}
+
 func TestAuthLogoutClearsStoredToken(t *testing.T) {
 	keyring.MockInit()
 	dir := t.TempDir()

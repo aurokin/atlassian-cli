@@ -64,6 +64,19 @@ func TestKeyringStoreDeleteAbsentIsNoError(t *testing.T) {
 	}
 }
 
+// TestKeyringStoreGetReadFailureIsStructured covers a keychain that fails for
+// a reason other than a missing entry (locked, unavailable): the error must be
+// distinguishable from a genuine absence so callers do not misreport it.
+func TestKeyringStoreGetReadFailureIsStructured(t *testing.T) {
+	keyring.MockInitWithError(errors.New("keychain is locked"))
+	t.Cleanup(keyring.MockInit)
+	_, err := keyringStore{}.Get("work")
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != "credential_read_failed" {
+		t.Fatalf("error = %v, want a credential_read_failed *apperr.Error", err)
+	}
+}
+
 func TestFileStoreRoundTrip(t *testing.T) {
 	path := credPath(t)
 	var s Store = fileStore{path: path}
@@ -135,6 +148,22 @@ func TestFileStoreRejectsMalformedFile(t *testing.T) {
 	var ae *apperr.Error
 	if !errors.As(err, &ae) || ae.Code != "invalid_config" {
 		t.Fatalf("error = %v, want an invalid_config *apperr.Error", err)
+	}
+}
+
+// TestFileStoreReadFailureIsStructured covers a credentials path that exists
+// but cannot be read as a file. A directory at the path makes os.ReadFile fail
+// with a non-ENOENT error, standing in for a permission or I/O failure; the
+// result must be a structured error distinct from a genuine absence.
+func TestFileStoreReadFailureIsStructured(t *testing.T) {
+	path := credPath(t)
+	if err := os.Mkdir(path, 0o700); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	_, err := fileStore{path: path}.Get("work")
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != "credential_read_failed" {
+		t.Fatalf("error = %v, want a credential_read_failed *apperr.Error", err)
 	}
 }
 
