@@ -1,6 +1,6 @@
 # Continuation Handoff
 
-> Last updated: 2026-05-18. Point-in-time handoff for continuing this work in the app or a fresh agent session.
+> Last updated: 2026-05-19. Point-in-time handoff for continuing this work in the app or a fresh agent session.
 
 ## Current repository state
 
@@ -8,15 +8,17 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `phase-3-jira-mvp` (Phase 3A work). Phases 1 and 2 are merged to `main`.
+Branch: `phase-3b-jira-mutations` (Phase 3B work). Phases 1, 2, and 3A are
+merged to `main`.
 
-Status at handoff: Phases 1 (foundation) and 2 (`resolve`/`browse`) are merged
-to `main`. Phase 3A — the read-only Jira commands — is implemented on the
-`phase-3-jira-mvp` branch per `docs/phase-3-jira-mvp-plan.md`: a typed Jira API
-client (`internal/jira`), the Jira command tree (`internal/jiracmd`), and the
-`project`, `issue` view/list, `issue comment` list/view, `search issues`, and
-`status` commands, all with `go test ./...` passing. Jira mutating commands
-(Phase 3B) and the Confluence product commands are not started. See
+Status at handoff: Phases 1 (foundation), 2 (`resolve`/`browse`), and 3A (the
+read-only Jira commands) are merged to `main`. Phase 3B — the Jira mutating
+commands — is implemented on the `phase-3b-jira-mutations` branch per
+`docs/phase-3-jira-mvp-plan.md`: write methods on the typed Jira client plus a
+`DocOf` ADF helper (`internal/jira`), and the `issue create`, `issue edit`,
+`issue transition`, and `issue comment create`/`edit`/`delete` commands
+(`internal/jiracmd`), all with `go test ./...` passing. This completes the
+Jira MVP surface. The Confluence product commands are not started. See
 `docs/command-contract.md` for the implemented surface.
 
 ## Canonical CLI names
@@ -61,17 +63,16 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 
 ## Next action
 
-Phases 1 and 2 are merged to `main`. Phase 3A (read-only Jira commands) is
-implemented on `phase-3-jira-mvp` and ready for PR.
+Phases 1, 2, and 3A are merged to `main`. Phase 3B (Jira mutating commands) is
+implemented on `phase-3b-jira-mutations` and ready for PR, completing Phase 3.
 
 Next:
 
-1. Phase 3B — Jira mutating commands (`issue create`/`edit`/`transition`,
-   `issue comment create`/`edit`/`delete`), the second half of
-   `docs/phase-3-jira-mvp-plan.md`.
-2. Phase 4 — Confluence MVP commands, guided by `docs/confluence-mvp.md`.
-3. Deferred foundation items when relevant: `--jq` filtering, `--trace`, and
+1. Phase 4 — Confluence MVP commands, guided by `docs/confluence-mvp.md`.
+2. Deferred foundation items when relevant: `--jq` filtering, `--trace`, and
    secure token storage.
+3. Deferred Jira items: a follow-all-pages `--all` flag for the list/search
+   commands.
 
 Architecture note: the shared command wiring (`root`, `version`, `auth`,
 `api`, `resolve`, `browse`) lives in `internal/cli`, which now also exports

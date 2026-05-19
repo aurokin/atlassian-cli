@@ -76,6 +76,18 @@ type CommentPage struct {
 	Comments []Comment `json:"comments"`
 }
 
+// Transition is one workflow transition available on an issue.
+type Transition struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// TransitionList is the set of transitions available on an issue from its
+// current status.
+type TransitionList struct {
+	Transitions []Transition `json:"transitions"`
+}
+
 // Decode unmarshals a raw Jira response body into a model value, wrapping a
 // decode failure as a structured error.
 func Decode[T any](raw json.RawMessage) (T, error) {

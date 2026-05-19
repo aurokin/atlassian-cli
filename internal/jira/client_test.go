@@ -3,8 +3,10 @@ package jira
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
@@ -237,5 +239,151 @@ func TestClientMapsHTTPStatusToStructuredError(t *testing.T) {
 func TestDecodeRejectsMalformedJSON(t *testing.T) {
 	if _, err := Decode[Issue]([]byte("not json")); err == nil {
 		t.Fatal("Decode accepted malformed JSON")
+	}
+}
+
+// captured records what a write request carried.
+type captured struct {
+	method, path, body string
+}
+
+// serveWrite builds a test server that records the request method, path, and
+// body, then replies with status and respBody.
+func serveWrite(t *testing.T, status int, respBody string) (*httptest.Server, *captured) {
+	t.Helper()
+	got := &captured{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		got.method, got.path, got.body = r.Method, r.URL.Path, string(b)
+		w.WriteHeader(status)
+		if respBody != "" {
+			_, _ = w.Write([]byte(respBody))
+		}
+	}))
+	return srv, got
+}
+
+func TestClientCreateIssue(t *testing.T) {
+	srv, got := serveWrite(t, http.StatusCreated, `{"id":"1001","key":"PROJ-9"}`)
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).CreateIssue(context.Background(), map[string]any{
+		"project": map[string]any{"key": "PROJ"},
+		"summary": "New bug",
+	})
+	if err != nil {
+		t.Fatalf("CreateIssue: %v", err)
+	}
+	if got.method != http.MethodPost || got.path != "/issue" {
+		t.Errorf("request = %s %s, want POST /issue", got.method, got.path)
+	}
+	if got.body != `{"fields":{"project":{"key":"PROJ"},"summary":"New bug"}}` {
+		t.Errorf("request body = %s", got.body)
+	}
+	iss, err := Decode[Issue](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if iss.Key != "PROJ-9" {
+		t.Errorf("created issue key = %q, want PROJ-9", iss.Key)
+	}
+}
+
+func TestClientEditIssue(t *testing.T) {
+	srv, got := serveWrite(t, http.StatusNoContent, "")
+	defer srv.Close()
+
+	if err := newTestClient(srv).EditIssue(context.Background(), "PROJ-1",
+		map[string]any{"summary": "Updated"}); err != nil {
+		t.Fatalf("EditIssue: %v", err)
+	}
+	if got.method != http.MethodPut || got.path != "/issue/PROJ-1" {
+		t.Errorf("request = %s %s, want PUT /issue/PROJ-1", got.method, got.path)
+	}
+	if got.body != `{"fields":{"summary":"Updated"}}` {
+		t.Errorf("request body = %s", got.body)
+	}
+}
+
+func TestClientGetTransitions(t *testing.T) {
+	srv := serveJSON(t, "/issue/PROJ-1/transitions",
+		`{"transitions":[{"id":"31","name":"Done"}]}`)
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).GetTransitions(context.Background(), "PROJ-1")
+	if err != nil {
+		t.Fatalf("GetTransitions: %v", err)
+	}
+	if !strings.Contains(string(raw), `"name":"Done"`) {
+		t.Errorf("transitions body = %s", raw)
+	}
+}
+
+func TestClientDoTransition(t *testing.T) {
+	srv, got := serveWrite(t, http.StatusNoContent, "")
+	defer srv.Close()
+
+	if err := newTestClient(srv).DoTransition(context.Background(), "PROJ-1", "31"); err != nil {
+		t.Fatalf("DoTransition: %v", err)
+	}
+	if got.method != http.MethodPost || got.path != "/issue/PROJ-1/transitions" {
+		t.Errorf("request = %s %s, want POST /issue/PROJ-1/transitions", got.method, got.path)
+	}
+	if got.body != `{"transition":{"id":"31"}}` {
+		t.Errorf("request body = %s", got.body)
+	}
+}
+
+func TestClientCreateComment(t *testing.T) {
+	srv, got := serveWrite(t, http.StatusCreated, `{"id":"20","author":{"displayName":"Test User"}}`)
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).CreateComment(context.Background(), "PROJ-1", DocOf("Looks good"))
+	if err != nil {
+		t.Fatalf("CreateComment: %v", err)
+	}
+	if got.method != http.MethodPost || got.path != "/issue/PROJ-1/comment" {
+		t.Errorf("request = %s %s, want POST /issue/PROJ-1/comment", got.method, got.path)
+	}
+	if !strings.Contains(got.body, `"body":{"type":"doc"`) || !strings.Contains(got.body, `"text":"Looks good"`) {
+		t.Errorf("request body = %s", got.body)
+	}
+	c, err := Decode[Comment](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if c.ID != "20" {
+		t.Errorf("created comment id = %q, want 20", c.ID)
+	}
+}
+
+func TestClientEditComment(t *testing.T) {
+	srv, got := serveWrite(t, http.StatusOK, `{"id":"20"}`)
+	defer srv.Close()
+
+	if _, err := newTestClient(srv).EditComment(context.Background(), "PROJ-1", "20",
+		DocOf("Revised")); err != nil {
+		t.Fatalf("EditComment: %v", err)
+	}
+	if got.method != http.MethodPut || got.path != "/issue/PROJ-1/comment/20" {
+		t.Errorf("request = %s %s, want PUT /issue/PROJ-1/comment/20", got.method, got.path)
+	}
+	if !strings.Contains(got.body, `"text":"Revised"`) {
+		t.Errorf("request body = %s", got.body)
+	}
+}
+
+func TestClientDeleteComment(t *testing.T) {
+	srv, got := serveWrite(t, http.StatusNoContent, "")
+	defer srv.Close()
+
+	if err := newTestClient(srv).DeleteComment(context.Background(), "PROJ-1", "20"); err != nil {
+		t.Fatalf("DeleteComment: %v", err)
+	}
+	if got.method != http.MethodDelete || got.path != "/issue/PROJ-1/comment/20" {
+		t.Errorf("request = %s %s, want DELETE /issue/PROJ-1/comment/20", got.method, got.path)
+	}
+	if got.body != "" {
+		t.Errorf("DELETE sent a body: %s", got.body)
 	}
 }

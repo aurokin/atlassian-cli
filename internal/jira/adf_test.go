@@ -72,3 +72,24 @@ func TestTextOfSkipsUnknownNodeTypes(t *testing.T) {
 		t.Errorf("TextOf = %q, want %q", got, "hi there")
 	}
 }
+
+func TestDocOfWrapsPlainText(t *testing.T) {
+	var doc map[string]any
+	if err := json.Unmarshal(DocOf("hello"), &doc); err != nil {
+		t.Fatalf("DocOf produced invalid JSON: %v", err)
+	}
+	if doc["type"] != "doc" {
+		t.Errorf("doc type = %v, want doc", doc["type"])
+	}
+	if doc["version"] != float64(1) {
+		t.Errorf("doc version = %v, want 1", doc["version"])
+	}
+}
+
+func TestDocOfRoundTripsThroughTextOf(t *testing.T) {
+	for _, in := range []string{"single line", "line one\nline two\nline three", ""} {
+		if got := TextOf(DocOf(in)); got != in {
+			t.Errorf("TextOf(DocOf(%q)) = %q, want %q", in, got, in)
+		}
+	}
+}

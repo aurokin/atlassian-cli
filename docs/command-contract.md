@@ -1,6 +1,6 @@
 # Command Contract
 
-> Implemented behavior as of Phase 3A. This document describes what the
+> Implemented behavior as of Phase 3B. This document describes what the
 > `atl-jira` and `atl-conf` binaries actually do today, not the long-term
 > design. Update it whenever the command surface changes.
 
@@ -11,8 +11,9 @@ structured output and errors, auth signing, an HTTP client, the `auth` command
 subtree, and the raw `api` escape hatch. Phase 2 adds offline URL/key
 resolution: the `resolve` and `browse` commands. Phase 3A adds the read-only
 Jira product commands: `project`, `issue` (view/list), `issue comment`
-(list/view), `search issues`, and `status`. Jira mutating commands and the
-Confluence product commands are not implemented yet.
+(list/view), `search issues`, and `status`. Phase 3B adds the Jira mutating
+commands: `issue` (create/edit/transition) and `issue comment`
+(create/edit/delete). The Confluence product commands are not implemented yet.
 
 ## Binaries
 
@@ -148,8 +149,9 @@ browser is launched through the platform handler (`open`, `xdg-open`, or
 These commands exist only on `atl-jira`. Each needs `--site` to name a
 configured profile and makes a live, authenticated request. Under `--json` the
 raw Jira REST v3 response body is emitted verbatim; human output is a compact
-per-command summary. A non-2xx response is mapped to the structured error
-model below.
+per-command summary. A mutating command whose API call returns no body (e.g.
+`issue edit`) instead emits a small synthesized result object under `--json`.
+A non-2xx response is mapped to the structured error model below.
 
 ### `project`
 
@@ -166,12 +168,26 @@ single project by id or key.
 ```
 atl-jira issue view <issue>
 atl-jira issue list --project <key> [--status <name>] [--assignee <id>] [--limit N]
+atl-jira issue create --project <key> --type <name> --summary <text> [--description <text>] [--assignee <id>] [--field name=value]...
+atl-jira issue edit <issue> [--summary <text>] [--description <text>] [--assignee <id>] [--field name=value]...
+atl-jira issue transition <issue> [--to <name-or-id>]
 ```
 
 `view` returns one issue. `list` builds a JQL query from its flags — `--project`
 is required, `--status` and `--assignee` are optional filters, and results are
 ordered newest-first by creation date. `--assignee` takes an account id or the
 literal `currentUser()`. Broader queries go through `search issues`.
+
+`create` and `edit` set fields from typed flags plus a repeatable `--field
+name=value` escape for any other field; a `--field` value is sent as parsed
+JSON when it is valid JSON, otherwise as a string, and a plain `--description`
+is wrapped as an ADF document. `edit` requires at least one change. `create`
+reports the new key; `edit` reports a confirmation.
+
+`transition` with no `--to` lists the transitions available from the issue's
+current status; with `--to <name-or-id>` it resolves the target against that
+list (by id, or case-insensitive name) and applies it. There is no universal
+close/reopen abstraction — Jira transitions are workflow specific.
 
 ### `search issues`
 
@@ -187,11 +203,15 @@ is a convenience wrapper over the same endpoint.
 ```
 atl-jira issue comment list <issue> [--limit N]
 atl-jira issue comment view <issue> <comment-id>
+atl-jira issue comment create <issue> --body <text>
+atl-jira issue comment edit <issue> <comment-id> --body <text>
+atl-jira issue comment delete <issue> <comment-id>
 ```
 
-Lists or views comments on an issue. Comment bodies are stored as Atlassian
-Document Format; human output renders a best-effort plain-text extraction,
-while `--json` preserves the raw ADF body.
+Lists, views, and manages comments on an issue. Comment bodies are stored as
+Atlassian Document Format; human output renders a best-effort plain-text
+extraction, while `--json` preserves the raw ADF body. `create` and `edit`
+take a plain-text `--body` that is wrapped as an ADF document.
 
 ### `status`
 
@@ -276,10 +296,10 @@ plain `Error: <code>: <message>` line.
 
 - No OAuth 3LO; no browser/cookie login.
 - No Bitbucket (`atl-bb`).
-- Jira commands are read-only so far (`project`, `issue` view/list, `issue
-  comment` list/view, `search issues`, `status`); Jira mutations (create,
-  edit, transition, comment writes) and all Confluence product commands are
-  not implemented yet.
+- Confluence product commands are not implemented yet.
+- `issue create`/`edit` accept a plain-text `--description` (wrapped as ADF) or
+  raw ADF via `--field description=<adf-json>`; richer markup helpers are not
+  implemented.
 - Jira list commands fetch a single page bounded by `--limit`; there is no
   follow-all-pages flag yet.
 - Jira commands target the Jira **Cloud** REST v3 API. Against a Data Center
