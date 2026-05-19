@@ -8,20 +8,18 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `phase-4b-confluence-writes` (Phase 4B work). Phases 1, 2, 3, and 4A
-are merged to `main`.
+Branch: `phase-5-roadmap` (post-MVP planning). Phases 1–4 are merged to
+`main`.
 
 Status at handoff: Phases 1 (foundation), 2 (`resolve`/`browse`), 3 (the Jira
 MVP — read-only `project`/`issue`/`search`/`status` plus the mutating `issue`
-create/edit/transition and `issue comment` create/edit/delete), and 4A (the
-read-only Confluence commands — `space`, `page` list/view/children,
-`search cql`, `status`, over a typed `internal/conf` client) are merged to
-`main`. Phase 4B — the Confluence page write commands — is implemented on the
-`phase-4b-confluence-writes` branch per `docs/phase-4-confluence-mvp-plan.md`:
-`CreatePage`/`UpdatePage` on the Confluence client and the `page create` and
-`page edit` commands (`internal/confcmd`), both requiring an explicit
-`--body-format`, with `go test ./...` passing. This completes the Confluence
-MVP. See `docs/command-contract.md` for the implemented surface.
+create/edit/transition and `issue comment` create/edit/delete), and 4 (the
+Confluence MVP — `space`, `page` list/view/children/create/edit, `search cql`,
+`status`, over a typed `internal/conf` client) are all merged to `main`. Both
+product CLIs now have a full MVP command surface. The `phase-5-roadmap` branch
+adds `docs/post-mvp-roadmap.md`, which sequences the post-MVP work into
+Phases 5–8. No code change on this branch. See `docs/command-contract.md` for
+the implemented surface.
 
 ## Canonical CLI names
 
@@ -57,28 +55,29 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 9. `docs/phase-2-resolve-browse-plan.md`
 10. `docs/phase-3-jira-mvp-plan.md`
 11. `docs/phase-4-confluence-mvp-plan.md`
-12. Product docs only after foundation work:
+12. `docs/post-mvp-roadmap.md`
+13. Product docs only after foundation work:
    - `docs/jira-mvp.md`
    - `docs/confluence-mvp.md`
-13. Bitbucket future docs only when planning migration:
+14. Bitbucket future docs only when planning migration:
    - `docs/bitbucket-migration-roadmap.md`
    - `docs/bb-rewrite-plan.md`
 
 ## Next action
 
-Phases 1, 2, 3, and 4A are merged to `main`. Phase 4B (Confluence page write
-commands) is implemented on `phase-4b-confluence-writes` and ready for PR.
-With Phase 4B the Jira and Confluence MVPs are both complete.
+Phases 1–4 are merged to `main` — both product MVPs are complete. The post-MVP
+work is sequenced in `docs/post-mvp-roadmap.md` as Phases 5–8.
 
-Next:
+Next: **Phase 5 — output & pagination polish** (`--jq` and `--all`). Per the
+roadmap, before implementing, resolve the open design decisions in that
+phase's section: the jq engine (vendored minimal subset vs. a `gojq`
+dependency), how `--jq` relates to the existing `--json` selector, and the
+`--all` aggregation shape and page cap. Then write a detailed
+`docs/phase-5-*-plan.md` (one-plan-per-phase, as Phases 1–4 each had) and
+implement it task by task.
 
-1. Phase 5 — broader product coverage as needed: Confluence attachments,
-   comments, labels, versions, and properties; deeper Jira issue/project
-   surface. Scope a Phase 5 plan before implementing.
-2. Deferred foundation items when relevant: `--jq` filtering, `--trace`, and
-   secure token storage.
-3. Deferred list items: a follow-all-pages `--all` flag for the Jira and
-   Confluence list/search commands.
+Phases 6–8 follow: secure token storage, Confluence content depth, deeper
+Jira coverage. Phases 7 and 8 are independent and may be reordered.
 
 Architecture note: the shared command wiring (`root`, `version`, `auth`,
 `api`, `resolve`, `browse`) lives in `internal/cli`, which also exports

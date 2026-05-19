@@ -42,13 +42,18 @@
 - `search cql`
 - `status`
 
-## Phase 5: Broader coverage
+## Phases 5–8: Post-MVP
 
-- Jira boards/sprints/filters/versions/components/attachments/worklogs/watchers.
-- Confluence attachments/comments/labels/versions/properties/blogs/groups/users.
-- Consider OAuth 3LO only after token-based auth is robust.
+Detailed and sequenced in [post-mvp-roadmap.md](post-mvp-roadmap.md):
 
-## Phase 6: Monorepo/refactor review
+- Phase 5: output & pagination polish (`--jq`, `--all`).
+- Phase 6: secure token storage (OS keychain).
+- Phase 7: Confluence content depth (comments, labels, attachments).
+- Phase 8: deeper Jira coverage (assign, watchers, links, worklog).
+
+OAuth 3LO stays deferred until token-based auth is proven robust.
+
+## Phase 9: Monorepo/refactor review
 
 - Identify code repeated across Jira and Confluence.
 - Read [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) before making any legacy `bb` to `atl-bb` migration decision.
