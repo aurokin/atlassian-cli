@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/jira"
@@ -20,6 +21,9 @@ func newCommentCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	cmd.AddCommand(
 		newCommentListCommand(info, g),
 		newCommentViewCommand(info, g),
+		newCommentCreateCommand(info, g),
+		newCommentEditCommand(info, g),
+		newCommentDeleteCommand(info, g),
 	)
 	return cmd
 }
@@ -79,6 +83,99 @@ func newCommentViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			return nil
 		},
 	}
+}
+
+func newCommentCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var body string
+	cmd := &cobra.Command{
+		Use:   "create <issue>",
+		Short: "Add a comment to an issue",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if body == "" {
+				return apperr.InvalidInput("issue comment create requires --body")
+			}
+			jc, err := jiraClient(info, g)
+			if err != nil {
+				return err
+			}
+			raw, err := jc.CreateComment(cmd.Context(), args[0], jira.DocOf(body))
+			if err != nil {
+				return err
+			}
+			if g.JSON != "" || g.JQ != "" {
+				return cli.Render(cmd, g, raw)
+			}
+			c, err := jira.Decode[jira.Comment](raw)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "created comment %s on %s\n", c.ID, args[0])
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&body, "body", "", "comment body; plain text is wrapped as ADF (required)")
+	return cmd
+}
+
+func newCommentEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var body string
+	cmd := &cobra.Command{
+		Use:   "edit <issue> <comment-id>",
+		Short: "Replace the body of a comment",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if body == "" {
+				return apperr.InvalidInput("issue comment edit requires --body")
+			}
+			jc, err := jiraClient(info, g)
+			if err != nil {
+				return err
+			}
+			raw, err := jc.EditComment(cmd.Context(), args[0], args[1], jira.DocOf(body))
+			if err != nil {
+				return err
+			}
+			if g.JSON != "" || g.JQ != "" {
+				return cli.Render(cmd, g, raw)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "updated comment %s on %s\n", args[1], args[0])
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&body, "body", "", "new comment body; plain text is wrapped as ADF (required)")
+	return cmd
+}
+
+func newCommentDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	return &cobra.Command{
+		Use:   "delete <issue> <comment-id>",
+		Short: "Delete a comment from an issue",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			jc, err := jiraClient(info, g)
+			if err != nil {
+				return err
+			}
+			if err := jc.DeleteComment(cmd.Context(), args[0], args[1]); err != nil {
+				return err
+			}
+			if g.JSON != "" || g.JQ != "" {
+				return cli.Render(cmd, g, commentDeleteResult{
+					Issue: args[0], Comment: args[1], Deleted: true})
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "deleted comment %s on %s\n", args[1], args[0])
+			return nil
+		},
+	}
+}
+
+// commentDeleteResult is the synthesized outcome of a comment deletion, whose
+// API call returns no body, so --json has a stable object to render.
+type commentDeleteResult struct {
+	Issue   string `json:"issue"`
+	Comment string `json:"comment"`
+	Deleted bool   `json:"deleted"`
 }
 
 // writeCommentList prints each comment, separated by a blank line.
