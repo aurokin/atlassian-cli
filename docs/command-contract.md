@@ -1,6 +1,6 @@
 # Command Contract
 
-> Implemented behavior as of Phase 3B. This document describes what the
+> Implemented behavior as of Phase 4A. This document describes what the
 > `atl-jira` and `atl-conf` binaries actually do today, not the long-term
 > design. Update it whenever the command surface changes.
 
@@ -13,7 +13,9 @@ resolution: the `resolve` and `browse` commands. Phase 3A adds the read-only
 Jira product commands: `project`, `issue` (view/list), `issue comment`
 (list/view), `search issues`, and `status`. Phase 3B adds the Jira mutating
 commands: `issue` (create/edit/transition) and `issue comment`
-(create/edit/delete). The Confluence product commands are not implemented yet.
+(create/edit/delete). Phase 4A adds the read-only Confluence product commands:
+`space` (list/view), `page` (list/view/children), `search cql`, and `status`.
+The Confluence page write commands are not implemented yet.
 
 ## Binaries
 
@@ -223,6 +225,58 @@ A live authentication check: it calls `/myself` with the `--site` credential
 and reports the authenticated account. This is distinct from `auth status`,
 which inspects local config offline and makes no request.
 
+## Confluence commands
+
+These commands exist only on `atl-conf`. Each needs `--site` to name a
+configured profile and makes a live, authenticated request. They target the
+Confluence Cloud REST **v2** API; CQL search and the current-user lookup have
+no v2 resource, so `search cql` and `status` fall back to REST **v1**. Under
+`--json` the raw response body is emitted verbatim; human output is a compact
+per-command summary. A non-2xx response is mapped to the structured error
+model below.
+
+### `space`
+
+```
+atl-conf space list [--limit N]
+atl-conf space view <key>
+```
+
+`list` returns spaces visible to the authenticated account. `view` takes a
+space key; since v2 addresses a space by numeric id, the key is resolved to an
+id first.
+
+### `page`
+
+```
+atl-conf page list --space <key> [--limit N]
+atl-conf page view <id>
+atl-conf page children <id> [--limit N]
+```
+
+`list` returns the pages in a space — `--space` is required and is resolved
+from key to id. `view` returns one page by id, including its storage-format
+body under `--json`. `children` lists a page's direct child pages.
+
+### `search cql`
+
+```
+atl-conf search cql <cql> [--limit N]
+```
+
+Runs a raw CQL query against the v1 search endpoint. CQL is the stable,
+expressive query surface for Confluence content.
+
+### `status`
+
+```
+atl-conf status
+```
+
+A live authentication check: it calls the v1 current-user endpoint with the
+`--site` credential and reports the authenticated account and resolved API
+base. Distinct from `auth status`, which inspects local config offline.
+
 ## Config file
 
 - Path: `$XDG_CONFIG_HOME/atlassian-cli/config.json`, or
@@ -296,21 +350,25 @@ plain `Error: <code>: <message>` line.
 
 - No OAuth 3LO; no browser/cookie login.
 - No Bitbucket (`atl-bb`).
-- Confluence product commands are not implemented yet.
+- Confluence page write commands (`page create`/`edit`) are not implemented
+  yet; Phase 4A is the read-only Confluence surface.
 - `issue create`/`edit` accept a plain-text `--description` (wrapped as ADF) or
   raw ADF via `--field description=<adf-json>`; richer markup helpers are not
   implemented.
-- Jira list commands fetch a single page bounded by `--limit`; there is no
-  follow-all-pages flag yet.
-- Jira commands target the Jira **Cloud** REST v3 API. Against a Data Center
-  instance the API base is the configured URL verbatim, so the Cloud paths
-  these commands use will not match; use the raw `api` command there.
+- Jira and Confluence list commands fetch a single page bounded by `--limit`;
+  there is no follow-all-pages flag yet.
+- Jira and Confluence commands target the Atlassian **Cloud** REST APIs (Jira
+  v3, Confluence v2 with a v1 fallback for CQL search and the current user).
+  Against a Data Center instance the API base is the configured URL verbatim,
+  so the Cloud paths these commands use will not match; use the raw `api`
+  command there.
 - `--jq` is a stub; `--trace` is accepted but inert. `--no-prompt` is honored
   only by `browse`.
 - Tokens are referenced via `--token-env` only. Raw token storage and OS
   keychain support are not implemented.
-- Human (non-`--json`) output is minimal: `resolve` prints a label/value
-  summary, other commands fall back to indented JSON.
+- Human (non-`--json`) output is a compact per-command summary: single-item
+  views print label/value lines, list and search commands print aligned
+  columns. It is intentionally minimal — `--json` is the complete surface.
 - URL resolution covers Atlassian **Cloud** canonical forms only. Confluence
   tiny links (`/wiki/x/<token>`), Data Center URL shapes, and blog-post or
   attachment URLs are not recognized; `browse` roots a URL input at `https`.
