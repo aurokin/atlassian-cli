@@ -63,7 +63,8 @@ func TestPageCommentViewHumanOutput(t *testing.T) {
 		if got := r.URL.Query().Get("body-format"); got != "storage" {
 			t.Errorf("body-format = %q, want storage", got)
 		}
-		_, _ = w.Write([]byte(`{"id":"c1","status":"current","pageId":"10","version":{"number":2},` +
+		_, _ = w.Write([]byte(`{"id":"c1","status":"current","pageId":"10","title":"Re: Home",` +
+			`"version":{"number":2},` +
 			`"body":{"storage":{"representation":"storage","value":"<p>hello</p>"}}}`))
 	}))
 	defer srv.Close()
@@ -74,7 +75,7 @@ func TestPageCommentViewHumanOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("page comment view: %v", err)
 	}
-	for _, want := range []string{"c1", "current", "10", "<p>hello</p>"} {
+	for _, want := range []string{"c1", "current", "10", "Re: Home", "<p>hello</p>"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("comment view output missing %q:\n%s", want, out)
 		}

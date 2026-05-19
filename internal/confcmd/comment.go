@@ -222,6 +222,9 @@ func writeCommentList(w io.Writer, comments []conf.Comment) {
 // its storage-format body.
 func writeComment(w io.Writer, c conf.Comment) {
 	fmt.Fprintf(w, "ID:       %s\n", c.ID)
+	if c.Title != "" {
+		fmt.Fprintf(w, "Title:    %s\n", c.Title)
+	}
 	fmt.Fprintf(w, "Status:   %s\n", c.Status)
 	fmt.Fprintf(w, "Page:     %s\n", c.PageID)
 	fmt.Fprintf(w, "Version:  %d\n", c.Version.Number)
