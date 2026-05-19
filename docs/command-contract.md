@@ -20,6 +20,10 @@ makes the global `--jq` flag a real jq filter; Phase 5B adds the `--all`
 follow-all-pages flag to the list and search commands. Phase 6 adds secure
 token storage: `auth login` can store a token in the OS keychain (or a `0600`
 fallback file), so commands no longer require `--token-env` on every run.
+Phase 7 deepens the Confluence surface with `page comment`, `page label`,
+and `attachment` commands. Phase 8 deepens the Jira `issue` surface with
+`assign`, `watch`/`unwatch`/`watchers`, `link`/`link types`, and `worklog`
+(list/add).
 
 ## Binaries
 
@@ -64,9 +68,10 @@ with `--jq` is allowed and equivalent to `--jq` alone.
 ## Pagination — `--limit` and `--all`
 
 The list and search commands — `project list`, `issue list`, `search issues`,
-`issue comment list` (Jira) and `space list`, `page list`, `page children`,
-`page comment list`, `page label list`, `attachment list`, `search cql`
-(Confluence) — fetch a single page by default, sized by `--limit`.
+`issue comment list`, `issue worklog list` (Jira) and `space list`,
+`page list`, `page children`, `page comment list`, `page label list`,
+`attachment list`, `search cql` (Confluence) — fetch a single page by
+default, sized by `--limit`.
 
 Passing `--all` follows pagination to completion and emits one aggregated
 result; `--limit` then sets the per-request page size rather than a total cap.
@@ -227,6 +232,14 @@ atl-jira issue list --project <key> [--status <name>] [--assignee <id>] [--limit
 atl-jira issue create --project <key> --type <name> --summary <text> [--description <text>] [--assignee <id>] [--field name=value]...
 atl-jira issue edit <issue> [--summary <text>] [--description <text>] [--assignee <id>] [--field name=value]...
 atl-jira issue transition <issue> [--to <name-or-id>]
+atl-jira issue assign <issue> <account-id|->
+atl-jira issue watch <issue>
+atl-jira issue unwatch <issue>
+atl-jira issue watchers <issue>
+atl-jira issue link <inward> <outward> --type <link-type>
+atl-jira issue link types
+atl-jira issue worklog list <issue> [--limit N]
+atl-jira issue worklog add <issue> --time <duration> [--comment <text>]
 ```
 
 `view` returns one issue. `list` builds a JQL query from its flags — `--project`
@@ -244,6 +257,27 @@ reports the new key; `edit` reports a confirmation.
 current status; with `--to <name-or-id>` it resolves the target against that
 list (by id, or case-insensitive name) and applies it. There is no universal
 close/reopen abstraction — Jira transitions are workflow specific.
+
+`assign` sets the issue's assignee to the given account id; passing the
+literal `-` sends `accountId: null` and unassigns the issue. Setting a
+project's default assignee from the CLI is intentionally out of scope.
+
+`watch` adds the authenticated account to the issue's watchers; `unwatch`
+removes it (the API requires an explicit account id, so `unwatch` first
+looks up the caller via `/myself`). `watchers` lists the issue's watchers.
+
+`link` creates a directional link between two issues. The first positional
+is the inward issue and the second is the outward issue, matching the Jira
+API field names: with `--type Blocks`, `issue link A B --type Blocks` means
+A is blocked by B and B blocks A. `issue link types` lists the link types
+configured on the site with their inward and outward phrases.
+
+`worklog list` returns the worklog entries on an issue; pagination is
+controlled by `--limit` and `--all`. `worklog add` appends a new entry:
+`--time` is passed through verbatim as Jira's `timeSpent` (duration strings
+like `3h 30m` or seconds with units; the CLI does not parse or convert),
+and `--comment` is plain text wrapped as an ADF document. Editing or
+deleting an existing worklog is intentionally out of scope.
 
 ### `search issues`
 
@@ -483,6 +517,15 @@ plain `Error: <code>: <message>` line.
 - Confluence page delete, move, and restore are not implemented; the page
   surface is list/view/children, create/edit, and the comment/label
   sub-groups.
+- Jira `issue assign` does not set a project's default assignee (the `-1`
+  sentinel is not exposed); pass `-` to unassign and an explicit account id
+  to assign.
+- Jira `issue link` creates a link but does not edit or delete existing
+  links. Worklogs can be listed and added but not edited or deleted; worklog
+  visibility/restriction is not modeled.
+- `issue worklog add --time` is forwarded verbatim as Jira's `timeSpent`;
+  the CLI does not parse or convert the duration. `--comment` is plain text
+  wrapped as ADF.
 - Confluence comment support is footer comments only — inline comments need
   text-anchor properties unsuited to a flag-based CLI. Attachment support is
   list and download only; attachment upload (a multipart write) is not

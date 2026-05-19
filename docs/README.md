@@ -22,6 +22,7 @@ Create two separate CLIs, `atl-jira` and `atl-conf`, with shared foundations whe
 - [phase-5-output-pagination-plan.md](phase-5-output-pagination-plan.md) — implementation plan for Phase 5: `--jq` filtering (5A) and the `--all` follow-all-pages flag (5B).
 - [phase-6-secure-token-storage-plan.md](phase-6-secure-token-storage-plan.md) — implementation plan for Phase 6: secure token storage (OS keychain via go-keyring, with a `0600`-file fallback).
 - [phase-7-confluence-content-plan.md](phase-7-confluence-content-plan.md) — implementation plan for Phase 7: Confluence content depth — `page comment`, `page label`, and `attachment` commands.
+- [phase-8-jira-coverage-plan.md](phase-8-jira-coverage-plan.md) — implementation plan for Phase 8: deeper Jira `issue` coverage — `assign`, `watch`/`unwatch`/`watchers`, `link` (+ link `types`), and `worklog` (list/add).
 - [command-contract.md](command-contract.md) — implemented command behavior, config schema, and known limitations.
 - [continuation-handoff.md](continuation-handoff.md) — point-in-time handoff for continuing this work in the app or a fresh agent session.
 - [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) — long-term plan for possibly bringing legacy `bb` into the shared `atl-*` Atlassian CLI ecosystem as `atl-bb`.
