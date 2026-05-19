@@ -37,6 +37,7 @@ func newIssueListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		status   string
 		assignee string
 		limit    int
+		all      bool
 	)
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -50,7 +51,11 @@ func newIssueListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			raw, err := jc.SearchIssues(cmd.Context(), buildIssueListJQL(project, status, assignee), limit)
+			search := jc.SearchIssues
+			if all {
+				search = jc.SearchIssuesAll
+			}
+			raw, err := search(cmd.Context(), buildIssueListJQL(project, status, assignee), limit)
 			if err != nil {
 				return err
 			}
@@ -70,6 +75,7 @@ func newIssueListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	f.StringVar(&status, "status", "", "filter by status name")
 	f.StringVar(&assignee, "assignee", "", "filter by assignee account id, or currentUser()")
 	f.IntVar(&limit, "limit", 0, "maximum number of issues to return")
+	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
 	return cmd
 }
 

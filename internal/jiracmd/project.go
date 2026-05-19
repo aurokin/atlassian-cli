@@ -25,7 +25,10 @@ func newProjectCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 }
 
 func newProjectListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
-	var limit int
+	var (
+		limit int
+		all   bool
+	)
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List projects visible to the authenticated account",
@@ -35,7 +38,11 @@ func newProjectListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			raw, err := jc.SearchProjects(cmd.Context(), limit)
+			search := jc.SearchProjects
+			if all {
+				search = jc.SearchProjectsAll
+			}
+			raw, err := search(cmd.Context(), limit)
 			if err != nil {
 				return err
 			}
@@ -50,7 +57,9 @@ func newProjectListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			return nil
 		},
 	}
-	cmd.Flags().IntVar(&limit, "limit", 0, "maximum number of projects to return")
+	f := cmd.Flags()
+	f.IntVar(&limit, "limit", 0, "maximum number of projects to return")
+	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
 	return cmd
 }
 

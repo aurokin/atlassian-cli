@@ -27,7 +27,10 @@ func newSpaceCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 }
 
 func newSpaceListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
-	var limit int
+	var (
+		limit int
+		all   bool
+	)
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List spaces visible to the authenticated account",
@@ -37,7 +40,11 @@ func newSpaceListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			raw, err := cc.ListSpaces(cmd.Context(), limit)
+			list := cc.ListSpaces
+			if all {
+				list = cc.ListSpacesAll
+			}
+			raw, err := list(cmd.Context(), limit)
 			if err != nil {
 				return err
 			}
@@ -52,7 +59,9 @@ func newSpaceListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().IntVar(&limit, "limit", 0, "maximum number of spaces to return")
+	f := cmd.Flags()
+	f.IntVar(&limit, "limit", 0, "maximum number of spaces to return")
+	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
 	return cmd
 }
 
