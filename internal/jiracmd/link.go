@@ -40,7 +40,11 @@ func newIssueLinkCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err := jc.CreateIssueLink(cmd.Context(), args[0], args[1], linkType); err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "linked %s -> %s (%s)\n", args[0], args[1], linkType)
+			// Avoid an arrow here: the API field names ("inward"/"outward")
+			// don't match the natural arrow reading. Print them explicitly so
+			// it is unambiguous which issue carries which role.
+			fmt.Fprintf(cmd.OutOrStdout(),
+				"created %s link: inward %s, outward %s\n", linkType, args[0], args[1])
 			return nil
 		},
 	}

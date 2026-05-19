@@ -45,8 +45,8 @@ func TestIssueLink(t *testing.T) {
 		t.Errorf("link sent inward/outward = %v/%v, want PROJ-1/PROJ-2",
 			gotBody["inwardIssue"], gotBody["outwardIssue"])
 	}
-	if !strings.Contains(out, "linked PROJ-1 -> PROJ-2 (Blocks)") {
-		t.Errorf("link output missing 'linked PROJ-1 -> PROJ-2 (Blocks)':\n%s", out)
+	if !strings.Contains(out, "created Blocks link: inward PROJ-1, outward PROJ-2") {
+		t.Errorf("link output missing 'created Blocks link: inward PROJ-1, outward PROJ-2':\n%s", out)
 	}
 }
 
