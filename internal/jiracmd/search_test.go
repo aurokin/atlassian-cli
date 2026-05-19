@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
-	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 func TestSearchIssuesPassesRawJQL(t *testing.T) {
@@ -80,18 +79,21 @@ func TestSearchIssuesMapsError(t *testing.T) {
 	}
 }
 
-func TestSearchIssuesJQReachesRenderer(t *testing.T) {
+func TestSearchIssuesJQFiltersOutput(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"issues":[],"isLast":true}`))
+		_, _ = w.Write([]byte(`{"issues":[{"key":"PROJ-1"},{"key":"PROJ-2"}],"isLast":true}`))
 	}))
 	defer srv.Close()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	loginJiraSite(t, srv.URL)
 
-	// --jq is plumbed through to the shared renderer, which currently reports
-	// jq filtering as unimplemented; this guards the --jq render branch.
-	_, err := execJira(t, "search", "issues", "project = PROJ", "--site", "work", "--jq", ".")
-	if !errors.Is(err, output.ErrJQNotImplemented) {
-		t.Fatalf("error = %v, want output.ErrJQNotImplemented", err)
+	// --jq is plumbed through to the shared renderer; it filters the raw API
+	// response and prints each result on its own line.
+	out, err := execJira(t, "search", "issues", "project = PROJ", "--site", "work", "--jq", ".issues[].key")
+	if err != nil {
+		t.Fatalf("search issues --jq: %v", err)
+	}
+	if out != "\"PROJ-1\"\n\"PROJ-2\"\n" {
+		t.Fatalf("--jq output = %q, want each key on its own line", out)
 	}
 }

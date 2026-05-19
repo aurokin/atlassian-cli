@@ -19,6 +19,7 @@ Create two separate CLIs, `atl-jira` and `atl-conf`, with shared foundations whe
 - [phase-3-jira-mvp-plan.md](phase-3-jira-mvp-plan.md) — implementation plan for the Jira MVP commands: `project`, `issue`, `search`, `status` (Phase 3, complete).
 - [phase-4-confluence-mvp-plan.md](phase-4-confluence-mvp-plan.md) — implementation plan for the Confluence MVP commands: `space`, `page` (read plus create/edit), `search cql`, `status` (Phase 4, complete).
 - [post-mvp-roadmap.md](post-mvp-roadmap.md) — sequenced plan for Phases 5–8: output & pagination polish, secure token storage, Confluence content depth, deeper Jira coverage.
+- [phase-5-output-pagination-plan.md](phase-5-output-pagination-plan.md) — implementation plan for Phase 5: `--jq` filtering (5A) and the `--all` follow-all-pages flag (5B).
 - [command-contract.md](command-contract.md) — implemented command behavior, config schema, and known limitations.
 - [continuation-handoff.md](continuation-handoff.md) — point-in-time handoff for continuing this work in the app or a fresh agent session.
 - [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) — long-term plan for possibly bringing legacy `bb` into the shared `atl-*` Atlassian CLI ecosystem as `atl-bb`.

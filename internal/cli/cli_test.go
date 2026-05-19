@@ -64,14 +64,30 @@ func TestVersionJSONHonorsFieldSelection(t *testing.T) {
 	}
 }
 
-func TestVersionJQReturnsNotImplemented(t *testing.T) {
+func TestVersionJQFiltersOutput(t *testing.T) {
 	root, _ := NewRoot(appinfo.New("atl-jira", appinfo.ProductJira, "1.2.3", "", ""), "short")
 	var buf bytes.Buffer
 	root.SetOut(&buf)
 	root.SetErr(&buf)
 	root.SetArgs([]string{"version", "--jq=.version"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("Execute(version --jq): %v", err)
+	}
+	if got := buf.String(); got != "\"1.2.3\"\n" {
+		t.Fatalf("version --jq=.version = %q, want %q", got, "\"1.2.3\"\n")
+	}
+}
+
+func TestVersionJQInvalidExpressionErrors(t *testing.T) {
+	root, _ := NewRoot(appinfo.New("atl-jira", appinfo.ProductJira, "1.2.3", "", ""), "short")
+	var buf bytes.Buffer
+	root.SetOut(&buf)
+	root.SetErr(&buf)
+	root.SetArgs([]string{"version", "--jq={"})
+	// A malformed --jq expression must propagate as an error through
+	// cli.Render rather than be silently swallowed.
 	if err := root.Execute(); err == nil {
-		t.Fatal("version --jq returned no error; expected not-implemented")
+		t.Fatal("version --jq with a malformed expression returned no error")
 	}
 }
 

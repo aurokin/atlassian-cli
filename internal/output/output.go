@@ -10,6 +10,10 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/itchyny/gojq"
+
+	"github.com/aurokin/atlassian-cli/internal/apperr"
 )
 
 // Options controls how a value is rendered. It mirrors the global --json and
@@ -18,25 +22,28 @@ type Options struct {
 	// JSON selects JSON rendering: "" means human output, "*" means the full
 	// value, and any other value is a comma-separated list of top-level fields.
 	JSON string
-	// JQ is a jq-style filter expression. Phase 1 does not implement it.
+	// JQ is a jq filter expression. When set it owns the output: the value is
+	// filtered through jq instead of rendered as human text or selected JSON.
 	JQ string
 }
-
-// ErrJQNotImplemented is returned when --jq is requested. jq-style filtering
-// is a documented Phase 1 stub; it will be implemented once the dependency
-// trade-off is settled.
-var ErrJQNotImplemented = errors.New("output: --jq filtering is not yet implemented")
 
 // errNotObject is returned when field selection is requested for a value that
 // does not serialize to a JSON object.
 var errNotObject = errors.New("output: field selection requires a JSON object")
 
-// Render writes v to w according to opts. With no JSON option it writes a
-// minimal human representation; with --json it writes JSON, optionally
-// narrowed to selected top-level fields.
+// Render writes v to w according to opts. With --jq the value is filtered
+// through a jq expression; otherwise, with no JSON option it writes a minimal
+// human representation, and with --json it writes JSON, optionally narrowed to
+// selected top-level fields.
 func Render(w io.Writer, v any, opts Options) error {
 	if opts.JQ != "" {
-		return ErrJQNotImplemented
+		// A --json field list and --jq are two different projections of the
+		// same data; combining them is ambiguous.
+		if opts.JSON != "" && opts.JSON != "*" {
+			return apperr.InvalidInput(
+				"--jq cannot be combined with a --json field list; use one or the other")
+		}
+		return renderJQ(w, v, opts.JQ)
 	}
 	switch opts.JSON {
 	case "":
@@ -46,6 +53,60 @@ func Render(w io.Writer, v any, opts Options) error {
 	default:
 		return renderSelected(w, v, splitFields(opts.JSON))
 	}
+}
+
+// renderJQ evaluates a jq expression against v and writes each result as
+// compact JSON on its own line. A parse, compile, or runtime failure surfaces
+// as a structured invalid_input error, since each reflects a bad expression
+// for the given input.
+func renderJQ(w io.Writer, v any, expr string) error {
+	query, err := gojq.Parse(expr)
+	if err != nil {
+		return apperr.InvalidInput("invalid --jq expression: " + err.Error())
+	}
+	code, err := gojq.Compile(query)
+	if err != nil {
+		return apperr.InvalidInput("invalid --jq expression: " + err.Error())
+	}
+	input, err := toJSONValue(v)
+	if err != nil {
+		return err
+	}
+	iter := code.Run(input)
+	for {
+		result, ok := iter.Next()
+		if !ok {
+			break
+		}
+		if resErr, ok := result.(error); ok {
+			return apperr.InvalidInput("--jq filter failed: " + resErr.Error())
+		}
+		// gojq.Marshal handles the value types gojq emits (including big
+		// integers) and formats numbers the way jq does.
+		line, err := gojq.Marshal(result)
+		if err != nil {
+			return fmt.Errorf("output: marshal jq result: %w", err)
+		}
+		if _, err := fmt.Fprintln(w, string(line)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// toJSONValue round-trips v through JSON into a generic value, so gojq always
+// receives normalized map[string]any / []any / scalar input regardless of
+// whether the caller passed a json.RawMessage or a typed struct.
+func toJSONValue(v any) (any, error) {
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("output: encode value for --jq: %w", err)
+	}
+	var out any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, fmt.Errorf("output: decode value for --jq: %w", err)
+	}
+	return out, nil
 }
 
 // renderHuman writes a minimal human representation. Phase 1 keeps this basic:

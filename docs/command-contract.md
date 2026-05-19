@@ -1,6 +1,6 @@
 # Command Contract
 
-> Implemented behavior as of Phase 4. This document describes what the
+> Implemented behavior as of Phase 5A. This document describes what the
 > `atl-jira` and `atl-conf` binaries actually do today, not the long-term
 > design. Update it whenever the command surface changes.
 
@@ -15,7 +15,8 @@ Jira product commands: `project`, `issue` (view/list), `issue comment`
 commands: `issue` (create/edit/transition) and `issue comment`
 (create/edit/delete). Phase 4A adds the read-only Confluence product commands:
 `space` (list/view), `page` (list/view/children), `search cql`, and `status`.
-Phase 4B adds the Confluence mutating commands: `page` (create/edit).
+Phase 4B adds the Confluence mutating commands: `page` (create/edit). Phase 5A
+makes the global `--jq` flag a real jq filter.
 
 ## Binaries
 
@@ -27,10 +28,10 @@ identity and build metadata differ.
 
 ## Global flags
 
-| Flag | Type | Behavior in Phase 1 |
+| Flag | Type | Behavior |
 |---|---|---|
 | `--json` | string | JSON output. Bare `--json` renders all fields; `--json=field1,field2` selects top-level fields. |
-| `--jq` | string | Reserved. Returns a clear "not yet implemented" error if used. |
+| `--jq` | string | Filter the JSON output through a jq expression. |
 | `--site` | string | Names the configured site profile a command targets. |
 | `--no-prompt` | bool | Forces non-interactive behavior. `browse` treats it as `--no-browser` (print the URL, never open one). No other command prompts yet. |
 | `--trace` | bool | Accepted and reserved. Request tracing is not implemented yet. |
@@ -40,6 +41,22 @@ identity and build metadata differ.
 `field1` as a stray argument. Bare `--json` already means "all fields"; the
 explicit all-fields form is `--json=*`, which must be quoted in shells that
 expand globs (`--json='*'` in zsh/bash).
+
+`--jq` runs a full [jq](https://jqlang.github.io/jq/) expression — via the
+embedded `gojq` engine — against the JSON value a command would emit, and
+prints each result as compact JSON on its own line:
+
+```
+atl-jira issue view ABC-1 --jq '.fields.status.name'
+atl-conf search cql 'type = page' --jq '.results[].content.title'
+atl-jira issue list --project DEV \
+  --jq '.issues[] | select(.fields.status.name=="Done") | .key'
+```
+
+A malformed expression, or one that fails against the data, returns a
+structured `invalid_input` error. `--jq` cannot be combined with a `--json`
+field list (the two are different projections of the same data); bare `--json`
+with `--jq` is allowed and equivalent to `--jq` alone.
 
 ## Commands
 
@@ -384,8 +401,7 @@ plain `Error: <code>: <message>` line.
   Against a Data Center instance the API base is the configured URL verbatim,
   so the Cloud paths these commands use will not match; use the raw `api`
   command there.
-- `--jq` is a stub; `--trace` is accepted but inert. `--no-prompt` is honored
-  only by `browse`.
+- `--trace` is accepted but inert. `--no-prompt` is honored only by `browse`.
 - Tokens are referenced via `--token-env` only. Raw token storage and OS
   keychain support are not implemented.
 - Human (non-`--json`) output is a compact per-command summary: single-item

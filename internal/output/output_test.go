@@ -6,6 +6,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/aurokin/atlassian-cli/internal/apperr"
 )
 
 type sample struct {
@@ -81,11 +83,110 @@ func TestRenderSelectedFieldsOmitsUnknownFields(t *testing.T) {
 	}
 }
 
-func TestRenderJQReturnsNotImplemented(t *testing.T) {
+func TestRenderJQExtractsField(t *testing.T) {
 	var buf bytes.Buffer
-	err := Render(&buf, sample{}, Options{JQ: ".binary"})
-	if !errors.Is(err, ErrJQNotImplemented) {
-		t.Fatalf("err = %v, want ErrJQNotImplemented", err)
+	in := sample{Binary: "atl-jira", Product: "jira", Version: "1.0.0"}
+	if err := Render(&buf, in, Options{JQ: ".product"}); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	if got := buf.String(); got != "\"jira\"\n" {
+		t.Fatalf("--jq .product = %q, want %q", got, "\"jira\"\n")
+	}
+}
+
+func TestRenderJQIteratesArrayResults(t *testing.T) {
+	var buf bytes.Buffer
+	// A json.RawMessage input exercises the path most commands take.
+	in := json.RawMessage(`{"results":[{"id":"1"},{"id":"2"}]}`)
+	if err := Render(&buf, in, Options{JQ: ".results[].id"}); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	if got := buf.String(); got != "\"1\"\n\"2\"\n" {
+		t.Fatalf("--jq iteration = %q, want each id on its own line", got)
+	}
+}
+
+func TestRenderJQComposesPipesAndSelect(t *testing.T) {
+	var buf bytes.Buffer
+	in := json.RawMessage(`{"issues":[{"key":"A-1","done":true},{"key":"A-2","done":false}]}`)
+	if err := Render(&buf, in, Options{JQ: ".issues[] | select(.done) | .key"}); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	if got := buf.String(); got != "\"A-1\"\n" {
+		t.Fatalf("--jq select = %q, want only the done issue's key", got)
+	}
+}
+
+func TestRenderJQInvalidExpressionIsStructured(t *testing.T) {
+	var buf bytes.Buffer
+	err := Render(&buf, sample{}, Options{JQ: "{"})
+	if err == nil {
+		t.Fatal("Render accepted an invalid --jq expression")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+		t.Fatalf("err = %v, want an invalid_input *apperr.Error", err)
+	}
+}
+
+func TestRenderJQCompileErrorIsStructured(t *testing.T) {
+	var buf bytes.Buffer
+	// "$undefined" parses cleanly but fails to compile: the variable is
+	// unbound. This exercises the compile-error branch, distinct from parse.
+	err := Render(&buf, sample{}, Options{JQ: "$undefined"})
+	if err == nil {
+		t.Fatal("Render accepted a --jq expression that fails to compile")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+		t.Fatalf("err = %v, want an invalid_input *apperr.Error", err)
+	}
+}
+
+func TestRenderJQEmptyStreamPrintsNothing(t *testing.T) {
+	var buf bytes.Buffer
+	in := json.RawMessage(`{"results":[]}`)
+	if err := Render(&buf, in, Options{JQ: ".results[]"}); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	if got := buf.String(); got != "" {
+		t.Fatalf("empty --jq stream printed %q, want nothing", got)
+	}
+}
+
+func TestRenderJQRuntimeErrorIsStructured(t *testing.T) {
+	var buf bytes.Buffer
+	// Indexing a string with a field access is a jq runtime type error.
+	err := Render(&buf, json.RawMessage(`"plain string"`), Options{JQ: ".field"})
+	if err == nil {
+		t.Fatal("Render accepted a --jq expression that fails at runtime")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+		t.Fatalf("err = %v, want an invalid_input *apperr.Error", err)
+	}
+}
+
+func TestRenderJQRejectsJSONFieldListCombo(t *testing.T) {
+	var buf bytes.Buffer
+	err := Render(&buf, sample{}, Options{JSON: "binary,version", JQ: ".binary"})
+	if err == nil {
+		t.Fatal("Render accepted --jq combined with a --json field list")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+		t.Fatalf("err = %v, want an invalid_input *apperr.Error", err)
+	}
+}
+
+func TestRenderJQAllowsBareJSONFlag(t *testing.T) {
+	var buf bytes.Buffer
+	// Bare --json (the "*" sentinel) with --jq is allowed: --jq owns output.
+	if err := Render(&buf, sample{Product: "jira"}, Options{JSON: "*", JQ: ".product"}); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	if got := buf.String(); got != "\"jira\"\n" {
+		t.Fatalf("--json + --jq = %q, want %q", got, "\"jira\"\n")
 	}
 }
 
