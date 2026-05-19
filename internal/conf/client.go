@@ -181,6 +181,112 @@ func (c *Client) UpdatePage(ctx context.Context, id, status, title, bodyFormat, 
 	})
 }
 
+// maxFollowPages caps how many pages an --all request follows, guarding
+// against an unbounded loop from a malformed cursor.
+const maxFollowPages = 100
+
+// decodeError wraps a pagination decode failure as a structured error.
+func decodeError(err error) error {
+	return apperr.New("response_decode_failed",
+		"could not decode the Confluence API response: "+err.Error())
+}
+
+// absoluteURL resolves a _links.next reference to an absolute, same-origin URL
+// the httpclient will accept. Confluence returns next as a root-relative path
+// (e.g. /wiki/api/v2/spaces?cursor=...), which is rooted at the API origin; an
+// already-absolute reference is returned unchanged.
+func (c *Client) absoluteURL(ref string) (string, error) {
+	u, err := url.Parse(ref)
+	if err != nil {
+		return "", apperr.InvalidInput("invalid pagination link " + ref + ": " + err.Error())
+	}
+	if u.IsAbs() {
+		return ref, nil
+	}
+	base, err := c.http.APIBase()
+	if err != nil {
+		return "", err
+	}
+	bu, err := url.Parse(base)
+	if err != nil {
+		return "", apperr.InvalidInput("could not parse the API base URL: " + err.Error())
+	}
+	bu.Path = u.Path
+	bu.RawQuery = u.RawQuery
+	return bu.String(), nil
+}
+
+// followList follows a Confluence list endpoint to completion, starting from
+// first (a path or absolute URL), and returns an aggregated {"results": [...]}
+// body. Confluence list responses page via the _links.next cursor; items are
+// kept verbatim so every field each page returned is preserved. Following
+// stops at maxFollowPages.
+func (c *Client) followList(ctx context.Context, first string) (json.RawMessage, error) {
+	all := []json.RawMessage{}
+	reqURL := first
+	for page := 0; page < maxFollowPages; page++ {
+		raw, err := c.get(ctx, reqURL)
+		if err != nil {
+			return nil, err
+		}
+		var pg struct {
+			Results []json.RawMessage `json:"results"`
+			Links   struct {
+				Next string `json:"next"`
+			} `json:"_links"`
+		}
+		if err := json.Unmarshal(raw, &pg); err != nil {
+			return nil, decodeError(err)
+		}
+		all = append(all, pg.Results...)
+		if pg.Links.Next == "" {
+			break
+		}
+		if reqURL, err = c.absoluteURL(pg.Links.Next); err != nil {
+			return nil, err
+		}
+	}
+	out, err := json.Marshal(map[string][]json.RawMessage{"results": all})
+	if err != nil {
+		return nil, decodeError(err)
+	}
+	return out, nil
+}
+
+// ListSpacesAll follows GET /spaces to completion.
+func (c *Client) ListSpacesAll(ctx context.Context, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.followList(ctx, withQuery("/spaces", q))
+}
+
+// ListPagesAll follows GET /pages for a space to completion.
+func (c *Client) ListPagesAll(ctx context.Context, spaceID string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	q.Set("space-id", spaceID)
+	setLimit(q, limit)
+	return c.followList(ctx, withQuery("/pages", q))
+}
+
+// GetChildPagesAll follows a page's children list to completion.
+func (c *Client) GetChildPagesAll(ctx context.Context, id string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.followList(ctx, withQuery("/pages/"+url.PathEscape(id)+"/children", q))
+}
+
+// SearchCQLAll follows the v1 CQL search to completion.
+func (c *Client) SearchCQLAll(ctx context.Context, cql string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	q.Set("cql", cql)
+	setLimit(q, limit)
+	u, err := c.v1URL("/search", q)
+	if err != nil {
+		return nil, err
+	}
+	return c.followList(ctx, u)
+}
+
 // setLimit records a positive limit as the API limit parameter.
 func setLimit(q url.Values, limit int) {
 	if limit > 0 {

@@ -361,3 +361,104 @@ func TestDecodeRejectsMalformedJSON(t *testing.T) {
 		t.Fatal("Decode accepted malformed JSON")
 	}
 }
+
+func TestClientListSpacesAllFollowsCursor(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/spaces" {
+			t.Errorf("path = %q, want /spaces", r.URL.Path)
+		}
+		switch r.URL.Query().Get("cursor") {
+		case "":
+			_, _ = w.Write([]byte(`{"results":[{"id":"1"},{"id":"2"}],` +
+				`"_links":{"next":"/spaces?cursor=c2"}}`))
+		case "c2":
+			_, _ = w.Write([]byte(`{"results":[{"id":"3"}],"_links":{}}`))
+		default:
+			t.Errorf("unexpected cursor %q", r.URL.Query().Get("cursor"))
+		}
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).ListSpacesAll(context.Background(), 2)
+	if err != nil {
+		t.Fatalf("ListSpacesAll: %v", err)
+	}
+	page, err := Decode[SpacePage](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(page.Results) != 3 {
+		t.Fatalf("aggregated %d spaces, want 3: %+v", len(page.Results), page.Results)
+	}
+}
+
+func TestClientSearchCQLAllFollowsCursor(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/rest/api/search" {
+			t.Errorf("path = %q, want /rest/api/search", r.URL.Path)
+		}
+		switch r.URL.Query().Get("cursor") {
+		case "":
+			_, _ = w.Write([]byte(`{"results":[{"content":{"id":"1"}}],` +
+				`"_links":{"next":"/rest/api/search?cursor=c2"}}`))
+		case "c2":
+			_, _ = w.Write([]byte(`{"results":[{"content":{"id":"2"}}]}`))
+		default:
+			t.Errorf("unexpected cursor %q", r.URL.Query().Get("cursor"))
+		}
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).SearchCQLAll(context.Background(), "type = page", 1)
+	if err != nil {
+		t.Fatalf("SearchCQLAll: %v", err)
+	}
+	results, err := Decode[SearchResults](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(results.Results) != 2 {
+		t.Fatalf("aggregated %d results, want 2", len(results.Results))
+	}
+}
+
+func TestClientListPagesAllCarriesSpaceID(t *testing.T) {
+	var gotSpaceID string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotSpaceID = r.URL.Query().Get("space-id")
+		_, _ = w.Write([]byte(`{"results":[{"id":"10"}]}`))
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).ListPagesAll(context.Background(), "1", 0)
+	if err != nil {
+		t.Fatalf("ListPagesAll: %v", err)
+	}
+	if gotSpaceID != "1" {
+		t.Errorf("ListPagesAll sent space-id %q, want 1", gotSpaceID)
+	}
+	page, err := Decode[PageList](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(page.Results) != 1 {
+		t.Fatalf("aggregated %d pages, want 1", len(page.Results))
+	}
+}
+
+func TestClientListSpacesAllMapsError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"message":"You do not have permission."}`))
+	}))
+	defer srv.Close()
+
+	_, err := newTestClient(srv).ListSpacesAll(context.Background(), 0)
+	if err == nil {
+		t.Fatal("ListSpacesAll against a 403 endpoint returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeForbidden {
+		t.Fatalf("error = %v, want a forbidden *apperr.Error", err)
+	}
+}
