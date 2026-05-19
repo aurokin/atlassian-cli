@@ -72,3 +72,38 @@ func adfIsBlock(t string) bool {
 	}
 	return false
 }
+
+// adfDoc and its children are the minimal Atlassian Document Format shapes
+// DocOf emits — just enough to carry plain text as an issue description or a
+// comment body.
+type adfDoc struct {
+	Type    string         `json:"type"`
+	Version int            `json:"version"`
+	Content []adfParagraph `json:"content"`
+}
+
+type adfParagraph struct {
+	Type    string    `json:"type"`
+	Content []adfSpan `json:"content,omitempty"`
+}
+
+type adfSpan struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
+// DocOf wraps plain text in a minimal ADF document, suitable as an issue
+// description or comment body. Each line becomes its own paragraph; a blank
+// line becomes an empty paragraph, since an ADF text node cannot be empty.
+func DocOf(text string) json.RawMessage {
+	doc := adfDoc{Type: "doc", Version: 1}
+	for _, line := range strings.Split(text, "\n") {
+		para := adfParagraph{Type: "paragraph"}
+		if line != "" {
+			para.Content = []adfSpan{{Type: "text", Text: line}}
+		}
+		doc.Content = append(doc.Content, para)
+	}
+	b, _ := json.Marshal(doc)
+	return json.RawMessage(b)
+}

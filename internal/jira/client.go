@@ -5,11 +5,14 @@
 package jira
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/url"
 	"strconv"
 
+	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/httpclient"
 )
 
@@ -32,6 +35,27 @@ func (c *Client) APIBase() (string, error) {
 // non-2xx response surfaces as the structured *apperr.Error from httpclient.
 func (c *Client) get(ctx context.Context, path string) (json.RawMessage, error) {
 	resp, err := c.http.Do(ctx, "GET", path, nil)
+	if err != nil {
+		return nil, err
+	}
+	return json.RawMessage(resp.Body), nil
+}
+
+// send marshals payload as a JSON request body, issues method against an
+// API-relative path, and returns the raw response body. A nil payload sends no
+// body. A non-2xx response surfaces as the structured *apperr.Error from
+// httpclient.
+func (c *Client) send(ctx context.Context, method, path string, payload any) (json.RawMessage, error) {
+	var body io.Reader
+	if payload != nil {
+		b, err := json.Marshal(payload)
+		if err != nil {
+			return nil, apperr.New("request_encode_failed",
+				"could not encode the Jira API request body: "+err.Error())
+		}
+		body = bytes.NewReader(b)
+	}
+	resp, err := c.http.Do(ctx, method, path, body)
 	if err != nil {
 		return nil, err
 	}
@@ -84,6 +108,56 @@ func (c *Client) ListComments(ctx context.Context, issue string, limit int) (jso
 // GetComment returns a single comment (GET /issue/{idOrKey}/comment/{id}).
 func (c *Client) GetComment(ctx context.Context, issue, commentID string) (json.RawMessage, error) {
 	return c.get(ctx, "/issue/"+url.PathEscape(issue)+"/comment/"+url.PathEscape(commentID))
+}
+
+// CreateIssue creates an issue (POST /issue) from the given field map and
+// returns the raw creation response (id, key, self).
+func (c *Client) CreateIssue(ctx context.Context, fields map[string]any) (json.RawMessage, error) {
+	return c.send(ctx, "POST", "/issue", map[string]any{"fields": fields})
+}
+
+// EditIssue updates an issue's fields (PUT /issue/{idOrKey}). Jira returns no
+// body on success.
+func (c *Client) EditIssue(ctx context.Context, idOrKey string, fields map[string]any) error {
+	_, err := c.send(ctx, "PUT", "/issue/"+url.PathEscape(idOrKey),
+		map[string]any{"fields": fields})
+	return err
+}
+
+// GetTransitions returns the transitions available on an issue from its
+// current status (GET /issue/{idOrKey}/transitions).
+func (c *Client) GetTransitions(ctx context.Context, idOrKey string) (json.RawMessage, error) {
+	return c.get(ctx, "/issue/"+url.PathEscape(idOrKey)+"/transitions")
+}
+
+// DoTransition applies a transition to an issue
+// (POST /issue/{idOrKey}/transitions). Jira returns no body on success.
+func (c *Client) DoTransition(ctx context.Context, idOrKey, transitionID string) error {
+	_, err := c.send(ctx, "POST", "/issue/"+url.PathEscape(idOrKey)+"/transitions",
+		map[string]any{"transition": map[string]string{"id": transitionID}})
+	return err
+}
+
+// CreateComment adds a comment to an issue (POST /issue/{idOrKey}/comment). The
+// body is an ADF document; the created comment is returned.
+func (c *Client) CreateComment(ctx context.Context, issue string, body json.RawMessage) (json.RawMessage, error) {
+	return c.send(ctx, "POST", "/issue/"+url.PathEscape(issue)+"/comment",
+		map[string]any{"body": body})
+}
+
+// EditComment replaces a comment's body (PUT /issue/{idOrKey}/comment/{id}).
+// The body is an ADF document; the updated comment is returned.
+func (c *Client) EditComment(ctx context.Context, issue, commentID string, body json.RawMessage) (json.RawMessage, error) {
+	return c.send(ctx, "PUT", "/issue/"+url.PathEscape(issue)+"/comment/"+url.PathEscape(commentID),
+		map[string]any{"body": body})
+}
+
+// DeleteComment removes a comment (DELETE /issue/{idOrKey}/comment/{id}). Jira
+// returns no body on success.
+func (c *Client) DeleteComment(ctx context.Context, issue, commentID string) error {
+	_, err := c.send(ctx, "DELETE",
+		"/issue/"+url.PathEscape(issue)+"/comment/"+url.PathEscape(commentID), nil)
+	return err
 }
 
 // setLimit records a positive limit as the API maxResults parameter.
