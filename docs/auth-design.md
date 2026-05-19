@@ -43,7 +43,7 @@ Important: Atlassian says integrations generally cannot distinguish scoped from 
 
 ```json
 {
-  "default_site": "work",
+  "version": 1,
   "sites": {
     "work": {
       "base_url": "https://example.atlassian.net",
@@ -52,26 +52,57 @@ Important: Atlassian says integrations generally cannot distinguish scoped from 
       "auth_type": "api-token-basic",
       "token_style": "cloud-scoped",
       "username": "user@example.com",
-      "token": "...",
+      "token_ref": "keyring",
       "cloud_id": "required-for-cloud-scoped-and-oauth",
-      "api_base_url": "https://api.atlassian.com/ex/jira/<cloudId>",
-      "updated_at": "2026-05-14T18:53:00Z"
+      "api_base_url": "https://api.atlassian.com/ex/jira/<cloudId>"
     }
   }
 }
 ```
 
+`config.json` never holds a raw token. `token_ref` is an indirect pointer to
+where the token actually lives; see Credential storage below.
+
+## Credential storage
+
+The raw token is never written to `config.json`. A profile's `token_ref`
+records which backend holds it, and the value is fetched only at request time:
+
+| `token_ref` | Backend | Set by |
+|-------------|---------|--------|
+| `env:NAME`  | Environment variable `NAME` (value never stored). | `auth login --token-env NAME` |
+| `keyring`   | OS keychain — macOS Keychain, Linux Secret Service, Windows Credential Manager — service `atlassian-cli`, account = site name. | `auth login --token-stdin` / `--token`, keyring usable |
+| `file`      | A `0600` `credentials.json` beside `config.json`, keyed by site name. | `auth login --token-stdin` / `--token`, no keyring available |
+
+- The keychain is reached through `github.com/zalando/go-keyring`.
+- `auth login` prefers the keychain. When the keychain cannot be written
+  (CI, containers, minimal Linux) it falls back to the `0600` file and prints
+  a warning that the token is not keychain-protected — storing a token always
+  succeeds.
+- `--token-env` is the headless/CI path and stores nothing; it remains fully
+  supported. `--token-stdin` is the preferred interactive path because the
+  token never enters the shell history.
+- `auth logout` deletes the stored secret from its backend before removing the
+  profile. `auth status` reports whether the token is currently resolvable,
+  never the value.
+- Guardrail: no real token is ever committed to the repo. Tests use the
+  go-keyring in-memory mock and temp directories.
+
 ## Required commands
 
 ```bash
-atl-jira auth login --token-style cloud-classic --site work --url https://example.atlassian.net --username user@example.com --with-token
-atl-jira auth login --token-style cloud-scoped --site work --url https://example.atlassian.net --username user@example.com --cloud-id "$ATLASSIAN_CLOUD_ID" --with-token
-atl-jira auth status --check --json '*'
+atl-jira auth login --token-style cloud-classic --site work --url https://example.atlassian.net --username user@example.com --token-stdin
+atl-jira auth login --token-style cloud-scoped --site work --url https://example.atlassian.net --username user@example.com --cloud-id "$ATLASSIAN_CLOUD_ID" --token-stdin
+atl-jira auth status --site work --json '*'
 
-atl-conf auth login --token-style cloud-classic --site work --url https://example.atlassian.net/wiki --username user@example.com --with-token
-atl-conf auth login --token-style cloud-scoped --site work --url https://example.atlassian.net/wiki --username user@example.com --cloud-id "$ATLASSIAN_CLOUD_ID" --with-token
-atl-conf auth status --check --json '*'
+atl-conf auth login --token-style cloud-classic --site work --url https://example.atlassian.net/wiki --username user@example.com --token-stdin
+atl-conf auth login --token-style cloud-scoped --site work --url https://example.atlassian.net/wiki --username user@example.com --cloud-id "$ATLASSIAN_CLOUD_ID" --token-stdin
+atl-conf auth status --site work --json '*'
 ```
+
+The token is read from stdin (`--token-stdin`); `--token-env NAME` is the
+headless/CI alternative. A live credential check is the product `status`
+command, distinct from the offline `auth status`.
 
 ## Recovery guidance requirements
 
