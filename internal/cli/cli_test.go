@@ -78,6 +78,19 @@ func TestVersionJQFiltersOutput(t *testing.T) {
 	}
 }
 
+func TestVersionJQInvalidExpressionErrors(t *testing.T) {
+	root, _ := NewRoot(appinfo.New("atl-jira", appinfo.ProductJira, "1.2.3", "", ""), "short")
+	var buf bytes.Buffer
+	root.SetOut(&buf)
+	root.SetErr(&buf)
+	root.SetArgs([]string{"version", "--jq={"})
+	// A malformed --jq expression must propagate as an error through
+	// cli.Render rather than be silently swallowed.
+	if err := root.Execute(); err == nil {
+		t.Fatal("version --jq with a malformed expression returned no error")
+	}
+}
+
 func TestExecuteRendersJSONErrorEnvelope(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)

@@ -1,6 +1,6 @@
 # Command Contract
 
-> Implemented behavior as of Phase 4. This document describes what the
+> Implemented behavior as of Phase 5A. This document describes what the
 > `atl-jira` and `atl-conf` binaries actually do today, not the long-term
 > design. Update it whenever the command surface changes.
 
@@ -15,7 +15,8 @@ Jira product commands: `project`, `issue` (view/list), `issue comment`
 commands: `issue` (create/edit/transition) and `issue comment`
 (create/edit/delete). Phase 4A adds the read-only Confluence product commands:
 `space` (list/view), `page` (list/view/children), `search cql`, and `status`.
-Phase 4B adds the Confluence mutating commands: `page` (create/edit).
+Phase 4B adds the Confluence mutating commands: `page` (create/edit). Phase 5A
+makes the global `--jq` flag a real jq filter.
 
 ## Binaries
 

@@ -129,6 +129,31 @@ func TestRenderJQInvalidExpressionIsStructured(t *testing.T) {
 	}
 }
 
+func TestRenderJQCompileErrorIsStructured(t *testing.T) {
+	var buf bytes.Buffer
+	// "$undefined" parses cleanly but fails to compile: the variable is
+	// unbound. This exercises the compile-error branch, distinct from parse.
+	err := Render(&buf, sample{}, Options{JQ: "$undefined"})
+	if err == nil {
+		t.Fatal("Render accepted a --jq expression that fails to compile")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+		t.Fatalf("err = %v, want an invalid_input *apperr.Error", err)
+	}
+}
+
+func TestRenderJQEmptyStreamPrintsNothing(t *testing.T) {
+	var buf bytes.Buffer
+	in := json.RawMessage(`{"results":[]}`)
+	if err := Render(&buf, in, Options{JQ: ".results[]"}); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	if got := buf.String(); got != "" {
+		t.Fatalf("empty --jq stream printed %q, want nothing", got)
+	}
+}
+
 func TestRenderJQRuntimeErrorIsStructured(t *testing.T) {
 	var buf bytes.Buffer
 	// Indexing a string with a field access is a jq runtime type error.

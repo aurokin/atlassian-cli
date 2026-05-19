@@ -81,7 +81,9 @@ func renderJQ(w io.Writer, v any, expr string) error {
 		if resErr, ok := result.(error); ok {
 			return apperr.InvalidInput("--jq filter failed: " + resErr.Error())
 		}
-		line, err := json.Marshal(result)
+		// gojq.Marshal handles the value types gojq emits (including big
+		// integers) and formats numbers the way jq does.
+		line, err := gojq.Marshal(result)
 		if err != nil {
 			return fmt.Errorf("output: marshal jq result: %w", err)
 		}

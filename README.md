@@ -17,9 +17,10 @@ resolution, the Jira MVP (`project`/`issue`/`search`/`status` plus the
 mutating `issue` create/edit/transition and `issue comment`
 create/edit/delete), and the Confluence MVP (`space`/`page`/`search cql`/
 `status` plus `page create` and `page edit`). Both product CLIs now have a
-full MVP command surface. The post-MVP work — `--jq`/`--all`, secure token
-storage, and deeper Confluence and Jira coverage — is sequenced in
-[docs/post-mvp-roadmap.md](docs/post-mvp-roadmap.md).
+full MVP command surface. The post-MVP work is sequenced in
+[docs/post-mvp-roadmap.md](docs/post-mvp-roadmap.md) as Phases 5–8; Phase 5A
+makes the global `--jq` flag a real jq filter. Still ahead: `--all`
+pagination, secure token storage, and deeper Confluence and Jira coverage.
 
 ```bash
 go test ./...
