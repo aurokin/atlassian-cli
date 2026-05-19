@@ -32,6 +32,7 @@ func newPageListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	var (
 		space string
 		limit int
+		all   bool
 	)
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -49,7 +50,11 @@ func newPageListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			raw, err := cc.ListPages(cmd.Context(), sp.ID, limit)
+			list := cc.ListPages
+			if all {
+				list = cc.ListPagesAll
+			}
+			raw, err := list(cmd.Context(), sp.ID, limit)
 			if err != nil {
 				return err
 			}
@@ -67,6 +72,7 @@ func newPageListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&space, "space", "", "space key (required)")
 	f.IntVar(&limit, "limit", 0, "maximum number of pages to return")
+	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
 	return cmd
 }
 
@@ -98,7 +104,10 @@ func newPageViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 }
 
 func newPageChildrenCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
-	var limit int
+	var (
+		limit int
+		all   bool
+	)
 	cmd := &cobra.Command{
 		Use:   "children <id>",
 		Short: "List the direct child pages of a page",
@@ -108,7 +117,11 @@ func newPageChildrenCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			raw, err := cc.GetChildPages(cmd.Context(), args[0], limit)
+			children := cc.GetChildPages
+			if all {
+				children = cc.GetChildPagesAll
+			}
+			raw, err := children(cmd.Context(), args[0], limit)
 			if err != nil {
 				return err
 			}
@@ -123,7 +136,9 @@ func newPageChildrenCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			return nil
 		},
 	}
-	cmd.Flags().IntVar(&limit, "limit", 0, "maximum number of child pages to return")
+	f := cmd.Flags()
+	f.IntVar(&limit, "limit", 0, "maximum number of child pages to return")
+	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
 	return cmd
 }
 

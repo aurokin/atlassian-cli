@@ -29,7 +29,10 @@ func newCommentCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 }
 
 func newCommentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
-	var limit int
+	var (
+		limit int
+		all   bool
+	)
 	cmd := &cobra.Command{
 		Use:   "list <issue>",
 		Short: "List comments on an issue",
@@ -39,7 +42,11 @@ func newCommentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			raw, err := jc.ListComments(cmd.Context(), args[0], limit)
+			list := jc.ListComments
+			if all {
+				list = jc.ListCommentsAll
+			}
+			raw, err := list(cmd.Context(), args[0], limit)
 			if err != nil {
 				return err
 			}
@@ -54,7 +61,9 @@ func newCommentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			return nil
 		},
 	}
-	cmd.Flags().IntVar(&limit, "limit", 0, "maximum number of comments to return")
+	f := cmd.Flags()
+	f.IntVar(&limit, "limit", 0, "maximum number of comments to return")
+	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
 	return cmd
 }
 

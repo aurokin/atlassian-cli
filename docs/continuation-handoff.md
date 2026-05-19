@@ -8,17 +8,19 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `phase-5-output-pagination` (Phase 5 work). Phases 1–4 and the
-post-MVP roadmap are merged to `main`.
+Branch: `phase-5b-pagination` (Phase 5B work). Phases 1–4, the post-MVP
+roadmap, and Phase 5A are merged to `main`.
 
 Status at handoff: Phases 1–4 are merged to `main` — both product CLIs have a
 full MVP command surface — and `docs/post-mvp-roadmap.md` sequences the
-post-MVP work into Phases 5–8. Phase 5A — `--jq` filtering — is implemented on
-the `phase-5-output-pagination` branch per
-`docs/phase-5-output-pagination-plan.md`: the `--jq` stub in `internal/output`
-is replaced with a real jq filter backed by `github.com/itchyny/gojq` (the
-project's first dependency beyond Cobra), with `go test ./...` passing.
-Phase 5B — the `--all` follow-all-pages flag — is not started. See
+post-MVP work into Phases 5–8. Phase 5A — `--jq` filtering backed by
+`github.com/itchyny/gojq` (the project's first dependency beyond Cobra) — is
+merged to `main`. Phase 5B — the `--all` follow-all-pages flag — is
+implemented on the `phase-5b-pagination` branch per
+`docs/phase-5-output-pagination-plan.md`: a page-following helper added to the
+Jira and Confluence clients handles the offset, token, and cursor pagination
+styles, and `--all` is wired onto every list/search command, emitting a
+synthesized aggregate under a 100-page cap. `go test ./...` passes. See
 `docs/command-contract.md` for the implemented surface.
 
 ## Canonical CLI names
@@ -66,18 +68,15 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 
 ## Next action
 
-Phase 5A (`--jq`) is implemented on `phase-5-output-pagination` and ready for
-PR 1.
+Phase 5B (`--all`) is implemented on `phase-5b-pagination` and ready for
+PR 2. Phase 5 (5A + 5B) completes the output and pagination polish.
 
-Next: **Phase 5B — the `--all` follow-all-pages flag**, per
-`docs/phase-5-output-pagination-plan.md` (Tasks 4–7). It adds cursor fields to
-the page models, a page-following helper to the Jira and Confluence clients
-(handling the offset, token, and cursor pagination styles), and an `--all`
-flag on every list/search command that emits a synthesized aggregate under a
-documented page cap.
+Next: **Phase 6 — secure token storage**, per `docs/post-mvp-roadmap.md`. It
+moves credential handling beyond `--token-env` toward OS-keychain-backed
+secure storage.
 
-Phases 6–8 follow: secure token storage, Confluence content depth, deeper
-Jira coverage. Phases 7 and 8 are independent and may be reordered.
+Phases 7–8 follow: Confluence content depth, deeper Jira coverage. Phases 7
+and 8 are independent and may be reordered.
 
 Architecture note: the shared command wiring (`root`, `version`, `auth`,
 `api`, `resolve`, `browse`) lives in `internal/cli`, which also exports

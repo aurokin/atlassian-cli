@@ -22,7 +22,10 @@ func newSearchCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 }
 
 func newSearchCQLCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
-	var limit int
+	var (
+		limit int
+		all   bool
+	)
 	cmd := &cobra.Command{
 		Use:   "cql <cql>",
 		Short: "Search content with a raw CQL query",
@@ -32,7 +35,11 @@ func newSearchCQLCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			raw, err := cc.SearchCQL(cmd.Context(), args[0], limit)
+			search := cc.SearchCQL
+			if all {
+				search = cc.SearchCQLAll
+			}
+			raw, err := search(cmd.Context(), args[0], limit)
 			if err != nil {
 				return err
 			}
@@ -47,7 +54,9 @@ func newSearchCQLCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().IntVar(&limit, "limit", 0, "maximum number of results to return")
+	f := cmd.Flags()
+	f.IntVar(&limit, "limit", 0, "maximum number of results to return")
+	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
 	return cmd
 }
 

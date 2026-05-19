@@ -160,6 +160,154 @@ func (c *Client) DeleteComment(ctx context.Context, issue, commentID string) err
 	return err
 }
 
+// maxFollowPages caps how many pages an --all request follows, guarding
+// against an unbounded loop from a malformed cursor.
+const maxFollowPages = 100
+
+// decodeError wraps a pagination decode failure as a structured error.
+func decodeError(err error) error {
+	return apperr.New("response_decode_failed",
+		"could not decode the Jira API response: "+err.Error())
+}
+
+// followAll follows a paginated endpoint to completion. fetch issues the
+// request for a cursor ("" for the first page); extract pulls a page's raw
+// items and the next cursor ("" when there is no next page) from a response.
+// It returns every collected item, stopping at maxFollowPages.
+func followAll(ctx context.Context,
+	fetch func(context.Context, string) (json.RawMessage, error),
+	extract func(json.RawMessage) ([]json.RawMessage, string, error),
+) ([]json.RawMessage, error) {
+	all := []json.RawMessage{}
+	cursor := ""
+	for page := 0; page < maxFollowPages; page++ {
+		raw, err := fetch(ctx, cursor)
+		if err != nil {
+			return nil, err
+		}
+		items, next, err := extract(raw)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, items...)
+		if next == "" {
+			break
+		}
+		cursor = next
+	}
+	return all, nil
+}
+
+// synthesize assembles an aggregate list body, {"<key>": [<item>, ...]}. Items
+// are kept verbatim, so every field each API page returned is preserved.
+func synthesize(key string, items []json.RawMessage) (json.RawMessage, error) {
+	out, err := json.Marshal(map[string][]json.RawMessage{key: items})
+	if err != nil {
+		return nil, decodeError(err)
+	}
+	return out, nil
+}
+
+// SearchProjectsAll follows /project/search to completion and returns an
+// aggregated {"values": [...]} body. /project/search is offset paginated.
+func (c *Client) SearchProjectsAll(ctx context.Context, limit int) (json.RawMessage, error) {
+	items, err := followAll(ctx,
+		func(ctx context.Context, cursor string) (json.RawMessage, error) {
+			q := url.Values{}
+			setLimit(q, limit)
+			if cursor != "" {
+				q.Set("startAt", cursor)
+			}
+			return c.get(ctx, withQuery("/project/search", q))
+		},
+		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
+			var pg struct {
+				Values  []json.RawMessage `json:"values"`
+				StartAt int               `json:"startAt"`
+				Total   int               `json:"total"`
+				IsLast  bool              `json:"isLast"`
+			}
+			if err := json.Unmarshal(raw, &pg); err != nil {
+				return nil, "", decodeError(err)
+			}
+			next := ""
+			if end := pg.StartAt + len(pg.Values); !pg.IsLast && len(pg.Values) > 0 && end < pg.Total {
+				next = strconv.Itoa(end)
+			}
+			return pg.Values, next, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return synthesize("values", items)
+}
+
+// SearchIssuesAll follows /search/jql to completion and returns an aggregated
+// {"issues": [...]} body. /search/jql is token paginated via nextPageToken.
+func (c *Client) SearchIssuesAll(ctx context.Context, jql string, limit int) (json.RawMessage, error) {
+	items, err := followAll(ctx,
+		func(ctx context.Context, cursor string) (json.RawMessage, error) {
+			q := url.Values{}
+			q.Set("jql", jql)
+			q.Set("fields", "*navigable")
+			setLimit(q, limit)
+			if cursor != "" {
+				q.Set("nextPageToken", cursor)
+			}
+			return c.get(ctx, withQuery("/search/jql", q))
+		},
+		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
+			var pg struct {
+				Issues        []json.RawMessage `json:"issues"`
+				NextPageToken string            `json:"nextPageToken"`
+			}
+			if err := json.Unmarshal(raw, &pg); err != nil {
+				return nil, "", decodeError(err)
+			}
+			return pg.Issues, pg.NextPageToken, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return synthesize("issues", items)
+}
+
+// ListCommentsAll follows an issue's comment list to completion and returns an
+// aggregated {"comments": [...]} body. The endpoint is offset paginated.
+func (c *Client) ListCommentsAll(ctx context.Context, issue string, limit int) (json.RawMessage, error) {
+	items, err := followAll(ctx,
+		func(ctx context.Context, cursor string) (json.RawMessage, error) {
+			q := url.Values{}
+			setLimit(q, limit)
+			if cursor != "" {
+				q.Set("startAt", cursor)
+			}
+			return c.get(ctx, withQuery("/issue/"+url.PathEscape(issue)+"/comment", q))
+		},
+		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
+			var pg struct {
+				Comments []json.RawMessage `json:"comments"`
+				StartAt  int               `json:"startAt"`
+				Total    int               `json:"total"`
+			}
+			if err := json.Unmarshal(raw, &pg); err != nil {
+				return nil, "", decodeError(err)
+			}
+			next := ""
+			if end := pg.StartAt + len(pg.Comments); len(pg.Comments) > 0 && end < pg.Total {
+				next = strconv.Itoa(end)
+			}
+			return pg.Comments, next, nil
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return synthesize("comments", items)
+}
+
 // setLimit records a positive limit as the API maxResults parameter.
 func setLimit(q url.Values, limit int) {
 	if limit > 0 {

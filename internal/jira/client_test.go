@@ -387,3 +387,101 @@ func TestClientDeleteComment(t *testing.T) {
 		t.Errorf("DELETE sent a body: %s", got.body)
 	}
 }
+
+func TestClientSearchProjectsAllFollowsOffsetPages(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Query().Get("startAt") {
+		case "", "0":
+			_, _ = w.Write([]byte(`{"startAt":0,"maxResults":2,"total":3,"isLast":false,` +
+				`"values":[{"key":"A"},{"key":"B"}]}`))
+		case "2":
+			_, _ = w.Write([]byte(`{"startAt":2,"maxResults":2,"total":3,"isLast":true,` +
+				`"values":[{"key":"C"}]}`))
+		default:
+			t.Errorf("unexpected startAt %q", r.URL.Query().Get("startAt"))
+		}
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).SearchProjectsAll(context.Background(), 2)
+	if err != nil {
+		t.Fatalf("SearchProjectsAll: %v", err)
+	}
+	page, err := Decode[ProjectPage](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(page.Values) != 3 {
+		t.Fatalf("aggregated %d projects, want 3: %+v", len(page.Values), page.Values)
+	}
+}
+
+func TestClientSearchIssuesAllFollowsTokenPages(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Query().Get("nextPageToken") {
+		case "":
+			_, _ = w.Write([]byte(`{"issues":[{"key":"P-1"},{"key":"P-2"}],"nextPageToken":"tok2"}`))
+		case "tok2":
+			_, _ = w.Write([]byte(`{"issues":[{"key":"P-3"}]}`))
+		default:
+			t.Errorf("unexpected nextPageToken %q", r.URL.Query().Get("nextPageToken"))
+		}
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).SearchIssuesAll(context.Background(), "project = P", 2)
+	if err != nil {
+		t.Fatalf("SearchIssuesAll: %v", err)
+	}
+	page, err := Decode[IssuePage](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(page.Issues) != 3 {
+		t.Fatalf("aggregated %d issues, want 3", len(page.Issues))
+	}
+}
+
+func TestClientListCommentsAllFollowsOffsetPages(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Query().Get("startAt") {
+		case "", "0":
+			_, _ = w.Write([]byte(`{"startAt":0,"maxResults":2,"total":3,` +
+				`"comments":[{"id":"1"},{"id":"2"}]}`))
+		case "2":
+			_, _ = w.Write([]byte(`{"startAt":2,"maxResults":2,"total":3,"comments":[{"id":"3"}]}`))
+		default:
+			t.Errorf("unexpected startAt %q", r.URL.Query().Get("startAt"))
+		}
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).ListCommentsAll(context.Background(), "P-1", 2)
+	if err != nil {
+		t.Fatalf("ListCommentsAll: %v", err)
+	}
+	page, err := Decode[CommentPage](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(page.Comments) != 3 {
+		t.Fatalf("aggregated %d comments, want 3", len(page.Comments))
+	}
+}
+
+func TestClientSearchIssuesAllMapsError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"errorMessages":["You do not have permission."]}`))
+	}))
+	defer srv.Close()
+
+	_, err := newTestClient(srv).SearchIssuesAll(context.Background(), "project = P", 0)
+	if err == nil {
+		t.Fatal("SearchIssuesAll against a 403 endpoint returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeForbidden {
+		t.Fatalf("error = %v, want a forbidden *apperr.Error", err)
+	}
+}

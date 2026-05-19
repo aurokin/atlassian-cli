@@ -181,6 +181,109 @@ func (c *Client) UpdatePage(ctx context.Context, id, status, title, bodyFormat, 
 	})
 }
 
+// maxFollowPages caps how many pages an --all request follows, guarding
+// against an unbounded loop from a malformed cursor.
+const maxFollowPages = 100
+
+// decodeError wraps a pagination decode failure as a structured error.
+func decodeError(err error) error {
+	return apperr.New("response_decode_failed",
+		"could not decode the Confluence API response: "+err.Error())
+}
+
+// nextPageURL builds the next-page request from the current request URL and
+// the _links.next reference Confluence returned with the current page. Only
+// the query — carrying the cursor (or the v1 search start offset) and the
+// echoed page size — is taken from _links.next; the scheme, host, and path are
+// kept from the current request. Confluence omits the API base path prefix
+// from _links.next (a cloud-scoped /ex/{product}/{cloudId} gateway, or the v1
+// /wiki/rest/api search base), so reusing the current request's path keeps
+// resolution correct and works whether the endpoint pages by cursor or offset.
+func nextPageURL(current, next string) (string, error) {
+	cu, err := url.Parse(current)
+	if err != nil {
+		return "", apperr.InvalidInput("invalid request URL " + current + ": " + err.Error())
+	}
+	nu, err := url.Parse(next)
+	if err != nil {
+		return "", apperr.InvalidInput("invalid pagination link " + next + ": " + err.Error())
+	}
+	cu.RawQuery = nu.RawQuery
+	return cu.String(), nil
+}
+
+// followList follows a Confluence list endpoint to completion, starting from
+// firstURL (an API-relative path or an absolute same-origin URL), and returns
+// an aggregated {"results": [...]} body. Confluence list responses page via a
+// _links.next reference; nextPageURL threads each page onto the original
+// request path. Items are kept verbatim, so every field each page returned is
+// preserved. Following stops at maxFollowPages.
+func (c *Client) followList(ctx context.Context, firstURL string) (json.RawMessage, error) {
+	all := []json.RawMessage{}
+	reqURL := firstURL
+	for page := 0; page < maxFollowPages; page++ {
+		raw, err := c.get(ctx, reqURL)
+		if err != nil {
+			return nil, err
+		}
+		var pg struct {
+			Results []json.RawMessage `json:"results"`
+			Links   struct {
+				Next string `json:"next"`
+			} `json:"_links"`
+		}
+		if err := json.Unmarshal(raw, &pg); err != nil {
+			return nil, decodeError(err)
+		}
+		all = append(all, pg.Results...)
+		if pg.Links.Next == "" {
+			break
+		}
+		if reqURL, err = nextPageURL(reqURL, pg.Links.Next); err != nil {
+			return nil, err
+		}
+	}
+	out, err := json.Marshal(map[string][]json.RawMessage{"results": all})
+	if err != nil {
+		return nil, decodeError(err)
+	}
+	return out, nil
+}
+
+// ListSpacesAll follows GET /spaces to completion.
+func (c *Client) ListSpacesAll(ctx context.Context, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.followList(ctx, withQuery("/spaces", q))
+}
+
+// ListPagesAll follows GET /pages for a space to completion.
+func (c *Client) ListPagesAll(ctx context.Context, spaceID string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	q.Set("space-id", spaceID)
+	setLimit(q, limit)
+	return c.followList(ctx, withQuery("/pages", q))
+}
+
+// GetChildPagesAll follows a page's children list to completion.
+func (c *Client) GetChildPagesAll(ctx context.Context, id string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.followList(ctx, withQuery("/pages/"+url.PathEscape(id)+"/children", q))
+}
+
+// SearchCQLAll follows the v1 CQL search to completion.
+func (c *Client) SearchCQLAll(ctx context.Context, cql string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	q.Set("cql", cql)
+	setLimit(q, limit)
+	u, err := c.v1URL("/search", q)
+	if err != nil {
+		return nil, err
+	}
+	return c.followList(ctx, u)
+}
+
 // setLimit records a positive limit as the API limit parameter.
 func setLimit(q url.Values, limit int) {
 	if limit > 0 {

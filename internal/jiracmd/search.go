@@ -19,7 +19,10 @@ func newSearchCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 }
 
 func newSearchIssuesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
-	var limit int
+	var (
+		limit int
+		all   bool
+	)
 	cmd := &cobra.Command{
 		Use:   "issues <jql>",
 		Short: "Search issues with a raw JQL query",
@@ -29,7 +32,11 @@ func newSearchIssuesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			raw, err := jc.SearchIssues(cmd.Context(), args[0], limit)
+			search := jc.SearchIssues
+			if all {
+				search = jc.SearchIssuesAll
+			}
+			raw, err := search(cmd.Context(), args[0], limit)
 			if err != nil {
 				return err
 			}
@@ -44,6 +51,8 @@ func newSearchIssuesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			return nil
 		},
 	}
-	cmd.Flags().IntVar(&limit, "limit", 0, "maximum number of issues to return")
+	f := cmd.Flags()
+	f.IntVar(&limit, "limit", 0, "maximum number of issues to return")
+	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
 	return cmd
 }

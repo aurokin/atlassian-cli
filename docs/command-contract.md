@@ -1,6 +1,6 @@
 # Command Contract
 
-> Implemented behavior as of Phase 5A. This document describes what the
+> Implemented behavior as of Phase 5B. This document describes what the
 > `atl-jira` and `atl-conf` binaries actually do today, not the long-term
 > design. Update it whenever the command surface changes.
 
@@ -16,7 +16,8 @@ commands: `issue` (create/edit/transition) and `issue comment`
 (create/edit/delete). Phase 4A adds the read-only Confluence product commands:
 `space` (list/view), `page` (list/view/children), `search cql`, and `status`.
 Phase 4B adds the Confluence mutating commands: `page` (create/edit). Phase 5A
-makes the global `--jq` flag a real jq filter.
+makes the global `--jq` flag a real jq filter; Phase 5B adds the `--all`
+follow-all-pages flag to the list and search commands.
 
 ## Binaries
 
@@ -57,6 +58,22 @@ A malformed expression, or one that fails against the data, returns a
 structured `invalid_input` error. `--jq` cannot be combined with a `--json`
 field list (the two are different projections of the same data); bare `--json`
 with `--jq` is allowed and equivalent to `--jq` alone.
+
+## Pagination — `--limit` and `--all`
+
+The list and search commands — `project list`, `issue list`, `search issues`,
+`issue comment list` (Jira) and `space list`, `page list`, `page children`,
+`search cql` (Confluence) — fetch a single page by default, sized by
+`--limit`.
+
+Passing `--all` follows pagination to completion and emits one aggregated
+result; `--limit` then sets the per-request page size rather than a total cap.
+Because a multi-page result has no single API response body, `--all` output is
+a *synthesized* object — the top-level list key (`values`/`issues`/`comments`/
+`results`) holding every item, with per-page cursors dropped — not a verbatim
+API body. Each item is kept verbatim, so no per-item field is lost. `--jq`
+runs against the synthesized aggregate. Following is bounded by a 100-page
+safety cap; reaching it returns what was collected so far.
 
 ## Commands
 
@@ -394,8 +411,8 @@ plain `Error: <code>: <message>` line.
   has no storage-format body the edit is refused, so pass `--body` explicitly.
 - Confluence page delete, move, and restore are not implemented; the page
   surface is list/view/children plus create/edit.
-- Jira and Confluence list commands fetch a single page bounded by `--limit`;
-  there is no follow-all-pages flag yet.
+- Without `--all`, list and search commands fetch a single page bounded by
+  `--limit`. `--all` follows every page but caps at 100 pages.
 - Jira and Confluence commands target the Atlassian **Cloud** REST APIs (Jira
   v3, Confluence v2 with a v1 fallback for CQL search and the current user).
   Against a Data Center instance the API base is the configured URL verbatim,
