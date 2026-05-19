@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/url"
 	"strconv"
@@ -282,6 +283,157 @@ func (c *Client) SearchCQLAll(ctx context.Context, cql string, limit int) (json.
 		return nil, err
 	}
 	return c.followList(ctx, u)
+}
+
+// ListFooterComments returns a page of a page's footer comments
+// (GET /pages/{id}/footer-comments).
+func (c *Client) ListFooterComments(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.get(ctx, withQuery("/pages/"+url.PathEscape(pageID)+"/footer-comments", q))
+}
+
+// ListFooterCommentsAll follows a page's footer-comment list to completion.
+func (c *Client) ListFooterCommentsAll(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.followList(ctx, withQuery("/pages/"+url.PathEscape(pageID)+"/footer-comments", q))
+}
+
+// GetFooterComment returns a single footer comment by id with its
+// storage-format body (GET /footer-comments/{id}?body-format=storage).
+func (c *Client) GetFooterComment(ctx context.Context, id string) (json.RawMessage, error) {
+	q := url.Values{}
+	q.Set("body-format", "storage")
+	return c.get(ctx, withQuery("/footer-comments/"+url.PathEscape(id), q))
+}
+
+// CreateFooterComment adds a footer comment to a page (POST /footer-comments)
+// and returns the created comment. The body is sent verbatim under the named
+// representation.
+func (c *Client) CreateFooterComment(ctx context.Context, pageID, bodyFormat, body string) (json.RawMessage, error) {
+	return c.send(ctx, "POST", "/footer-comments", map[string]any{
+		"pageId": pageID,
+		"body": map[string]string{
+			"representation": bodyFormat,
+			"value":          body,
+		},
+	})
+}
+
+// UpdateFooterComment replaces a footer comment's body
+// (PUT /footer-comments/{id}) and returns the updated comment. Confluence v2
+// treats the update as a full replacement, so the caller supplies the next
+// version number (the current number plus one).
+func (c *Client) UpdateFooterComment(ctx context.Context, id, bodyFormat, body string, version int) (json.RawMessage, error) {
+	return c.send(ctx, "PUT", "/footer-comments/"+url.PathEscape(id), map[string]any{
+		"version": map[string]int{"number": version},
+		"body": map[string]string{
+			"representation": bodyFormat,
+			"value":          body,
+		},
+	})
+}
+
+// DeleteFooterComment removes a footer comment (DELETE /footer-comments/{id}).
+func (c *Client) DeleteFooterComment(ctx context.Context, id string) error {
+	_, err := c.send(ctx, "DELETE", "/footer-comments/"+url.PathEscape(id), nil)
+	return err
+}
+
+// ListLabels returns a page of a page's labels (GET /pages/{id}/labels).
+func (c *Client) ListLabels(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.get(ctx, withQuery("/pages/"+url.PathEscape(pageID)+"/labels", q))
+}
+
+// ListLabelsAll follows a page's label list to completion.
+func (c *Client) ListLabelsAll(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.followList(ctx, withQuery("/pages/"+url.PathEscape(pageID)+"/labels", q))
+}
+
+// AddLabel attaches a label to a page. Confluence v2 has no page-label write
+// endpoint, so this uses the v1 content-label surface.
+func (c *Client) AddLabel(ctx context.Context, pageID, label string) (json.RawMessage, error) {
+	u, err := c.v1URL("/content/"+url.PathEscape(pageID)+"/label", nil)
+	if err != nil {
+		return nil, err
+	}
+	return c.send(ctx, "POST", u, []map[string]string{{"name": label}})
+}
+
+// RemoveLabel detaches a label from a page via the v1 content-label surface.
+func (c *Client) RemoveLabel(ctx context.Context, pageID, label string) error {
+	u, err := c.v1URL("/content/"+url.PathEscape(pageID)+"/label/"+url.PathEscape(label), nil)
+	if err != nil {
+		return err
+	}
+	_, err = c.send(ctx, "DELETE", u, nil)
+	return err
+}
+
+// ListAttachments returns a page of a page's attachments
+// (GET /pages/{id}/attachments).
+func (c *Client) ListAttachments(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.get(ctx, withQuery("/pages/"+url.PathEscape(pageID)+"/attachments", q))
+}
+
+// ListAttachmentsAll follows a page's attachment list to completion.
+func (c *Client) ListAttachmentsAll(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.followList(ctx, withQuery("/pages/"+url.PathEscape(pageID)+"/attachments", q))
+}
+
+// GetAttachment returns a single attachment's metadata, including the
+// downloadLink that locates its binary (GET /attachments/{id}).
+func (c *Client) GetAttachment(ctx context.Context, id string) (json.RawMessage, error) {
+	return c.get(ctx, "/attachments/"+url.PathEscape(id))
+}
+
+// FetchAttachmentData downloads an attachment's binary content. downloadLink
+// comes from an Attachment record; it is resolved against the Confluence
+// context path by downloadURL.
+func (c *Client) FetchAttachmentData(ctx context.Context, downloadLink string) ([]byte, error) {
+	u, err := c.downloadURL(downloadLink)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.http.Do(ctx, "GET", u, nil)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Body, nil
+}
+
+// downloadURL resolves an attachment downloadLink to an absolute URL. A v2
+// downloadLink is rooted at the Confluence context path (.../wiki), not the
+// API base, so the context base is the API base minus the trailing /api/v2
+// segment. An already-absolute link is returned unchanged. Either form is
+// still subject to the httpclient's same-origin check at request time, so an
+// absolute link pointing off the configured site is rejected when fetched.
+func (c *Client) downloadURL(link string) (string, error) {
+	if link == "" {
+		return "", apperr.InvalidInput("attachment has no downloadLink")
+	}
+	u, err := url.Parse(link)
+	if err != nil {
+		return "", apperr.InvalidInput(fmt.Sprintf("invalid downloadLink %q: %v", link, err))
+	}
+	if u.IsAbs() {
+		return link, nil
+	}
+	base, err := c.http.APIBase()
+	if err != nil {
+		return "", err
+	}
+	ctxBase := strings.TrimSuffix(base, "/api/v2")
+	return strings.TrimRight(ctxBase, "/") + "/" + strings.TrimLeft(link, "/"), nil
 }
 
 // setLimit records a positive limit as the API limit parameter.

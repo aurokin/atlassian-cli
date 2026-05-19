@@ -89,6 +89,58 @@ func TestPageChildrenAllFollowsPages(t *testing.T) {
 	assertResultCount(t, "page children --all", out, 2)
 }
 
+func TestPageCommentListAllFollowsPages(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/pages/10/footer-comments" {
+			t.Errorf("path = %q, want /pages/10/footer-comments", r.URL.Path)
+		}
+		switch r.URL.Query().Get("cursor") {
+		case "":
+			_, _ = w.Write([]byte(`{"results":[{"id":"c1"}],` +
+				`"_links":{"next":"/pages/10/footer-comments?cursor=c2"}}`))
+		case "c2":
+			_, _ = w.Write([]byte(`{"results":[{"id":"c2"}]}`))
+		default:
+			t.Errorf("unexpected cursor %q", r.URL.Query().Get("cursor"))
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	out, err := execConf(t, "page", "comment", "list", "10", "--all", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("page comment list --all: %v", err)
+	}
+	assertResultCount(t, "page comment list --all", out, 2)
+}
+
+func TestAttachmentListAllFollowsPages(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/pages/10/attachments" {
+			t.Errorf("path = %q, want /pages/10/attachments", r.URL.Path)
+		}
+		switch r.URL.Query().Get("cursor") {
+		case "":
+			_, _ = w.Write([]byte(`{"results":[{"id":"a1"}],` +
+				`"_links":{"next":"/pages/10/attachments?cursor=c2"}}`))
+		case "c2":
+			_, _ = w.Write([]byte(`{"results":[{"id":"a2"}]}`))
+		default:
+			t.Errorf("unexpected cursor %q", r.URL.Query().Get("cursor"))
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	out, err := execConf(t, "attachment", "list", "10", "--all", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("attachment list --all: %v", err)
+	}
+	assertResultCount(t, "attachment list --all", out, 2)
+}
+
 func TestSearchCQLAllFollowsPages(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Query().Get("cursor") {

@@ -24,6 +24,8 @@ func newPageCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		newPageChildrenCommand(info, g),
 		newPageCreateCommand(info, g),
 		newPageEditCommand(info, g),
+		newPageCommentCommand(info, g),
+		newPageLabelCommand(info, g),
 	)
 	return cmd
 }

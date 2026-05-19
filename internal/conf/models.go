@@ -61,6 +61,55 @@ type PageList struct {
 	Results []Page `json:"results"`
 }
 
+// Comment is the subset of a Confluence footer comment that human output
+// renders, plus the fields a versioned edit needs to reconstruct it.
+type Comment struct {
+	ID      string      `json:"id"`
+	Status  string      `json:"status"`
+	Title   string      `json:"title"`
+	PageID  string      `json:"pageId"`
+	Version PageVersion `json:"version"`
+	Body    PageBody    `json:"body"`
+}
+
+// CommentList is a page of footer-comment results.
+type CommentList struct {
+	Results []Comment `json:"results"`
+}
+
+// Label is a single Confluence content label. Only the fields human output
+// renders are modeled; the label id is intentionally omitted so the decoder
+// is agnostic to whether the API serializes it as a string or a number, and
+// because labels are addressed by name throughout the command surface. The
+// raw id is still available under --json, which passes the body through
+// verbatim.
+type Label struct {
+	Name   string `json:"name"`
+	Prefix string `json:"prefix"`
+}
+
+// LabelList is a page of label results.
+type LabelList struct {
+	Results []Label `json:"results"`
+}
+
+// Attachment is the subset of a Confluence attachment that human output
+// renders. DownloadLink locates the binary; it is rooted at the Confluence
+// context path, not the v2 API base.
+type Attachment struct {
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	MediaType    string `json:"mediaType"`
+	FileSize     int64  `json:"fileSize"`
+	Status       string `json:"status"`
+	DownloadLink string `json:"downloadLink"`
+}
+
+// AttachmentList is a page of attachment results.
+type AttachmentList struct {
+	Results []Attachment `json:"results"`
+}
+
 // SearchContent is the content object carried by a CQL search hit.
 type SearchContent struct {
 	ID    string `json:"id"`
