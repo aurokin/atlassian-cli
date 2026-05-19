@@ -12,9 +12,7 @@ import (
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
-	"github.com/aurokin/atlassian-cli/internal/auth"
 	"github.com/aurokin/atlassian-cli/internal/config"
-	"github.com/aurokin/atlassian-cli/internal/httpclient"
 )
 
 // newAPICommand builds the raw "api" escape-hatch command. It signs and sends
@@ -42,55 +40,28 @@ func newAPICommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 }
 
 func runAPI(cmd *cobra.Command, info appinfo.Info, g *GlobalFlags, pathOrURL, method, data string) error {
-	if g.Site == "" {
-		return apperr.InvalidInput("a site name is required; pass --site")
-	}
-	profile, err := loadSiteProfile(info, g.Site)
+	client, err := SiteClient(info, g)
 	if err != nil {
 		return err
-	}
-
-	style, err := auth.ParseTokenStyle(profile.TokenStyle)
-	if err != nil {
-		return err
-	}
-	token, err := resolveToken(profile.TokenRef)
-	if err != nil {
-		return err
-	}
-
-	cred := auth.Credential{
-		Style:    style,
-		Username: profile.Username,
-		Token:    token,
-		CloudID:  profile.CloudID,
-	}
-	target := httpclient.Target{
-		Product:    string(info.Product),
-		TokenStyle: style,
-		SiteName:   g.Site,
-		BaseURL:    profile.BaseURL,
-		CloudID:    profile.CloudID,
 	}
 
 	var body io.Reader
 	if data != "" {
 		body = strings.NewReader(data)
 	}
-	client := httpclient.New(target, cred, nil)
 	resp, err := client.Do(cmd.Context(), method, pathOrURL, body)
 	if err != nil {
 		// Surface the server's response body when it is JSON, so the raw api
 		// command stays faithful to the underlying API even on failure.
 		if resp != nil && json.Valid(bytes.TrimSpace(resp.Body)) {
-			_ = render(cmd, g, json.RawMessage(resp.Body))
+			_ = Render(cmd, g, json.RawMessage(resp.Body))
 		}
 		return err
 	}
 	if len(bytes.TrimSpace(resp.Body)) == 0 {
 		return nil
 	}
-	return render(cmd, g, json.RawMessage(resp.Body))
+	return Render(cmd, g, json.RawMessage(resp.Body))
 }
 
 // loadSiteProfile reads the named site profile from the on-disk config,

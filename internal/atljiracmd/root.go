@@ -6,16 +6,19 @@ import (
 
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/cli"
+	"github.com/aurokin/atlassian-cli/internal/jiracmd"
 )
 
 const short = "atl-jira is a true-to-API command-line interface for Atlassian Jira"
 
 // NewRoot builds the root command for the atl-jira binary together with the
-// global flags bound to it. The build metadata is supplied by the binary's
-// main package.
+// global flags bound to it. It layers the Jira product commands onto the
+// shared root. The build metadata is supplied by the binary's main package.
 func NewRoot(version, commit, date string) (*cobra.Command, *cli.GlobalFlags) {
 	info := appinfo.New("atl-jira", appinfo.ProductJira, version, commit, date)
-	return cli.NewRoot(info, short)
+	root, g := cli.NewRoot(info, short)
+	jiracmd.AddCommands(root, info, g)
+	return root, g
 }
 
 // Run builds the atl-jira command tree, executes it, and returns the process

@@ -199,6 +199,11 @@ func New(target Target, cred auth.Credential, hc *http.Client) *Client {
 	return &Client{target: target, cred: cred, http: hc}
 }
 
+// APIBase returns the resolved API base URL the client sends requests against.
+func (c *Client) APIBase() (string, error) {
+	return c.target.APIBase()
+}
+
 // Do resolves pathOrURL, signs the request, executes it, and reads the body.
 // A non-2xx status is returned as a structured *apperr.Error alongside the
 // populated Response.

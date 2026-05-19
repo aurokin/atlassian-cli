@@ -16,6 +16,7 @@ Create two separate CLIs, `atl-jira` and `atl-conf`, with shared foundations whe
 - [implementation-plan.md](implementation-plan.md) — phased build plan.
 - [phase-1-foundation-plan.md](phase-1-foundation-plan.md) — implementation plan for the shared Go/Cobra foundation (Phase 1, complete).
 - [phase-2-resolve-browse-plan.md](phase-2-resolve-browse-plan.md) — implementation plan for URL resolution and the `resolve`/`browse` commands (Phase 2, complete).
+- [phase-3-jira-mvp-plan.md](phase-3-jira-mvp-plan.md) — implementation plan for the Jira MVP commands: `project`, `issue`, `search`, `status` (Phase 3).
 - [command-contract.md](command-contract.md) — implemented command behavior, config schema, and known limitations.
 - [continuation-handoff.md](continuation-handoff.md) — point-in-time handoff for continuing this work in the app or a fresh agent session.
 - [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) — long-term plan for possibly bringing legacy `bb` into the shared `atl-*` Atlassian CLI ecosystem as `atl-bb`.

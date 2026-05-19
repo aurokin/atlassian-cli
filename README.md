@@ -12,16 +12,17 @@ The posture is inherited from `bb`, Auro's existing Bitbucket Cloud CLI, with `a
 
 ## Current status
 
-Phase 1 foundation and Phase 2 URL resolution are implemented: both binaries
-build, with shared global flags, config, structured output and errors, auth
-signing, an HTTP client, the `auth login/status/logout` subtree, the raw `api`
-command, and the offline `resolve`/`browse` commands. Product-specific Jira and
-Confluence commands are not implemented yet.
+Phase 1 (shared foundation) and Phase 2 (offline URL resolution) are merged to
+`main`. Phase 3A adds the read-only Jira commands — `project`, `issue`
+view/list, `issue comment` list/view, `search issues`, and `status` — backed by
+a typed Jira API client. Jira mutating commands and the Confluence product
+commands are not implemented yet.
 
 ```bash
 go test ./...
 go run ./cmd/atl-jira --help
 go run ./cmd/atl-jira resolve PROJ-123 --json
+go run ./cmd/atl-jira project list --site work
 go run ./cmd/atl-conf version --json
 ```
 
@@ -38,7 +39,8 @@ Start here:
 6. [docs/implementation-plan.md](docs/implementation-plan.md)
 7. [docs/phase-1-foundation-plan.md](docs/phase-1-foundation-plan.md)
 8. [docs/phase-2-resolve-browse-plan.md](docs/phase-2-resolve-browse-plan.md)
-9. [docs/continuation-handoff.md](docs/continuation-handoff.md)
+9. [docs/phase-3-jira-mvp-plan.md](docs/phase-3-jira-mvp-plan.md)
+10. [docs/continuation-handoff.md](docs/continuation-handoff.md)
 
 ## Guardrails
 
