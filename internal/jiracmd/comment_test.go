@@ -242,6 +242,28 @@ func TestCommentEditHumanOutput(t *testing.T) {
 	}
 }
 
+func TestCommentEditJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"id":"10","body":{"type":"doc"}}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "comment", "edit", "PROJ-1", "10",
+		"--body", "Revised", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("comment edit --json: %v", err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("comment edit --json output is not valid JSON: %v\n%s", err, out)
+	}
+	if got["id"] != "10" {
+		t.Fatalf("unexpected edit JSON: %v", got)
+	}
+}
+
 func TestCommentEditRequiresBody(t *testing.T) {
 	_, err := execJira(t, "issue", "comment", "edit", "PROJ-1", "10", "--site", "work")
 	if err == nil {

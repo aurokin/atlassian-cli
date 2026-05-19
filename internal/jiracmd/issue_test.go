@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
+	"github.com/aurokin/atlassian-cli/internal/jira"
 )
 
 func TestBuildIssueListJQL(t *testing.T) {
@@ -478,5 +479,80 @@ func TestIssueTransitionMapsNotFound(t *testing.T) {
 	var ae *apperr.Error
 	if !errors.As(err, &ae) || ae.Code != apperr.CodeNotFoundOrNotVisible {
 		t.Fatalf("error = %v, want a not_found_or_not_visible *apperr.Error", err)
+	}
+}
+
+func TestResolveTransitionMatches(t *testing.T) {
+	available := []jira.Transition{
+		{ID: "31", Name: "Done"},
+		{ID: "11", Name: "To Do"},
+	}
+	cases := []struct {
+		name, to, wantID string
+	}{
+		{"by id", "31", "31"},
+		{"by exact name", "Done", "31"},
+		{"by case-insensitive name", "to do", "11"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tr, err := resolveTransition("PROJ-1", available, tc.to)
+			if err != nil {
+				t.Fatalf("resolveTransition: %v", err)
+			}
+			if tr.ID != tc.wantID {
+				t.Errorf("resolved id = %q, want %q", tr.ID, tc.wantID)
+			}
+		})
+	}
+}
+
+func TestResolveTransitionErrors(t *testing.T) {
+	cases := []struct {
+		name        string
+		transitions []jira.Transition
+		to          string
+	}{
+		{"empty list", nil, "Done"},
+		{"no match", []jira.Transition{{ID: "31", Name: "Done"}}, "Nope"},
+		{"ambiguous", []jira.Transition{{ID: "5", Name: "Review"}, {ID: "9", Name: "review"}}, "Review"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := resolveTransition("PROJ-1", tc.transitions, tc.to)
+			if err == nil {
+				t.Fatal("resolveTransition returned no error")
+			}
+			var ae *apperr.Error
+			if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+				t.Fatalf("error = %v, want an invalid_input *apperr.Error", err)
+			}
+		})
+	}
+}
+
+func TestIssueCreateFieldOverridesTypedFlag(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"key":"PROJ-9"}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	// The repeatable --field escape is overlaid last, so its value wins.
+	_, err := execJira(t, "issue", "create", "--project", "PROJ", "--type", "Task",
+		"--summary", "from typed flag", "--field", "summary=from field flag", "--site", "work")
+	if err != nil {
+		t.Fatalf("issue create: %v", err)
+	}
+	if !strings.Contains(gotBody, `"summary":"from field flag"`) {
+		t.Errorf("--field did not override the typed --summary flag:\n%s", gotBody)
+	}
+	if strings.Contains(gotBody, "from typed flag") {
+		t.Errorf("typed --summary should have been overridden:\n%s", gotBody)
 	}
 }
