@@ -191,36 +191,38 @@ func decodeError(err error) error {
 		"could not decode the Confluence API response: "+err.Error())
 }
 
-// nextCursor extracts the opaque pagination cursor from a _links.next
-// reference. An empty reference — the final page — yields an empty cursor, as
-// does a reference that carries no cursor query parameter.
-func nextCursor(next string) (string, error) {
-	if next == "" {
-		return "", nil
+// nextPageURL builds the next-page request from the current request URL and
+// the _links.next reference Confluence returned with the current page. Only
+// the query — carrying the cursor (or the v1 search start offset) and the
+// echoed page size — is taken from _links.next; the scheme, host, and path are
+// kept from the current request. Confluence omits the API base path prefix
+// from _links.next (a cloud-scoped /ex/{product}/{cloudId} gateway, or the v1
+// /wiki/rest/api search base), so reusing the current request's path keeps
+// resolution correct and works whether the endpoint pages by cursor or offset.
+func nextPageURL(current, next string) (string, error) {
+	cu, err := url.Parse(current)
+	if err != nil {
+		return "", apperr.InvalidInput("invalid request URL " + current + ": " + err.Error())
 	}
-	u, err := url.Parse(next)
+	nu, err := url.Parse(next)
 	if err != nil {
 		return "", apperr.InvalidInput("invalid pagination link " + next + ": " + err.Error())
 	}
-	return u.Query().Get("cursor"), nil
+	cu.RawQuery = nu.RawQuery
+	return cu.String(), nil
 }
 
-// followList follows a Confluence cursor-paginated endpoint to completion and
-// returns an aggregated {"results": [...]} body. fetch issues the request for
-// a given cursor ("" for the first page); the next cursor is read from each
-// response's _links.next. Following pages from the opaque cursor — rather than
-// replaying the server's _links.next URL — keeps the caller in control of the
-// request, so --limit governs every page and resolution is unaffected by any
-// API base path prefix (such as a cloud-scoped /ex/{product}/{cloudId}
-// gateway). Confluence list responses — v2 spaces/pages/children and the v1
-// CQL search — all page via the cursor query parameter. Items are kept
-// verbatim, so every field each page returned is preserved. Following stops at
-// maxFollowPages.
-func (c *Client) followList(ctx context.Context, fetch func(context.Context, string) (json.RawMessage, error)) (json.RawMessage, error) {
+// followList follows a Confluence list endpoint to completion, starting from
+// firstURL (an API-relative path or an absolute same-origin URL), and returns
+// an aggregated {"results": [...]} body. Confluence list responses page via a
+// _links.next reference; nextPageURL threads each page onto the original
+// request path. Items are kept verbatim, so every field each page returned is
+// preserved. Following stops at maxFollowPages.
+func (c *Client) followList(ctx context.Context, firstURL string) (json.RawMessage, error) {
 	all := []json.RawMessage{}
-	cursor := ""
+	reqURL := firstURL
 	for page := 0; page < maxFollowPages; page++ {
-		raw, err := fetch(ctx, cursor)
+		raw, err := c.get(ctx, reqURL)
 		if err != nil {
 			return nil, err
 		}
@@ -234,11 +236,11 @@ func (c *Client) followList(ctx context.Context, fetch func(context.Context, str
 			return nil, decodeError(err)
 		}
 		all = append(all, pg.Results...)
-		if cursor, err = nextCursor(pg.Links.Next); err != nil {
-			return nil, err
-		}
-		if cursor == "" {
+		if pg.Links.Next == "" {
 			break
+		}
+		if reqURL, err = nextPageURL(reqURL, pg.Links.Next); err != nil {
+			return nil, err
 		}
 	}
 	out, err := json.Marshal(map[string][]json.RawMessage{"results": all})
@@ -248,51 +250,38 @@ func (c *Client) followList(ctx context.Context, fetch func(context.Context, str
 	return out, nil
 }
 
-// pageQuery seeds a query with the page size and, when set, the follow-up
-// cursor shared by every cursor-paginated Confluence endpoint.
-func pageQuery(limit int, cursor string) url.Values {
-	q := url.Values{}
-	setLimit(q, limit)
-	if cursor != "" {
-		q.Set("cursor", cursor)
-	}
-	return q
-}
-
 // ListSpacesAll follows GET /spaces to completion.
 func (c *Client) ListSpacesAll(ctx context.Context, limit int) (json.RawMessage, error) {
-	return c.followList(ctx, func(ctx context.Context, cursor string) (json.RawMessage, error) {
-		return c.get(ctx, withQuery("/spaces", pageQuery(limit, cursor)))
-	})
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.followList(ctx, withQuery("/spaces", q))
 }
 
 // ListPagesAll follows GET /pages for a space to completion.
 func (c *Client) ListPagesAll(ctx context.Context, spaceID string, limit int) (json.RawMessage, error) {
-	return c.followList(ctx, func(ctx context.Context, cursor string) (json.RawMessage, error) {
-		q := pageQuery(limit, cursor)
-		q.Set("space-id", spaceID)
-		return c.get(ctx, withQuery("/pages", q))
-	})
+	q := url.Values{}
+	q.Set("space-id", spaceID)
+	setLimit(q, limit)
+	return c.followList(ctx, withQuery("/pages", q))
 }
 
 // GetChildPagesAll follows a page's children list to completion.
 func (c *Client) GetChildPagesAll(ctx context.Context, id string, limit int) (json.RawMessage, error) {
-	return c.followList(ctx, func(ctx context.Context, cursor string) (json.RawMessage, error) {
-		return c.get(ctx, withQuery("/pages/"+url.PathEscape(id)+"/children", pageQuery(limit, cursor)))
-	})
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.followList(ctx, withQuery("/pages/"+url.PathEscape(id)+"/children", q))
 }
 
 // SearchCQLAll follows the v1 CQL search to completion.
 func (c *Client) SearchCQLAll(ctx context.Context, cql string, limit int) (json.RawMessage, error) {
-	return c.followList(ctx, func(ctx context.Context, cursor string) (json.RawMessage, error) {
-		q := pageQuery(limit, cursor)
-		q.Set("cql", cql)
-		u, err := c.v1URL("/search", q)
-		if err != nil {
-			return nil, err
-		}
-		return c.get(ctx, u)
-	})
+	q := url.Values{}
+	q.Set("cql", cql)
+	setLimit(q, limit)
+	u, err := c.v1URL("/search", q)
+	if err != nil {
+		return nil, err
+	}
+	return c.followList(ctx, u)
 }
 
 // setLimit records a positive limit as the API limit parameter.

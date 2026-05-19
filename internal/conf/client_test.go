@@ -367,15 +367,15 @@ func TestClientListSpacesAllFollowsCursor(t *testing.T) {
 		if r.URL.Path != "/spaces" {
 			t.Errorf("path = %q, want /spaces", r.URL.Path)
 		}
-		// --limit governs every page, not just the first: the cursor is
-		// rebuilt into a fresh request rather than replayed from _links.next.
+		// --limit governs every page: the server echoes it into _links.next
+		// and the follower carries that query onto the next request.
 		if got := r.URL.Query().Get("limit"); got != "2" {
 			t.Errorf("limit = %q, want 2 on every page", got)
 		}
 		switch r.URL.Query().Get("cursor") {
 		case "":
 			_, _ = w.Write([]byte(`{"results":[{"id":"1"},{"id":"2"}],` +
-				`"_links":{"next":"/spaces?cursor=c2"}}`))
+				`"_links":{"next":"/spaces?limit=2&cursor=c2"}}`))
 		case "c2":
 			_, _ = w.Write([]byte(`{"results":[{"id":"3"}],"_links":{}}`))
 		default:
@@ -410,6 +410,42 @@ func TestClientSearchCQLAllFollowsCursor(t *testing.T) {
 			_, _ = w.Write([]byte(`{"results":[{"content":{"id":"2"}}]}`))
 		default:
 			t.Errorf("unexpected cursor %q", r.URL.Query().Get("cursor"))
+		}
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).SearchCQLAll(context.Background(), "type = page", 1)
+	if err != nil {
+		t.Fatalf("SearchCQLAll: %v", err)
+	}
+	results, err := Decode[SearchResults](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(results.Results) != 2 {
+		t.Fatalf("aggregated %d results, want 2", len(results.Results))
+	}
+}
+
+// TestClientSearchCQLAllFollowsOffsetNext covers a _links.next that pages by a
+// start offset rather than a cursor: the follower adopts the whole next query,
+// so it works regardless of which pagination scheme the endpoint uses.
+func TestClientSearchCQLAllFollowsOffsetNext(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/rest/api/search" {
+			t.Errorf("path = %q, want /rest/api/search", r.URL.Path)
+		}
+		if got := r.URL.Query().Get("cql"); got != "type = page" {
+			t.Errorf("cql = %q, want carried onto every page", got)
+		}
+		switch r.URL.Query().Get("start") {
+		case "":
+			_, _ = w.Write([]byte(`{"results":[{"content":{"id":"1"}}],` +
+				`"_links":{"next":"/rest/api/search?cql=type+%3D+page&limit=1&start=1"}}`))
+		case "1":
+			_, _ = w.Write([]byte(`{"results":[{"content":{"id":"2"}}]}`))
+		default:
+			t.Errorf("unexpected start %q", r.URL.Query().Get("start"))
 		}
 	}))
 	defer srv.Close()
