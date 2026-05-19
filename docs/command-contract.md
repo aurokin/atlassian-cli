@@ -1,6 +1,6 @@
 # Command Contract
 
-> Implemented behavior as of Phase 4A. This document describes what the
+> Implemented behavior as of Phase 4. This document describes what the
 > `atl-jira` and `atl-conf` binaries actually do today, not the long-term
 > design. Update it whenever the command surface changes.
 
@@ -15,7 +15,7 @@ Jira product commands: `project`, `issue` (view/list), `issue comment`
 commands: `issue` (create/edit/transition) and `issue comment`
 (create/edit/delete). Phase 4A adds the read-only Confluence product commands:
 `space` (list/view), `page` (list/view/children), `search cql`, and `status`.
-The Confluence page write commands are not implemented yet.
+Phase 4B adds the Confluence mutating commands: `page` (create/edit).
 
 ## Binaries
 
@@ -252,11 +252,29 @@ id first.
 atl-conf page list --space <key> [--limit N]
 atl-conf page view <id>
 atl-conf page children <id> [--limit N]
+atl-conf page create --space <key> --title <text> --body <text> --body-format <fmt>
+atl-conf page edit <id> [--title <text>] [--body <text> --body-format <fmt>]
 ```
 
 `list` returns the pages in a space — `--space` is required and is resolved
 from key to id. `view` returns one page by id, including its storage-format
 body under `--json`. `children` lists a page's direct child pages.
+
+`create` makes a new page: `--space` (resolved key to id), `--title`, `--body`,
+and `--body-format` are all required. `edit` updates a page by id and needs at
+least one of `--title` or `--body`. `--body-format` must be one of `storage`,
+`atlas_doc_format`, or `wiki`; the body is sent verbatim under that
+representation and is never converted. `--body` and `--body-format` are passed
+together.
+
+Confluence v2 treats a page update as a full replacement, so `edit` first GETs
+the page to read its current title, body, status, and version, then PUTs the
+merged state with the version number incremented by one. A title-only edit
+re-sends the page's current body in storage representation; if the page has no
+storage-format body to re-send it is refused with an `invalid_input` error
+rather than risk clearing the body — pass `--body` with `--body-format` to set
+the body explicitly. A version conflict surfaces as the structured error model
+below.
 
 ### `search cql`
 
@@ -350,11 +368,15 @@ plain `Error: <code>: <message>` line.
 
 - No OAuth 3LO; no browser/cookie login.
 - No Bitbucket (`atl-bb`).
-- Confluence page write commands (`page create`/`edit`) are not implemented
-  yet; Phase 4A is the read-only Confluence surface.
 - `issue create`/`edit` accept a plain-text `--description` (wrapped as ADF) or
   raw ADF via `--field description=<adf-json>`; richer markup helpers are not
   implemented.
+- `page create`/`edit` take a `--body` plus an explicit `--body-format`; the
+  content is sent verbatim and never converted between representations. A
+  title-only `page edit` re-sends the page's current storage body; if the page
+  has no storage-format body the edit is refused, so pass `--body` explicitly.
+- Confluence page delete, move, and restore are not implemented; the page
+  surface is list/view/children plus create/edit.
 - Jira and Confluence list commands fetch a single page bounded by `--limit`;
   there is no follow-all-pages flag yet.
 - Jira and Confluence commands target the Atlassian **Cloud** REST APIs (Jira

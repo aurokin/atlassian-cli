@@ -2,6 +2,7 @@ package conf
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -227,6 +228,76 @@ func TestClientMapsNonOKToStructuredError(t *testing.T) {
 	}
 	if ae.Code != apperr.CodeNotFoundOrNotVisible {
 		t.Errorf("Code = %q, want %q", ae.Code, apperr.CodeNotFoundOrNotVisible)
+	}
+}
+
+func TestClientCreatePage(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("method = %q, want POST", r.Method)
+		}
+		if r.URL.Path != "/pages" {
+			t.Errorf("path = %q, want /pages", r.URL.Path)
+		}
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		_, _ = w.Write([]byte(`{"id":"99","title":"New","status":"current","version":{"number":1}}`))
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).CreatePage(context.Background(), "1", "New", "storage", "<p>hi</p>")
+	if err != nil {
+		t.Fatalf("CreatePage: %v", err)
+	}
+	if gotBody["spaceId"] != "1" || gotBody["title"] != "New" || gotBody["status"] != "current" {
+		t.Errorf("CreatePage sent spaceId/title/status = %v/%v/%v",
+			gotBody["spaceId"], gotBody["title"], gotBody["status"])
+	}
+	body, _ := gotBody["body"].(map[string]any)
+	if body["representation"] != "storage" || body["value"] != "<p>hi</p>" {
+		t.Errorf("CreatePage body = %v, want storage/<p>hi</p>", gotBody["body"])
+	}
+	p, err := Decode[Page](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if p.ID != "99" {
+		t.Fatalf("page = %+v", p)
+	}
+}
+
+func TestClientUpdatePage(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			t.Errorf("method = %q, want PUT", r.Method)
+		}
+		if r.URL.Path != "/pages/10" {
+			t.Errorf("path = %q, want /pages/10", r.URL.Path)
+		}
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		_, _ = w.Write([]byte(`{"id":"10","title":"New","status":"current","version":{"number":4}}`))
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).UpdatePage(context.Background(), "10", "current", "New", "storage", "<p>v4</p>", 4)
+	if err != nil {
+		t.Fatalf("UpdatePage: %v", err)
+	}
+	if gotBody["id"] != "10" || gotBody["status"] != "current" || gotBody["title"] != "New" {
+		t.Errorf("UpdatePage sent id/status/title = %v/%v/%v",
+			gotBody["id"], gotBody["status"], gotBody["title"])
+	}
+	ver, _ := gotBody["version"].(map[string]any)
+	if ver["number"] != float64(4) {
+		t.Errorf("UpdatePage version = %v, want number 4", gotBody["version"])
+	}
+	p, err := Decode[Page](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if p.Version.Number != 4 {
+		t.Fatalf("page = %+v", p)
 	}
 }
 
