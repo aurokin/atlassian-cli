@@ -102,6 +102,39 @@ func TestIssueListAllFollowsPages(t *testing.T) {
 	}
 }
 
+func TestWorklogListAllFollowsPages(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/issue/Q-1/worklog" {
+			t.Errorf("path = %q, want /issue/Q-1/worklog", r.URL.Path)
+		}
+		switch r.URL.Query().Get("startAt") {
+		case "", "0":
+			_, _ = w.Write([]byte(`{"startAt":0,"maxResults":1,"total":2,"worklogs":[{"id":"10000"}]}`))
+		case "1":
+			_, _ = w.Write([]byte(`{"startAt":1,"maxResults":1,"total":2,"worklogs":[{"id":"10001"}]}`))
+		default:
+			t.Errorf("unexpected startAt %q", r.URL.Query().Get("startAt"))
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "worklog", "list", "Q-1", "--all", "--limit", "1", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("worklog list --all: %v", err)
+	}
+	var got struct {
+		Worklogs []json.RawMessage `json:"worklogs"`
+	}
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("worklog list --all output is not valid JSON: %v\n%s", err, out)
+	}
+	if len(got.Worklogs) != 2 {
+		t.Fatalf("aggregated %d worklogs, want 2", len(got.Worklogs))
+	}
+}
+
 func TestCommentListAllFollowsPages(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Query().Get("startAt") {
