@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"sort"
@@ -14,6 +16,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/auth"
 	"github.com/aurokin/atlassian-cli/internal/config"
 	"github.com/aurokin/atlassian-cli/internal/httpclient"
+	"github.com/aurokin/atlassian-cli/internal/secrets"
 )
 
 // tokenRefEnvPrefix marks a token reference that names an environment
@@ -56,13 +59,13 @@ func toView(name string, p config.SiteProfile) siteView {
 		TokenStyle:  p.TokenStyle,
 		AuthType:    p.AuthType,
 		TokenRef:    p.TokenRef,
-		TokenStatus: tokenStatus(p.TokenRef),
+		TokenStatus: tokenStatus(name, p.TokenRef),
 	}
 }
 
-// tokenStatus describes whether a referenced token is currently resolvable.
-// It never includes the token value.
-func tokenStatus(ref string) string {
+// tokenStatus describes whether the token a profile points at is currently
+// resolvable for the named site. It never includes the token value.
+func tokenStatus(site, ref string) string {
 	if ref == "" {
 		return "no token reference configured"
 	}
@@ -72,7 +75,29 @@ func tokenStatus(ref string) string {
 		}
 		return fmt.Sprintf("environment variable %s is not set", name)
 	}
-	return "token reference configured"
+	credPath, err := config.CredentialsPath()
+	if err != nil {
+		return "token reference configured"
+	}
+	store, err := secrets.ForRef(ref, credPath)
+	if err != nil {
+		return fmt.Sprintf("unrecognized token reference %q", ref)
+	}
+	if _, err := store.Get(site); err != nil {
+		var ae *apperr.Error
+		if errors.As(err, &ae) && ae.Code != "token_unavailable" {
+			return "token reference configured but the stored credential could not be read: " + ae.Message
+		}
+		return "token reference configured but no stored credential was found"
+	}
+	switch ref {
+	case secrets.BackendKeyring:
+		return "token available from the OS keychain"
+	case secrets.BackendFile:
+		return "token available from the local credentials file"
+	default:
+		return "token reference configured"
+	}
 }
 
 // newAuthCommand builds the "auth" subtree shared by every atl-* binary.
@@ -96,12 +121,19 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 		tokenStyle string
 		cloudID    string
 		tokenEnv   string
+		tokenValue string
+		tokenStdin bool
 	)
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Record a site profile for later authenticated requests",
-		Long: "Record a site profile under --site. No raw token is stored: pass " +
-			"--token-env to reference an environment variable holding the token.",
+		Long: "Record a site profile under --site.\n\n" +
+			"For the token, pass exactly one of:\n" +
+			"  --token-env NAME  reference an environment variable (nothing is stored)\n" +
+			"  --token-stdin     read the token from stdin and store it securely\n" +
+			"  --token VALUE     store the token securely (visible in shell history)\n\n" +
+			"A stored token goes to the OS keychain, or to a 0600 file when no " +
+			"keychain is available. config.json never holds a raw token.",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if g.Site == "" {
@@ -126,6 +158,15 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 			if style == auth.StyleCloudScoped && cloudID == "" {
 				return apperr.InvalidInput("token style cloud-scoped requires --cloud-id")
 			}
+			sources := 0
+			for _, set := range []bool{tokenEnv != "", tokenValue != "", tokenStdin} {
+				if set {
+					sources++
+				}
+			}
+			if sources > 1 {
+				return apperr.InvalidInput("pass at most one of --token-env, --token-stdin, or --token")
+			}
 
 			profile := config.SiteProfile{
 				Product:    string(info.Product),
@@ -136,8 +177,36 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 				TokenStyle: string(style),
 				AuthType:   style.AuthType(),
 			}
-			if tokenEnv != "" {
+			switch {
+			case tokenEnv != "":
 				profile.TokenRef = tokenRefEnvPrefix + tokenEnv
+			case tokenValue != "" || tokenStdin:
+				token := tokenValue
+				if tokenStdin {
+					raw, err := io.ReadAll(cmd.InOrStdin())
+					if err != nil {
+						return apperr.InvalidInput("could not read the token from standard input: " + err.Error())
+					}
+					token = strings.TrimSpace(string(raw))
+				}
+				if token == "" {
+					return apperr.InvalidInput("the token to store is empty")
+				}
+				credPath, err := config.CredentialsPath()
+				if err != nil {
+					return err
+				}
+				res, err := secrets.Save(credPath, g.Site, token)
+				if err != nil {
+					return err
+				}
+				profile.TokenRef = res.Backend
+				if res.FellBack {
+					fmt.Fprintf(cmd.ErrOrStderr(),
+						"Warning: no OS keychain is available (%v); stored the token in %s "+
+							"with 0600 permissions instead. It is not keychain-protected.\n",
+						res.KeyringErr, credPath)
+				}
 			}
 			target := httpclient.Target{
 				Product:    string(info.Product),
@@ -160,9 +229,20 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			prevRef := cfg.Sites[g.Site].TokenRef
 			cfg.Sites[g.Site] = profile
 			if err := config.Save(path, cfg); err != nil {
 				return err
+			}
+			// A re-login that switches token backends leaves the previous
+			// secret unreferenced; drop it so it does not linger in the
+			// keychain or fallback file. Best-effort: a cleanup failure must
+			// not fail an otherwise successful login.
+			if prevRef != "" && prevRef != profile.TokenRef {
+				if err := clearStoredToken(g.Site, prevRef); err != nil {
+					fmt.Fprintf(cmd.ErrOrStderr(),
+						"Warning: could not remove the previously stored credential (%v).\n", err)
+				}
 			}
 
 			if g.JSON != "" {
@@ -178,6 +258,8 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 	f.StringVar(&tokenStyle, "token-style", "", "token style: cloud-classic, cloud-scoped, or data-center-pat")
 	f.StringVar(&cloudID, "cloud-id", "", "Atlassian cloud ID (required for cloud-scoped)")
 	f.StringVar(&tokenEnv, "token-env", "", "name of the environment variable holding the token")
+	f.BoolVar(&tokenStdin, "token-stdin", false, "read the token from stdin and store it securely")
+	f.StringVar(&tokenValue, "token", "", "token value to store securely (prefer --token-stdin to keep it out of shell history)")
 	return cmd
 }
 
@@ -233,8 +315,12 @@ func newAuthLogoutCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if _, ok := cfg.Sites[g.Site]; !ok {
+			profile, ok := cfg.Sites[g.Site]
+			if !ok {
 				return apperr.New("site_not_configured", fmt.Sprintf("site %q is not configured", g.Site))
+			}
+			if err := clearStoredToken(g.Site, profile.TokenRef); err != nil {
+				return err
 			}
 			delete(cfg.Sites, g.Site)
 			if err := config.Save(path, cfg); err != nil {
@@ -243,6 +329,26 @@ func newAuthLogoutCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 			fmt.Fprintf(cmd.OutOrStdout(), "Removed %s site profile %q.\n", info.Product, g.Site)
 			return nil
 		},
+	}
+}
+
+// clearStoredToken removes the credential a profile's token_ref points at.
+// "env:" and empty references hold nothing on disk to clear; only the keyring
+// and file backends have a stored secret to delete.
+func clearStoredToken(site, ref string) error {
+	switch ref {
+	case secrets.BackendKeyring, secrets.BackendFile:
+		credPath, err := config.CredentialsPath()
+		if err != nil {
+			return err
+		}
+		store, err := secrets.ForRef(ref, credPath)
+		if err != nil {
+			return err
+		}
+		return store.Delete(site)
+	default:
+		return nil
 	}
 }
 

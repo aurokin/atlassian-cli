@@ -8,20 +8,22 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `phase-5b-pagination` (Phase 5B work). Phases 1–4, the post-MVP
-roadmap, and Phase 5A are merged to `main`.
+Branch: `phase-6-token-storage` (Phase 6 work). Phases 1–5 and the post-MVP
+roadmap are merged to `main`.
 
-Status at handoff: Phases 1–4 are merged to `main` — both product CLIs have a
-full MVP command surface — and `docs/post-mvp-roadmap.md` sequences the
-post-MVP work into Phases 5–8. Phase 5A — `--jq` filtering backed by
-`github.com/itchyny/gojq` (the project's first dependency beyond Cobra) — is
-merged to `main`. Phase 5B — the `--all` follow-all-pages flag — is
-implemented on the `phase-5b-pagination` branch per
-`docs/phase-5-output-pagination-plan.md`: a page-following helper added to the
-Jira and Confluence clients handles the offset, token, and cursor pagination
-styles, and `--all` is wired onto every list/search command, emitting a
-synthesized aggregate under a 100-page cap. `go test ./...` passes. See
-`docs/command-contract.md` for the implemented surface.
+Status at handoff: Phases 1–5 are merged to `main` — both product CLIs have a
+full MVP command surface plus the output and pagination polish (`--jq`,
+`--all`) — and `docs/post-mvp-roadmap.md` sequences the post-MVP work into
+Phases 5–8. Phase 6 — secure token storage — is implemented on the
+`phase-6-token-storage` branch per
+`docs/phase-6-secure-token-storage-plan.md`: a new `internal/secrets` package
+stores a per-site token in the OS keychain (via `github.com/zalando/go-keyring`,
+the project's second deliberate dependency) or, when no keychain is available,
+in a `0600` `credentials.json` fallback. `auth login` gains `--token` and
+`--token-stdin`; `auth status`/`auth logout` understand stored credentials;
+`--token-env` is unchanged. `config.json` still never holds a raw token.
+`go test ./...` passes. See `docs/command-contract.md` for the implemented
+surface.
 
 ## Canonical CLI names
 
@@ -59,24 +61,23 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 11. `docs/phase-4-confluence-mvp-plan.md`
 12. `docs/post-mvp-roadmap.md`
 13. `docs/phase-5-output-pagination-plan.md`
-14. Product docs only after foundation work:
+14. `docs/phase-6-secure-token-storage-plan.md`
+15. Product docs only after foundation work:
    - `docs/jira-mvp.md`
    - `docs/confluence-mvp.md`
-15. Bitbucket future docs only when planning migration:
+16. Bitbucket future docs only when planning migration:
    - `docs/bitbucket-migration-roadmap.md`
    - `docs/bb-rewrite-plan.md`
 
 ## Next action
 
-Phase 5B (`--all`) is implemented on `phase-5b-pagination` and ready for
-PR 2. Phase 5 (5A + 5B) completes the output and pagination polish.
+Phase 6 (secure token storage) is implemented on `phase-6-token-storage` and
+ready for its PR. It finishes the auth foundation.
 
-Next: **Phase 6 — secure token storage**, per `docs/post-mvp-roadmap.md`. It
-moves credential handling beyond `--token-env` toward OS-keychain-backed
-secure storage.
-
-Phases 7–8 follow: Confluence content depth, deeper Jira coverage. Phases 7
-and 8 are independent and may be reordered.
+Next: **Phase 7 — Confluence content depth** (page comments, labels,
+attachments) per `docs/post-mvp-roadmap.md`, or **Phase 8 — deeper Jira
+coverage** (assign, watchers, links, worklog). Phases 7 and 8 are independent
+product-depth tracks and may be done in either order.
 
 Architecture note: the shared command wiring (`root`, `version`, `auth`,
 `api`, `resolve`, `browse`) lives in `internal/cli`, which also exports
@@ -93,7 +94,8 @@ shared root by `atlconfcmd` — the same shape as the Jira side, with no
 - Push after commits.
 - Run `go test ./...` after each code task.
 - Do not store raw tokens in tests, docs, fixtures, or committed config.
-- Use `--token-env` first; defer raw token prompts and secure storage until explicitly designed.
+- Token storage (Phase 6): the OS keychain or a `0600` fallback file; tokens
+  never go in `config.json`. Tests use the go-keyring in-memory mock.
 - No live Atlassian API calls in default tests.
 - Use local `httptest.Server` for HTTP command tests.
 - Keep raw `api` command as the first real API integration point.

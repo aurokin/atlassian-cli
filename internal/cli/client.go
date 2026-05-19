@@ -27,7 +27,7 @@ func SiteClient(info appinfo.Info, g *GlobalFlags) (*httpclient.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	token, err := resolveToken(profile.TokenRef)
+	token, err := resolveToken(profile.TokenRef, g.Site)
 	if err != nil {
 		return nil, err
 	}

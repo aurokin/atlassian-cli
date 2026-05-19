@@ -1,6 +1,6 @@
 # Command Contract
 
-> Implemented behavior as of Phase 5B. This document describes what the
+> Implemented behavior as of Phase 6. This document describes what the
 > `atl-jira` and `atl-conf` binaries actually do today, not the long-term
 > design. Update it whenever the command surface changes.
 
@@ -17,7 +17,9 @@ commands: `issue` (create/edit/transition) and `issue comment`
 `space` (list/view), `page` (list/view/children), `search cql`, and `status`.
 Phase 4B adds the Confluence mutating commands: `page` (create/edit). Phase 5A
 makes the global `--jq` flag a real jq filter; Phase 5B adds the `--all`
-follow-all-pages flag to the list and search commands.
+follow-all-pages flag to the list and search commands. Phase 6 adds secure
+token storage: `auth login` can store a token in the OS keychain (or a `0600`
+fallback file), so commands no longer require `--token-env` on every run.
 
 ## Binaries
 
@@ -90,7 +92,8 @@ object (`binary`, `product`, `version`, optional `commit`, `date`).
 
 ```
 atl-jira auth login --site <name> --url <url> --token-style <style> \
-  [--username <email>] [--cloud-id <id>] [--token-env <ENV_VAR>]
+  [--username <email>] [--cloud-id <id>] \
+  [--token-env <ENV_VAR> | --token-stdin | --token <value>]
 ```
 
 Records a site profile under `--site`. Required: `--site`, `--url`,
@@ -101,8 +104,22 @@ Records a site profile under `--site`. Required: `--site`, `--url`,
 Cloud token styles (`cloud-classic`, `cloud-scoped`) require `https`;
 `data-center-pat` also accepts `http` for internal instances.
 
-No raw token is stored. `--token-env NAME` records the reference `env:NAME`;
-the token value is read from that environment variable at request time.
+The token is supplied by at most one of three mutually exclusive flags:
+
+- `--token-env NAME` records the reference `env:NAME`; nothing is stored and
+  the token value is read from that environment variable at request time.
+  This is the headless/CI path.
+- `--token-stdin` reads the token from standard input and stores it securely.
+  Preferred for interactive use — the token never reaches the shell history.
+- `--token <value>` stores the supplied value securely. Convenient for
+  scripts, but the value is visible in the shell history and process list.
+
+A stored token goes to the OS keychain (token reference `keyring`). When no
+keychain is available — CI, containers, minimal Linux — it falls back to a
+`0600` `credentials.json` beside `config.json` (token reference `file`) and
+`auth login` prints a warning that the token is not keychain-protected.
+`config.json` itself never holds a raw token; it records only the indirect
+`token_ref`.
 
 ### `auth status`
 
@@ -112,7 +129,8 @@ atl-jira auth status [--site <name>] [--json]
 
 With `--site`, shows that profile; without it, lists every configured profile.
 Output reports `token_status` — whether the referenced token is currently
-resolvable — but never the token value itself.
+resolvable (from the environment, the OS keychain, or the fallback file) —
+but never the token value itself.
 
 ### `auth logout`
 
@@ -120,7 +138,9 @@ resolvable — but never the token value itself.
 atl-jira auth logout --site <name>
 ```
 
-Removes exactly the named profile. Errors if the site is not configured.
+Removes exactly the named profile and deletes any token stored for it in the
+OS keychain or the fallback file. A `--token-env` reference has nothing stored
+to delete. Errors if the site is not configured.
 
 ### `api`
 
@@ -339,6 +359,9 @@ base. Distinct from `auth status`, which inspects local config offline.
   followed.
 - A missing file is treated as empty config; a malformed file is a structured
   error.
+- `credentials.json` beside it is the `0600` fallback secret store, written
+  with the same atomic-rename discipline and used only when no OS keychain is
+  available. It is the one place a raw token can land on disk.
 
 Schema:
 
@@ -361,7 +384,9 @@ Schema:
 }
 ```
 
-`token_ref` holds an indirect reference (`env:NAME`), never a token value.
+`token_ref` holds an indirect reference, never a token value: `env:NAME` for
+an environment variable, `keyring` for a token in the OS keychain, or `file`
+for a token in the `0600` `credentials.json` fallback.
 
 ## Token styles
 
@@ -419,8 +444,10 @@ plain `Error: <code>: <message>` line.
   so the Cloud paths these commands use will not match; use the raw `api`
   command there.
 - `--trace` is accepted but inert. `--no-prompt` is honored only by `browse`.
-- Tokens are referenced via `--token-env` only. Raw token storage and OS
-  keychain support are not implemented.
+- A stored token is read at request time from the OS keychain or the `0600`
+  fallback file; on macOS the keychain may prompt to authorize access the
+  first time. There is no interactive no-echo token prompt — `--token-stdin`
+  covers secure entry. `auth status` does not perform a live token check.
 - Human (non-`--json`) output is a compact per-command summary: single-item
   views print label/value lines, list and search commands print aligned
   columns. It is intentionally minimal — `--json` is the complete surface.

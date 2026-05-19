@@ -13,6 +13,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/config"
+	"github.com/aurokin/atlassian-cli/internal/secrets"
 )
 
 // newAPICommand builds the raw "api" escape-hatch command. It signs and sends
@@ -83,20 +84,29 @@ func loadSiteProfile(info appinfo.Info, site string) (config.SiteProfile, error)
 	return profile, nil
 }
 
-// resolveToken reads the token value referenced by a profile. Phase 1
-// supports only the "env:" reference form and never logs the value.
-func resolveToken(ref string) (string, error) {
+// resolveToken reads the token value a profile's token_ref points at, for the
+// named site. An "env:" ref reads an environment variable; a "keyring" or
+// "file" ref reads the credential stored by auth login. The value is never
+// logged.
+func resolveToken(ref, site string) (string, error) {
 	if ref == "" {
 		return "", apperr.New("token_unavailable",
-			"this site has no token reference; re-run auth login with --token-env")
+			"this site has no token reference; re-run auth login with --token-env, --token-stdin, or --token")
 	}
-	name, ok := strings.CutPrefix(ref, tokenRefEnvPrefix)
-	if !ok {
-		return "", apperr.New("token_unavailable", fmt.Sprintf("unsupported token reference %q", ref))
+	if name, ok := strings.CutPrefix(ref, tokenRefEnvPrefix); ok {
+		v := os.Getenv(name)
+		if v == "" {
+			return "", apperr.New("token_unavailable", fmt.Sprintf("environment variable %s is not set", name))
+		}
+		return v, nil
 	}
-	v := os.Getenv(name)
-	if v == "" {
-		return "", apperr.New("token_unavailable", fmt.Sprintf("environment variable %s is not set", name))
+	credPath, err := config.CredentialsPath()
+	if err != nil {
+		return "", err
 	}
-	return v, nil
+	store, err := secrets.ForRef(ref, credPath)
+	if err != nil {
+		return "", err
+	}
+	return store.Get(site)
 }

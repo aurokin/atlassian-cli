@@ -18,10 +18,12 @@ mutating `issue` create/edit/transition and `issue comment`
 create/edit/delete), and the Confluence MVP (`space`/`page`/`search cql`/
 `status` plus `page create` and `page edit`). Both product CLIs now have a
 full MVP command surface. The post-MVP work is sequenced in
-[docs/post-mvp-roadmap.md](docs/post-mvp-roadmap.md) as Phases 5–8; Phase 5
-adds output and pagination polish — the global `--jq` jq filter (5A) and the
-`--all` follow-all-pages flag on every list/search command (5B). Still ahead:
-secure token storage and deeper Confluence and Jira coverage.
+[docs/post-mvp-roadmap.md](docs/post-mvp-roadmap.md) as Phases 5–8. Phase 5
+added output and pagination polish — the global `--jq` jq filter (5A) and the
+`--all` follow-all-pages flag on every list/search command (5B). Phase 6 adds
+secure token storage: `auth login` can store a token in the OS keychain (or a
+`0600` fallback file), so `--token-env` is no longer required on every run.
+Still ahead: deeper Confluence and Jira coverage.
 
 ```bash
 go test ./...
