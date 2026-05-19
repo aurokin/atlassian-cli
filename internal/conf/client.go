@@ -340,6 +340,40 @@ func (c *Client) DeleteFooterComment(ctx context.Context, id string) error {
 	return err
 }
 
+// ListLabels returns a page of a page's labels (GET /pages/{id}/labels).
+func (c *Client) ListLabels(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.get(ctx, withQuery("/pages/"+url.PathEscape(pageID)+"/labels", q))
+}
+
+// ListLabelsAll follows a page's label list to completion.
+func (c *Client) ListLabelsAll(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.followList(ctx, withQuery("/pages/"+url.PathEscape(pageID)+"/labels", q))
+}
+
+// AddLabel attaches a label to a page. Confluence v2 has no page-label write
+// endpoint, so this uses the v1 content-label surface.
+func (c *Client) AddLabel(ctx context.Context, pageID, label string) (json.RawMessage, error) {
+	u, err := c.v1URL("/content/"+url.PathEscape(pageID)+"/label", nil)
+	if err != nil {
+		return nil, err
+	}
+	return c.send(ctx, "POST", u, []map[string]string{{"name": label}})
+}
+
+// RemoveLabel detaches a label from a page via the v1 content-label surface.
+func (c *Client) RemoveLabel(ctx context.Context, pageID, label string) error {
+	u, err := c.v1URL("/content/"+url.PathEscape(pageID)+"/label/"+url.PathEscape(label), nil)
+	if err != nil {
+		return err
+	}
+	_, err = c.send(ctx, "DELETE", u, nil)
+	return err
+}
+
 // setLimit records a positive limit as the API limit parameter.
 func setLimit(q url.Values, limit int) {
 	if limit > 0 {
