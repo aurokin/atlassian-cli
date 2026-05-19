@@ -12,18 +12,21 @@ The posture is inherited from `bb`, Auro's existing Bitbucket Cloud CLI, with `a
 
 ## Current status
 
-Phase 1 (shared foundation), Phase 2 (offline URL resolution), and Phase 3A
-(read-only Jira commands) are merged to `main`. Phase 3B adds the Jira mutating
-commands — `issue` create/edit/transition and `issue comment`
-create/edit/delete — completing the Jira MVP surface over a typed Jira API
-client. The Confluence product commands are not implemented yet.
+Phase 1 (shared foundation), Phase 2 (offline URL resolution), and Phase 3
+(the Jira MVP — read-only `project`/`issue`/`search`/`status` plus the
+mutating `issue` create/edit/transition and `issue comment`
+create/edit/delete) are merged to `main`. Phase 4A adds the read-only
+Confluence product commands — `space` (list/view), `page` (list/view/children),
+`search cql`, and `status` — over a typed Confluence API client. The Confluence
+page write commands are not implemented yet.
 
 ```bash
 go test ./...
 go run ./cmd/atl-jira --help
 go run ./cmd/atl-jira resolve PROJ-123 --json
 go run ./cmd/atl-jira project list --site work
-go run ./cmd/atl-conf version --json
+go run ./cmd/atl-conf space list --site work
+go run ./cmd/atl-conf search cql 'type = page' --site work
 ```
 
 See [docs/command-contract.md](docs/command-contract.md) for the implemented
@@ -40,7 +43,8 @@ Start here:
 7. [docs/phase-1-foundation-plan.md](docs/phase-1-foundation-plan.md)
 8. [docs/phase-2-resolve-browse-plan.md](docs/phase-2-resolve-browse-plan.md)
 9. [docs/phase-3-jira-mvp-plan.md](docs/phase-3-jira-mvp-plan.md)
-10. [docs/continuation-handoff.md](docs/continuation-handoff.md)
+10. [docs/phase-4-confluence-mvp-plan.md](docs/phase-4-confluence-mvp-plan.md)
+11. [docs/continuation-handoff.md](docs/continuation-handoff.md)
 
 ## Guardrails
 

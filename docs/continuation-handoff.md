@@ -8,18 +8,20 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `phase-3b-jira-mutations` (Phase 3B work). Phases 1, 2, and 3A are
+Branch: `phase-4-confluence-mvp` (Phase 4 work). Phases 1, 2, and 3 are
 merged to `main`.
 
-Status at handoff: Phases 1 (foundation), 2 (`resolve`/`browse`), and 3A (the
-read-only Jira commands) are merged to `main`. Phase 3B — the Jira mutating
-commands — is implemented on the `phase-3b-jira-mutations` branch per
-`docs/phase-3-jira-mvp-plan.md`: write methods on the typed Jira client plus a
-`DocOf` ADF helper (`internal/jira`), and the `issue create`, `issue edit`,
-`issue transition`, and `issue comment create`/`edit`/`delete` commands
-(`internal/jiracmd`), all with `go test ./...` passing. This completes the
-Jira MVP surface. The Confluence product commands are not started. See
-`docs/command-contract.md` for the implemented surface.
+Status at handoff: Phases 1 (foundation), 2 (`resolve`/`browse`), and 3 (the
+Jira MVP — read-only `project`/`issue`/`search`/`status` plus the mutating
+`issue` create/edit/transition and `issue comment` create/edit/delete) are
+merged to `main`. Phase 4A — the read-only Confluence product commands — is
+implemented on the `phase-4-confluence-mvp` branch per
+`docs/phase-4-confluence-mvp-plan.md`: a typed Confluence API client
+(`internal/conf`, REST v2 primary with a v1 fallback for CQL search and the
+current-user lookup) and the `space` (list/view), `page` (list/view/children),
+`search cql`, and `status` commands (`internal/confcmd`), all with
+`go test ./...` passing. The Confluence page write commands (Phase 4B) are not
+started. See `docs/command-contract.md` for the implemented surface.
 
 ## Canonical CLI names
 
@@ -54,32 +56,40 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 8. `docs/phase-1-foundation-plan.md`
 9. `docs/phase-2-resolve-browse-plan.md`
 10. `docs/phase-3-jira-mvp-plan.md`
-11. Product docs only after foundation work:
+11. `docs/phase-4-confluence-mvp-plan.md`
+12. Product docs only after foundation work:
    - `docs/jira-mvp.md`
    - `docs/confluence-mvp.md`
-12. Bitbucket future docs only when planning migration:
+13. Bitbucket future docs only when planning migration:
    - `docs/bitbucket-migration-roadmap.md`
    - `docs/bb-rewrite-plan.md`
 
 ## Next action
 
-Phases 1, 2, and 3A are merged to `main`. Phase 3B (Jira mutating commands) is
-implemented on `phase-3b-jira-mutations` and ready for PR, completing Phase 3.
+Phases 1, 2, and 3 are merged to `main`. Phase 4A (read-only Confluence
+commands) is implemented on `phase-4-confluence-mvp` and ready for PR.
 
 Next:
 
-1. Phase 4 — Confluence MVP commands, guided by `docs/confluence-mvp.md`.
+1. Phase 4B — Confluence page write commands: a Confluence write client
+   (`CreatePage`, `UpdatePage`) plus `page create` and `page edit`, guided by
+   `docs/phase-4-confluence-mvp-plan.md` (Tasks 6-7). `page create`/`edit`
+   require an explicit `--body-format` (`storage` | `atlas_doc_format` |
+   `wiki`); the body is passed verbatim and never converted. `page edit` reads
+   the current version and sends `version + 1`.
 2. Deferred foundation items when relevant: `--jq` filtering, `--trace`, and
    secure token storage.
 3. Deferred Jira items: a follow-all-pages `--all` flag for the list/search
    commands.
 
 Architecture note: the shared command wiring (`root`, `version`, `auth`,
-`api`, `resolve`, `browse`) lives in `internal/cli`, which now also exports
+`api`, `resolve`, `browse`) lives in `internal/cli`, which also exports
 `SiteClient` and `Render` as the seam for product commands. The Jira command
 tree lives in `internal/jiracmd` over a typed `internal/jira` client, layered
-onto the shared root by `atljiracmd`. `atlconfcmd` stays a thin wrapper until
-Phase 4.
+onto the shared root by `atljiracmd`. The Confluence command tree lives in
+`internal/confcmd` over a typed `internal/conf` client, layered onto the
+shared root by `atlconfcmd` — the same shape as the Jira side, with no
+`internal/cli` changes required.
 
 ## Implementation guardrails
 
