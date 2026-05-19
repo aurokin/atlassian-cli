@@ -230,6 +230,61 @@ func TestClientMapsNonOKToStructuredError(t *testing.T) {
 	}
 }
 
+func TestSearchCQLMapsNonOKToStructuredError(t *testing.T) {
+	// SearchCQL is a v1 endpoint; this confirms v1 calls also surface the
+	// structured error from httpclient, and exercises a non-404 mapping.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"message":"You do not have permission."}`))
+	}))
+	defer srv.Close()
+
+	_, err := newTestClient(srv).SearchCQL(context.Background(), "type = page", 0)
+	if err == nil {
+		t.Fatal("SearchCQL against a 403 endpoint returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) {
+		t.Fatalf("error type = %T, want *apperr.Error", err)
+	}
+	if ae.Code != apperr.CodeForbidden {
+		t.Errorf("Code = %q, want %q", ae.Code, apperr.CodeForbidden)
+	}
+}
+
+// TestV1URLDerivedFromCloudAPIBase confirms the v1 base derivation for a Cloud
+// target, where the API base carries the "/wiki/api/v2" suffix: the trailing
+// "/api/v2" segment is swapped for "/rest/api". The data-center helper cannot
+// cover this because its API base is the configured URL verbatim.
+func TestV1URLDerivedFromCloudAPIBase(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_, _ = w.Write([]byte(`{"accountId":"a1","displayName":"Test User"}`))
+	}))
+	defer srv.Close()
+
+	target := httpclient.Target{
+		Product:    httpclient.ProductConfluence,
+		TokenStyle: auth.StyleCloudClassic,
+		SiteName:   "test",
+		BaseURL:    srv.URL,
+	}
+	cred := auth.Credential{
+		Style:    auth.StyleCloudClassic,
+		Username: "tester@example.com",
+		Token:    "test-token",
+	}
+	cc := New(httpclient.New(target, cred, srv.Client()))
+
+	if _, err := cc.CurrentUser(context.Background()); err != nil {
+		t.Fatalf("CurrentUser: %v", err)
+	}
+	if gotPath != "/wiki/rest/api/user/current" {
+		t.Errorf("request path = %q, want /wiki/rest/api/user/current", gotPath)
+	}
+}
+
 func TestDecodeRejectsMalformedJSON(t *testing.T) {
 	if _, err := Decode[Page]([]byte("not json")); err == nil {
 		t.Fatal("Decode accepted malformed JSON")

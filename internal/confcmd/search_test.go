@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 func TestSearchCQLHumanOutput(t *testing.T) {
@@ -103,5 +104,21 @@ func TestSearchCQLMapsError(t *testing.T) {
 func TestSearchCQLRequiresExactlyOneArg(t *testing.T) {
 	if _, err := execConf(t, "search", "cql", "--site", "work"); err == nil {
 		t.Fatal("search cql with no query returned no error")
+	}
+}
+
+func TestSearchCQLJQReachesRenderer(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"results":[]}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	// --jq is plumbed through to the shared renderer, which currently reports
+	// jq filtering as unimplemented; this guards the --jq render branch.
+	_, err := execConf(t, "search", "cql", "type = page", "--site", "work", "--jq", ".")
+	if !errors.Is(err, output.ErrJQNotImplemented) {
+		t.Fatalf("error = %v, want output.ErrJQNotImplemented", err)
 	}
 }

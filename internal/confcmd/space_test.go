@@ -172,6 +172,25 @@ func TestSpaceListMapsError(t *testing.T) {
 	}
 }
 
+func TestSpaceListDecodeFailureIsStructured(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		// A 200 response with a truncated, undecodable JSON body.
+		_, _ = w.Write([]byte(`{"results":[`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	_, err := execConf(t, "space", "list", "--site", "work")
+	if err == nil {
+		t.Fatal("space list of an undecodable 200 body returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != "response_decode_failed" {
+		t.Fatalf("error = %v, want a response_decode_failed *apperr.Error", err)
+	}
+}
+
 func TestSpaceListRequiresSite(t *testing.T) {
 	_, err := execConf(t, "space", "list")
 	if err == nil {
