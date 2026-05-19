@@ -17,8 +17,9 @@ import (
 const CurrentVersion = 1
 
 const (
-	configDirName  = "atlassian-cli"
-	configFileName = "config.json"
+	configDirName       = "atlassian-cli"
+	configFileName      = "config.json"
+	credentialsFileName = "credentials.json"
 )
 
 // Config is the root configuration document.
@@ -51,17 +52,37 @@ func New() Config {
 	}
 }
 
-// DefaultPath returns the config file path under the user's config directory,
-// honoring XDG_CONFIG_HOME and otherwise using ~/.config.
-func DefaultPath() (string, error) {
+// dir returns the CLI configuration directory, honoring XDG_CONFIG_HOME and
+// otherwise using ~/.config.
+func dir() (string, error) {
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
-		return filepath.Join(xdg, configDirName, configFileName), nil
+		return filepath.Join(xdg, configDirName), nil
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("config: locate home directory: %w", err)
 	}
-	return filepath.Join(home, ".config", configDirName, configFileName), nil
+	return filepath.Join(home, ".config", configDirName), nil
+}
+
+// DefaultPath returns the config file path under the user's config directory.
+func DefaultPath() (string, error) {
+	d, err := dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(d, configFileName), nil
+}
+
+// CredentialsPath returns the path of the 0600 fallback credentials file,
+// alongside the main config file. It is used only when no OS keychain is
+// available; config.json itself never holds a raw token.
+func CredentialsPath() (string, error) {
+	d, err := dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(d, credentialsFileName), nil
 }
 
 // Load reads the config at path. A missing file yields an empty config and no
