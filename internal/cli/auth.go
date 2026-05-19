@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -83,6 +84,10 @@ func tokenStatus(site, ref string) string {
 		return fmt.Sprintf("unrecognized token reference %q", ref)
 	}
 	if _, err := store.Get(site); err != nil {
+		var ae *apperr.Error
+		if errors.As(err, &ae) && ae.Code != "token_unavailable" {
+			return "token reference configured but the stored credential could not be read: " + ae.Message
+		}
 		return "token reference configured but no stored credential was found"
 	}
 	switch ref {

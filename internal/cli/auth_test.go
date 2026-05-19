@@ -422,6 +422,30 @@ func TestAuthLoginClearsStoredTokenWhenSwitchingBackends(t *testing.T) {
 	}
 }
 
+func TestAuthStatusReportsCorruptCredentialsFile(t *testing.T) {
+	keyring.MockInitWithError(errors.New("no keychain available"))
+	t.Cleanup(keyring.MockInit)
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	if _, err := execRoot(t, jiraInfo(), "auth", "login", "--site", "work",
+		"--url", "https://example.atlassian.net", "--username", "user@example.com",
+		"--token-style", "cloud-classic", "--token", "secret"); err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	// Corrupt the fallback credentials file the login wrote.
+	if err := os.WriteFile(credentialsFilePath(t, dir), []byte("{not json"), 0o600); err != nil {
+		t.Fatalf("corrupt credentials file: %v", err)
+	}
+	out, err := execRoot(t, jiraInfo(), "auth", "status", "--site", "work", "--json=*")
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if !strings.Contains(out, "could not be read") {
+		t.Errorf("status should distinguish a corrupt credentials file from a missing one, got:\n%s", out)
+	}
+}
+
 func TestAuthLogoutClearsStoredToken(t *testing.T) {
 	keyring.MockInit()
 	dir := t.TempDir()
