@@ -30,6 +30,7 @@ func newIssueCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		newIssueWatchCommand(info, g),
 		newIssueUnwatchCommand(info, g),
 		newIssueWatchersCommand(info, g),
+		newIssueLinkCommand(info, g),
 		newCommentCommand(info, g),
 	)
 	return cmd
