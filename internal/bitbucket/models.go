@@ -48,6 +48,37 @@ type RepositoryPage struct {
 	Next   string       `json:"next,omitempty"`
 }
 
+// Account is a Bitbucket user reduced to the fields human output renders.
+type Account struct {
+	DisplayName string `json:"display_name,omitempty"`
+	Nickname    string `json:"nickname,omitempty"`
+	AccountID   string `json:"account_id,omitempty"`
+}
+
+// PullRequestRef is one side (source or destination) of a pull request,
+// reduced to its branch name.
+type PullRequestRef struct {
+	Branch *Branch `json:"branch,omitempty"`
+}
+
+// PullRequest is the subset of a Bitbucket pull request that human output
+// renders.
+type PullRequest struct {
+	ID          int             `json:"id"`
+	Title       string          `json:"title"`
+	State       string          `json:"state"`
+	Author      *Account        `json:"author,omitempty"`
+	Source      *PullRequestRef `json:"source,omitempty"`
+	Destination *PullRequestRef `json:"destination,omitempty"`
+}
+
+// PullRequestPage is one page of a pull-request listing. Bitbucket paginates
+// with an absolute "next" URL; an empty Next marks the last page.
+type PullRequestPage struct {
+	Values []PullRequest `json:"values"`
+	Next   string        `json:"next,omitempty"`
+}
+
 // Decode unmarshals a raw Bitbucket API body into a model value, wrapping a
 // decode failure as a structured error.
 func Decode[T any](raw json.RawMessage) (T, error) {
