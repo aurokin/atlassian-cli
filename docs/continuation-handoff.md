@@ -8,8 +8,8 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `bb-migration-b1.5-rewrite-plan` (Bitbucket migration Phase B1.5,
-docs only). Phases 1–9 and Phases B0–B1 are merged to `main`.
+Branch: `bb-migration-b2-compat-plan` (Bitbucket migration Phase B2, docs
+only). Phases 1–9 and Phases B0–B1.5 are merged to `main`.
 
 Status at handoff: Phases 1–9 are merged to `main` — both product CLIs
 have a full MVP command surface, the output and pagination polish (`--jq`,
@@ -97,12 +97,21 @@ test coverage, and the B3+ sequence. It carries several flagged decisions
 (D1 monorepo-vs-module, D2 `--site` vs `--host`, D3 `feature_disabled`
 code, D4 docs-gen scope, D5 aliases/extensions promotion).
 
-Next: **Phase B2 — `docs/bb-compatibility-plan.md`**: the
-plaintext-token→secrets migration, config path/host→site reshaping, the
-`bb`→`atl-bb` rename/alias decision, the fate of `aliases`/`extensions`,
-the `bb-cli` skill, and golden tests pinning `resolve` JSON / `browse`
-URLs / `--json`/`--jq`/`--no-prompt` before any change. Then B3 (extract +
-port) begins.
+Phase B2 (`docs/bb-compatibility-plan.md`) is done: binary rename +
+`bb` shim, automatic config/token migration (host→site, plaintext
+token→`secrets`, legacy file scrubbed), JSON-field guarantees plus the
+documented intentional contract changes (structured `apperr` error output;
+`api` same-origin guard; `--site` vs `--host`), the `bb-cli`→`atl-bb`
+skill transition, the live-test boundary, and the "migration done"
+checklist. It adds flagged decisions D6–D12.
+
+This completes the **planning arc** of the Bitbucket migration
+(B0→B1→B1.5→B2). Next: **Phase B3 — extract + port** (the first
+implementation phase), which should not start until the flagged decisions
+(D1–D12, in `bb-rewrite-plan.md` and `bb-compatibility-plan.md`) are
+confirmed, since several shape the very first PRs (repo shape, config
+migration, error model). Standalone Jira/Confluence deepening remains
+available in parallel.
 
 OAuth 3LO remains deferred until token-based auth is proven robust in
 production use. Standalone Jira/Confluence deepening (issue link

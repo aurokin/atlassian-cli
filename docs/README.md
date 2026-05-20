@@ -30,6 +30,7 @@ Create two separate CLIs, `atl-jira` and `atl-conf`, with shared foundations whe
 - [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) — long-term plan for possibly bringing legacy `bb` into the shared `atl-*` Atlassian CLI ecosystem as `atl-bb`.
 - [bb-inventory.md](bb-inventory.md) — Phase B0 inventory of the legacy `bb` Bitbucket CLI (command tree, config, auth, output, `api`, resolve/browse, recovery, tests, docs pipeline) and the migration-relevant deltas vs. the Atlassian foundation.
 - [bb-rewrite-plan.md](bb-rewrite-plan.md) — Phase B1.5 new-standards modernization plan for `atl-bb`: target package layout over the shared foundation, product/auth model, the `apperr` recovery mapping, docs-gen strategy, required test coverage, and the B3+ sequence.
+- [bb-compatibility-plan.md](bb-compatibility-plan.md) — Phase B2 plan for shipping `atl-bb` without breaking `bb` users: binary rename + shim, automatic config/token migration, JSON-field guarantees and documented contract changes, the `bb-cli` skill, and the live-test boundary.
 
 ## Naming
 
