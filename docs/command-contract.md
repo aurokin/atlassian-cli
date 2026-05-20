@@ -30,7 +30,7 @@ and `attachment` commands. Phase 8 deepens the Jira `issue` surface with
 - `atl-jira` — Jira CLI (`product: jira`)
 - `atl-conf` — Confluence CLI (`product: confluence`)
 - `atl-bb` — Bitbucket Cloud CLI (`product: bitbucket`) — under construction
-  (Phase B3b); the `repo` slice is the first command group shipped.
+  (Phase B3b); `repo` and `pr` are the command groups shipped so far.
 
 All binaries share one command tree built in `internal/cli`; only product
 identity and build metadata differ.
@@ -467,6 +467,24 @@ output lists full name, visibility, project, main branch, and description.
 `repo list` lists a workspace's repositories (`GET /repositories/{ws}`),
 honoring `--limit` (the Bitbucket `pagelen`) and `--all` (follow the API's
 `next`-URL pagination to completion, capped at 100 pages).
+
+### `pr`
+
+```
+atl-bb pr list [--repo <workspace>/<repo>] [--workspace <slug>] [--state <state>] [--limit N] [--all]
+atl-bb pr view <id> [--repo <workspace>/<repo>] [--workspace <slug>]
+atl-bb pr create [--repo <workspace>/<repo>] [--workspace <slug>] \
+  --title <text> --source <branch> --destination <branch> \
+  [--description <text>] [--draft] [--close-source-branch]
+```
+
+Pull requests are addressed by the repo target (`--repo`/`--workspace`) plus a
+numeric id for `view`. `pr list` filters by `--state` (`OPEN` default;
+`MERGED`, `DECLINED`, `SUPERSEDED`, or `ALL` to list every state — `ALL` omits
+the API `state` filter) and follows pagination with `--limit`/`--all`. `pr
+create` requires `--title`, `--source`, and `--destination`; human output
+prints `created pull request #<id>: <title>`. Pull-request comments, tasks,
+review, merge, and decline are later slices.
 
 ## Config file
 

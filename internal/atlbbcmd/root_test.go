@@ -18,6 +18,7 @@ func TestRootWiring(t *testing.T) {
 		"resolve": false,
 		"browse":  false,
 		"repo":    false,
+		"pr":      false,
 	}
 	for _, c := range root.Commands() {
 		if _, ok := want[c.Name()]; ok {
