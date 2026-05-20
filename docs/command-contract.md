@@ -30,7 +30,7 @@ and `attachment` commands. Phase 8 deepens the Jira `issue` surface with
 - `atl-jira` — Jira CLI (`product: jira`)
 - `atl-conf` — Confluence CLI (`product: confluence`)
 - `atl-bb` — Bitbucket Cloud CLI (`product: bitbucket`) — under construction
-  (Phase B3b); `repo` and `pr` are the command groups shipped so far.
+  (Phase B3b); `repo`, `pr`, and `pipeline` are the command groups shipped so far.
 
 All binaries share one command tree built in `internal/cli`; only product
 identity and build metadata differ.
@@ -485,6 +485,23 @@ the API `state` filter) and follows pagination with `--limit`/`--all`. `pr
 create` requires `--title`, `--source`, and `--destination`; human output
 prints `created pull request #<id>: <title>`. Pull-request comments, tasks,
 review, merge, and decline are later slices.
+
+### `pipeline`
+
+```
+atl-bb pipeline list [--repo <workspace>/<repo>] [--workspace <slug>] [--status <name>] [--limit N] [--all]
+atl-bb pipeline view <number-or-uuid> [--repo <workspace>/<repo>] [--workspace <slug>]
+atl-bb pipeline run [--repo <workspace>/<repo>] [--workspace <slug>] --ref <branch-or-tag> [--ref-type branch|tag]
+```
+
+`pipeline list` returns runs newest-first (`GET …/pipelines/`), filtered by
+`--status` (the pipeline state name, e.g. `PENDING`, `IN_PROGRESS`,
+`COMPLETED`) and paged with `--limit`/`--all`. `pipeline view` accepts either a
+numeric **build number** (found by paging newest-first) or a pipeline **UUID**
+(brace-wrapping is added automatically). `pipeline run` triggers a run against
+a ref (`--ref`, with `--ref-type` defaulting to `branch`) and prints `triggered
+pipeline #<n> on <ref-type> <ref>`. Steps, logs, stop, schedules, runners,
+caches, and variables are later slices.
 
 ## Config file
 

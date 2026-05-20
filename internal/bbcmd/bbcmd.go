@@ -21,6 +21,7 @@ func AddCommands(root *cobra.Command, info appinfo.Info, g *cli.GlobalFlags) {
 	root.AddCommand(
 		newRepoCommand(info, g),
 		newPRCommand(info, g),
+		newPipelineCommand(info, g),
 	)
 }
 
