@@ -8,8 +8,8 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `bb-migration-b1-scorecard` (Bitbucket migration Phase B1, docs
-only). Phases 1–9 and Phase B0 are merged to `main`.
+Branch: `bb-migration-b1.5-rewrite-plan` (Bitbucket migration Phase B1.5,
+docs only). Phases 1–9 and Phases B0–B1 are merged to `main`.
 
 Status at handoff: Phases 1–9 are merged to `main` — both product CLIs
 have a full MVP command surface, the output and pagination polish (`--jq`,
@@ -89,13 +89,20 @@ product-specific; and brings net-new capabilities (generated docs, fuzz/
 stability, aliases, extensions) for a deliberate monorepo decision. The
 third product validated the Phase 9 seams rather than overturning them.
 
-Next: **Phase B1.5 — `docs/bb-rewrite-plan.md`** (currently a placeholder):
-target package layout for `atl-bb` over the shared foundation, the `apperr`
-recovery mapping, and the generated-docs adoption decision. Then **B2 —
-`docs/bb-compatibility-plan.md`**: the plaintext-token→secrets migration,
-config path/host→site reshaping, the `bb`→`atl-bb` rename/alias decision,
-the fate of `aliases`/`extensions`, and golden tests pinning `resolve` JSON
-/ `browse` URLs / `--json`/`--jq`/`--no-prompt` before any change.
+Phase B1.5 (`docs/bb-rewrite-plan.md`) is done: it sets the target
+package layout (`cmd/atl-bb`, `internal/bitbucket` over `httpclient`,
+`internal/bbcmd`, `internal/atlbbcmd`), the Bitbucket product/Basic-auth
+model, the `apperr` recovery mapping, the docs-gen strategy, the required
+test coverage, and the B3+ sequence. It carries several flagged decisions
+(D1 monorepo-vs-module, D2 `--site` vs `--host`, D3 `feature_disabled`
+code, D4 docs-gen scope, D5 aliases/extensions promotion).
+
+Next: **Phase B2 — `docs/bb-compatibility-plan.md`**: the
+plaintext-token→secrets migration, config path/host→site reshaping, the
+`bb`→`atl-bb` rename/alias decision, the fate of `aliases`/`extensions`,
+the `bb-cli` skill, and golden tests pinning `resolve` JSON / `browse`
+URLs / `--json`/`--jq`/`--no-prompt` before any change. Then B3 (extract +
+port) begins.
 
 OAuth 3LO remains deferred until token-based auth is proven robust in
 production use. Standalone Jira/Confluence deepening (issue link

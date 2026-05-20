@@ -29,7 +29,7 @@ Create two separate CLIs, `atl-jira` and `atl-conf`, with shared foundations whe
 - [continuation-handoff.md](continuation-handoff.md) — point-in-time handoff for continuing this work in the app or a fresh agent session.
 - [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) — long-term plan for possibly bringing legacy `bb` into the shared `atl-*` Atlassian CLI ecosystem as `atl-bb`.
 - [bb-inventory.md](bb-inventory.md) — Phase B0 inventory of the legacy `bb` Bitbucket CLI (command tree, config, auth, output, `api`, resolve/browse, recovery, tests, docs pipeline) and the migration-relevant deltas vs. the Atlassian foundation.
-- [bb-rewrite-plan.md](bb-rewrite-plan.md) — placeholder standards for the future Bitbucket import-and-rewrite period.
+- [bb-rewrite-plan.md](bb-rewrite-plan.md) — Phase B1.5 new-standards modernization plan for `atl-bb`: target package layout over the shared foundation, product/auth model, the `apperr` recovery mapping, docs-gen strategy, required test coverage, and the B3+ sequence.
 
 ## Naming
 
