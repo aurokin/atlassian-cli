@@ -1,6 +1,6 @@
 # Continuation Handoff
 
-> Last updated: 2026-05-19. Point-in-time handoff for continuing this work in the app or a fresh agent session.
+> Last updated: 2026-05-20. Point-in-time handoff for continuing this work in the app or a fresh agent session.
 
 ## Current repository state
 
@@ -8,25 +8,22 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `phase-9-shared-foundation` (Phase 9 work). Phases 1–8 and the
-post-MVP roadmap are merged to `main`.
+Branch: `bb-migration-b0-inventory` (Bitbucket migration Phase B0, docs
+only). Phases 1–9 are all merged to `main`.
 
-Status at handoff: Phases 1–8 are merged to `main` — both product CLIs
+Status at handoff: Phases 1–9 are merged to `main` — both product CLIs
 have a full MVP command surface, the output and pagination polish (`--jq`,
 `--all`), secure token storage (OS keychain via
 `github.com/zalando/go-keyring`, with a `0600` `credentials.json` fallback;
 `config.json` never holds a raw token), the Confluence content depth
-(`page comment`, `page label`, `attachment`), and the deeper Jira coverage
+(`page comment`, `page label`, `attachment`), the deeper Jira coverage
 (`issue assign`/`watch`/`unwatch`/`watchers`, `issue link` + `link types`,
-`issue worklog`). Phase 9 — the in-repo shared-foundation review — is
-implemented on the `phase-9-shared-foundation` branch per
-`docs/phase-9-shared-foundation-plan.md` and scored in
-`docs/shared-foundation-scorecard.md`: the proven byte-for-byte duplicates
-were extracted into a new `internal/restutil` (`WithQuery`,
-`MaxFollowPages`, generic `Decode`/`DecodeError`) and `output.TabWriter`,
-while the divergent pagination followers, `setLimit`, `get`/`send`, and
-command wiring stay per-product. Pure refactor, no behavior change;
-`go test ./...` passes. See `docs/command-contract.md` for the surface.
+`issue worklog`), and the in-repo shared-foundation extraction
+(`internal/restutil` and `output.TabWriter`, scored in
+`docs/shared-foundation-scorecard.md`). `go test ./...` passes. The
+**Bitbucket `atl-bb` migration** has now begun: Phase B0 (inventory of
+legacy `bb`) is captured in `docs/bb-inventory.md`. See
+`docs/command-contract.md` for the implemented Atlassian surface.
 
 ## Canonical CLI names
 
@@ -78,20 +75,30 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 
 ## Next action
 
-Phase 9 (in-repo shared-foundation review) is implemented on
-`phase-9-shared-foundation` and ready for its PR: `internal/restutil` and
-`output.TabWriter` extracted from the proven cross-product duplicates,
-scored in `docs/shared-foundation-scorecard.md`.
+The **Bitbucket `atl-bb` migration** is underway per
+`docs/bitbucket-migration-roadmap.md`. Phase B0 (inventory of legacy `bb`)
+is done — `docs/bb-inventory.md` analyzes `~/code/bitbucket_cli`
+(`github.com/aurokin/bitbucket_cli`) and records the migration-relevant
+deltas: plaintext token in `config.json` (→ keychain/`0600`), guided-prose
+errors (→ structured `apperr` codes), and the host-keyed config schema/path
+(`bb/config.json` → site-keyed `atlassian-cli/config.json`). The shared
+output/`--json`/`--jq` contract and the `httptest`-based test harness
+already match; `bb` additionally brings a generated-docs pipeline, fuzz
+targets, and a stability gate.
 
-Next: the **Bitbucket `atl-bb` migration** is its own dedicated future
-phase, to be taken up once Jira and Confluence are considered complete and
-the legacy `bb` source is available as a behavior oracle — inventory `bb`,
-write `bb-rewrite-plan.md`/`bb-compatibility-plan.md`, and decide
-import-vs-module-vs-separate per `docs/bitbucket-migration-roadmap.md`.
+Next: **Phase B1 — shared-foundation comparison.** Extend
+`docs/shared-foundation-scorecard.md` with the per-package
+share-now/adapt/keep-separate decisions from the inventory's §9, then
+**B1.5** (`docs/bb-rewrite-plan.md`, currently a placeholder) and **B2**
+(`docs/bb-compatibility-plan.md`). The big compatibility tasks: plaintext-
+token→secret-store migration, config path/host→site reshaping, the `bb`→
+`atl-bb` rename/alias decision, and golden tests pinning `resolve` JSON /
+`browse` URLs / `--json`/`--jq`/`--no-prompt` before any change.
+
 OAuth 3LO remains deferred until token-based auth is proven robust in
-production use. Otherwise, continue deepening Jira/Confluence coverage
-(e.g. issue links edit/delete, worklog edit/delete, Confluence inline
-comments or attachment upload) as standalone phases.
+production use. Standalone Jira/Confluence deepening (issue link
+edit/delete, worklog edit/delete, Confluence inline comments, attachment
+upload) remains available as independent phases.
 
 Architecture note: the shared command wiring (`root`, `version`, `auth`,
 `api`, `resolve`, `browse`) lives in `internal/cli`, which also exports
