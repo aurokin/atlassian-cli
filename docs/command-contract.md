@@ -30,7 +30,7 @@ and `attachment` commands. Phase 8 deepens the Jira `issue` surface with
 - `atl-jira` — Jira CLI (`product: jira`)
 - `atl-conf` — Confluence CLI (`product: confluence`)
 - `atl-bb` — Bitbucket Cloud CLI (`product: bitbucket`) — under construction
-  (Phase B3b); `repo`, `pr`, and `pipeline` are the command groups shipped so far.
+  (Phase B3b); `repo`, `pr`, `pipeline`, and `issue` are the command groups shipped so far.
 
 All binaries share one command tree built in `internal/cli`; only product
 identity and build metadata differ.
@@ -502,6 +502,29 @@ numeric **build number** (found by paging newest-first) or a pipeline **UUID**
 a ref (`--ref`, with `--ref-type` defaulting to `branch`) and prints `triggered
 pipeline #<n> on <ref-type> <ref>`. Steps, logs, stop, schedules, runners,
 caches, and variables are later slices.
+
+### `issue`
+
+```
+atl-bb issue list [--repo <workspace>/<repo>] [--workspace <slug>] [--state <name>] [--limit N] [--all]
+atl-bb issue view <id> [--repo <workspace>/<repo>] [--workspace <slug>]
+atl-bb issue create [--repo <workspace>/<repo>] [--workspace <slug>] \
+  --title <text> [--body <raw>] [--kind <kind>] [--priority <priority>]
+```
+
+`issue list`/`view`/`create` operate on a repository's issue tracker. Issue
+states are lower-case (`new`, `open`, `resolved`, `on hold`, `invalid`,
+`duplicate`, `wontfix`, `closed`); `--state` is passed through verbatim and
+`ALL` lists every state. `issue create` requires `--title`; `--kind`
+(`bug`/`enhancement`/`proposal`/`task`) and `--priority`
+(`trivial`/`minor`/`major`/`critical`/`blocker`) are passed through for the API
+to validate, and human output prints `created issue #<id>: <title>`.
+
+If a repository's **issue tracker is disabled**, Bitbucket returns 404 with a
+recognizable message; `atl-bb` surfaces this as the `feature_disabled` error
+code (distinct from `not_found_or_not_visible`) so an agent can tell "enable
+the tracker" from "the repo or issue is missing". Issue comments, attachments,
+state changes, and taxonomy (milestones/components/versions) are later slices.
 
 ## Config file
 
