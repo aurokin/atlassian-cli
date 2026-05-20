@@ -72,8 +72,8 @@ Reused unchanged from the foundation: `internal/httpclient`, `internal/cli`
 > **Open decision (D2):** credential selection flag. The foundation uses
 > `--site`; `bb` uses `--host`/`--repo`/`--workspace`. Recommending `atl-bb`
 > keep `--repo <workspace>/<repo>` and `--workspace` for the **resource** and
-> add `--site` for the **credential**, with `--host` kept as a hidden,
-> deprecated alias for one release. Flagged.
+> add `--site` for the **credential**. No `--host` alias (clean break — the
+> legacy flag is not carried over). Flagged for confirmation.
 
 ## Output / JSON compatibility guarantees
 
@@ -164,8 +164,9 @@ without a measured baseline.
 
 ## Rewrite guardrails
 
-- Keep legacy `bb` available until `atl-bb` reaches parity or an exception is
-  explicitly accepted.
+- Use legacy `bb` only as the **source/behavior oracle** for the rewrite; it
+  is not shipped alongside `atl-bb` (clean break — no dual-availability
+  window). `atl-bb` replaces it on release.
 - Never combine a mechanical source import with broad behavior changes in one
   PR.
 - Prefer small rewrite PRs, each stating: compatible / intentionally breaking /
@@ -191,5 +192,6 @@ without a measured baseline.
 - Do not fake Jira/Confluence parity in Bitbucket commands.
 - Do not break stable JSON fields to match a new internal model.
 - Do not make live Bitbucket tests mandatory in normal CI.
-- Do not remove legacy `bb` before the alias/wrapper/deprecation decision
-  (B2) is documented and shipped.
+- Do not ship a `bb` shim/alias or a dual-availability window: `atl-bb` is a
+  clean break that replaces `bb` on release (decision confirmed in B2). The
+  one-time config/credential **import** is the only legacy concession.

@@ -8,8 +8,8 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `bb-migration-b2-compat-plan` (Bitbucket migration Phase B2, docs
-only). Phases 1–9 and Phases B0–B1.5 are merged to `main`.
+Branch: `bb-migration-clean-atl-bb` (Bitbucket migration docs cleanup, docs
+only). Phases 1–9 and Phases B0–B2 are merged to `main`.
 
 Status at handoff: Phases 1–9 are merged to `main` — both product CLIs
 have a full MVP command surface, the output and pagination polish (`--jq`,
@@ -97,13 +97,17 @@ test coverage, and the B3+ sequence. It carries several flagged decisions
 (D1 monorepo-vs-module, D2 `--site` vs `--host`, D3 `feature_disabled`
 code, D4 docs-gen scope, D5 aliases/extensions promotion).
 
-Phase B2 (`docs/bb-compatibility-plan.md`) is done: binary rename +
-`bb` shim, automatic config/token migration (host→site, plaintext
-token→`secrets`, legacy file scrubbed), JSON-field guarantees plus the
-documented intentional contract changes (structured `apperr` error output;
-`api` same-origin guard; `--site` vs `--host`), the `bb-cli`→`atl-bb`
-skill transition, the live-test boundary, and the "migration done"
-checklist. It adds flagged decisions D6–D12.
+Phase B2 (`docs/bb-compatibility-plan.md`) is done and reflects the
+**clean-break decision (Auro): no `bb` alias/shim/deprecation window — ship
+`atl-bb` directly**. It covers the clean break on the binary name, the
+one-time automatic config/credential **import** (host→site, plaintext
+token→`secrets`, legacy file scrubbed) so existing users do not have to
+re-login, JSON-field guarantees plus the documented intentional contract
+changes (structured `apperr` error output; `api` same-origin guard; `--site`
+with no `--host` alias), the `bb-cli`→`atl-bb` skill retirement (pointer
+note), the live-test boundary, and the "migration done" checklist. It adds
+decisions D6–D12 — D6 and D11 resolved by the clean break; D7, D8, D9, D10,
+D12 remain flagged.
 
 This completes the **planning arc** of the Bitbucket migration
 (B0→B1→B1.5→B2). Next: **Phase B3 — extract + port** (the first

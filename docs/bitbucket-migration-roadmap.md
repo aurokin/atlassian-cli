@@ -132,7 +132,8 @@ Design migration without breaking users.
 Must cover:
 
 - introduce canonical binary name `atl-bb`
-- decide whether legacy `bb` remains as an alias/wrapper, and for how long
+- clean break on the binary name: **no `bb` alias/wrapper/shim or
+  deprecation window** (decision confirmed in B2) — `atl-bb` replaces `bb`
 - preserve current config path or provide automatic migration
 - preserve command behavior and JSON fields unless explicitly versioned
 - preserve repo-local `bb-cli` skill installability or provide a clean replacement that documents `atl-bb`
@@ -150,7 +151,7 @@ Rules:
 - no product command behavior changes in the same PR as extraction unless unavoidable
 - golden tests must prove output compatibility
 - config migration tests must run before any path changes
-- legacy `bb` continues to build and pass its existing checks throughout until the alias/wrapper decision is implemented
+- legacy `bb` continues to build and pass its existing checks throughout the rewrite as the source/behavior oracle; it is not shipped alongside `atl-bb` (clean break — no alias/wrapper)
 
 ### Phase B4: Move or integrate Bitbucket as `atl-bb`
 

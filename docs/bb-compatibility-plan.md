@@ -1,23 +1,24 @@
 # Bitbucket Compatibility Plan (Phase B2)
 
-> How to ship `atl-bb` without breaking current `bb` users and agents. Written
-> after B0 ([bb-inventory.md](bb-inventory.md)), B1 (the Bitbucket section of
+> How to ship `atl-bb` while preserving the data and machine contracts current
+> `bb` users and agents rely on. Written after B0
+> ([bb-inventory.md](bb-inventory.md)), B1 (the Bitbucket section of
 > [shared-foundation-scorecard.md](shared-foundation-scorecard.md)), and B1.5
-> ([bb-rewrite-plan.md](bb-rewrite-plan.md)). Compatibility = preserve **user
-> value and stable machine contracts**, not every internal detail. Decision
-> IDs continue the B1.5 sequence (D6+).
+> ([bb-rewrite-plan.md](bb-rewrite-plan.md)). Compatibility here = preserve
+> **stable machine contracts and stored credentials**, not the legacy binary
+> name. **Decision (Auro): no `bb` alias/shim — ship `atl-bb` directly as a
+> clean break.** Decision IDs continue the B1.5 sequence (D6+).
 
-## 1. Binary name and the legacy `bb` shim
+## 1. Binary name — clean break to `atl-bb`
 
-- Canonical name: **`atl-bb`** (matches `atl-jira`, `atl-conf`).
-- Keep a **`bb` compatibility shim** for a deprecation window: a tiny wrapper
-  binary (or symlink) that forwards all args to `atl-bb` and, on a TTY, prints
-  a one-line deprecation notice to **stderr** (never stdout, so `--json`/`--jq`
-  pipelines stay clean).
-- Remove `bb` only after the window closes and the notice has shipped.
+- Canonical and **only** name: **`atl-bb`** (matches `atl-jira`, `atl-conf`).
+- **No `bb` compatibility shim, alias, symlink, or deprecation window.** The
+  legacy `bb` binary is simply replaced; users invoke `atl-bb`.
+- Legacy `bb` continues to exist only as the **source/behavior oracle** for
+  the rewrite (B3), not as a shipped binary.
 
-> **D6 — deprecation window length.** Recommend two minor releases of dual
-> availability before `bb` is removed. Flagged.
+> **D6 — resolved (no deprecation window).** Per the clean-break decision,
+> there is no dual-availability period and no `bb` shim to retire.
 
 ## 2. Config path and automatic migration
 
@@ -25,8 +26,10 @@ Legacy: `$BB_CONFIG_DIR/config.json` else `os.UserConfigDir()/bb/config.json`,
 host-keyed, **plaintext token**. Target: `XDG_CONFIG_HOME/atlassian-cli/config.json`,
 site-keyed, `token_ref` indirection + `internal/secrets`.
 
-Migration (runs once, automatically, on first `atl-bb` invocation when an
-`atlassian-cli` config does not yet exist and a legacy `bb` config does):
+A clean break on the **binary name** does not mean forcing a re-login: a
+one-time credential **import** spares existing users from re-authenticating.
+It runs once, automatically, on first `atl-bb` invocation when an
+`atlassian-cli` config does not yet exist and a legacy `bb` config does:
 
 1. Read the legacy `bb/config.json`.
 2. For each host, create a site profile: `ProductBitbucket`, Cloud Basic
@@ -52,9 +55,12 @@ clean new credential (the always-available path).
 > profile named `bitbucket`. Flagged (alternative: keep the literal
 > `bitbucket.org`).
 >
-> **D9 — env var aliases.** Recommend honoring `BB_CONFIG_DIR` and
-> `BB_API_BASE_URL` as deprecated aliases (alongside `XDG_CONFIG_HOME` and the
-> `atl-*` test-base override) during the window. Flagged.
+> **D9 — legacy env vars.** At **runtime** `atl-bb` honors only the `atl-*`
+> conventions (`XDG_CONFIG_HOME`, the `atl-*` test-base override) — no
+> deprecated `BB_*` runtime aliases (consistent with the clean break). The
+> one-time **importer** may still read `BB_CONFIG_DIR` purely to *locate* the
+> legacy file to migrate. Flagged (whether the importer should consult
+> `BB_CONFIG_DIR` at all, or only the default `bb/` path).
 
 ## 3. Command behavior and JSON field guarantees
 
@@ -79,8 +85,8 @@ clean new credential (the always-available path).
    release notes.
 2. **`api` same-origin guard.** `atl-bb api <absolute-url>` rejects off-origin
    hosts (`untrusted_url`), unlike `bb api`. Relative paths are unaffected.
-3. **Credential flag.** `--site` selects the credential; `--host` is kept as a
-   hidden deprecated alias for one release (ties to D2).
+3. **Credential flag.** `--site` selects the credential. There is no `--host`
+   alias (clean break; ties to D2).
 
 > **D10 — error-output compatibility.** Recommend shipping the structured
 > error model as an intentional improvement (no `bb`-prose compatibility
@@ -91,14 +97,14 @@ clean new credential (the always-available path).
 Legacy skill installs via
 `npx skills add https://github.com/aurokin/bitbucket_cli --skill bb-cli`.
 
-- Publish a new **`atl-bb` skill** describing the `atl-bb` surface and the
-  deterministic agent flags (`--repo`, `--json`, `--jq`, `--no-prompt`).
-- During the window, keep the `bb-cli` skill installable but updated to point
-  at `atl-bb` and note the rename.
+- Publish a new **`atl-bb` skill** in the monorepo describing the `atl-bb`
+  surface and the deterministic agent flags (`--repo`, `--json`, `--jq`,
+  `--no-prompt`).
+- Retire the `bb-cli` skill (clean break): leave a short note in the legacy
+  `bb` repo pointing to the `atl-bb` skill, but do not maintain `bb-cli`.
 
-> **D11 — skill name + home.** Recommend a new `atl-bb` skill in the monorepo
-> while leaving `bb-cli` as a thin pointer for the window. Flagged (whether to
-> retire the `bb-cli` name entirely).
+> **D11 — resolved (clean break).** New `atl-bb` skill; `bb-cli` is retired
+> with a pointer note rather than maintained as an alias.
 
 ## 5. Generated docs
 
@@ -120,8 +126,8 @@ sacrificial fixtures for destructive flows.
 
 ## 7. Compatibility checklist (gate for "migration done")
 
-- [ ] `atl-bb auth login/status/logout` works with migrated config; legacy
-      `bb` still works (shim) or has a documented transition.
+- [ ] `atl-bb auth login/status/logout` works with migrated config (no legacy
+      `bb` shim — clean break).
 - [ ] `atl-bb api` behavior matches intended Bitbucket API behavior; the
       same-origin guard delta is documented.
 - [ ] `atl-bb resolve` outputs compatible JSON for the known URL fixtures.
@@ -139,15 +145,15 @@ sacrificial fixtures for destructive flows.
 
 ## 8. Open decisions carried forward
 
-| ID | Decision | Recommendation |
+| ID | Decision | Status / Recommendation |
 |---|---|---|
-| D6 | `bb` deprecation window length | two minor releases of dual availability |
-| D7 | scrub legacy plaintext token after migration | yes, scrub/rename the old file |
-| D8 | default site name for `bitbucket.org` | `bitbucket` |
-| D9 | honor `BB_CONFIG_DIR`/`BB_API_BASE_URL` as deprecated aliases | yes, during the window |
-| D10 | ship structured errors with no `bb`-prose compat mode | yes (improvement) |
-| D11 | skill name/home | new `atl-bb` skill; `bb-cli` as a pointer for the window |
-| D12 | legacy `bb` repo docs disposition | freeze-with-pointer if public, else delete |
+| D6 | `bb` deprecation window | **Resolved — none.** Clean break: ship `atl-bb`, no `bb` shim/alias/window. |
+| D7 | scrub legacy plaintext token after migration | Flagged — yes, scrub/rename the old file (security win). |
+| D8 | default site name for `bitbucket.org` | Flagged — `bitbucket` (alt: literal `bitbucket.org`). |
+| D9 | importer reads `BB_CONFIG_DIR` to locate legacy file | Flagged — runtime honors only `atl-*`; importer may read `BB_CONFIG_DIR` only to find the file to migrate. |
+| D10 | ship structured errors with no `bb`-prose compat mode | Flagged — yes (improvement). |
+| D11 | skill name/home | **Resolved — clean break.** New `atl-bb` skill; `bb-cli` retired with a pointer note. |
+| D12 | legacy `bb` repo docs disposition | Flagged — freeze-with-pointer if public, else delete. |
 
 (D1–D5 are in [bb-rewrite-plan.md](bb-rewrite-plan.md).)
 
