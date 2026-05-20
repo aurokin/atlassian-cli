@@ -23,6 +23,40 @@ internal/atljiracmd/    # atl-jira Cobra tree
 internal/atlconfcmd/     # atl-conf Cobra tree
 ```
 
+## Realized shared foundations (Phase 9)
+
+The list above was the early aspiration. After Phases 1–8 the proven,
+genuinely-duplicated foundations were extracted per
+[shared-foundation-scorecard.md](shared-foundation-scorecard.md):
+
+```text
+internal/restutil/      # WithQuery, MaxFollowPages, generic Decode/DecodeError
+internal/output/        # JSON/jq/field rendering + TabWriter for human tables
+internal/httpclient/    # request signing, URL resolution, error classification
+internal/apperr/        # structured error model
+internal/config/        # config file + credentials path
+internal/secrets/       # keychain / 0600-file token store
+internal/auth/          # token styles and request signing credentials
+internal/cli/           # shared root, auth/api/resolve/browse, SiteClient/Render seam
+internal/resolve/       # URL/key resolution
+```
+
+`internal/restutil` holds only the helpers that were byte-for-byte
+identical across the typed clients; `Decode`/`DecodeError` take a product
+label so each client keeps a thin wrapper and the error text still names
+the product. `output.TabWriter` centralizes the one tabwriter
+configuration both command trees share.
+
+**Deliberately not shared.** The pagination followers
+(`internal/jira` token+offset `followAll`/`synthesize` vs `internal/conf`
+`_links.next` cursor `followList`/`nextPageURL`), the `setLimit`
+parameter name (`maxResults` vs `limit`), the `get`/`send` request
+helpers, the per-product `Client` constructors, and the command-tree
+wiring all look similar but are coupled to product-specific API shapes.
+Unifying them would hide real differences — exactly the over-abstraction
+the near-term posture warns against. They are revisited only if a third
+product (`atl-bb`) makes a shared shape concrete.
+
 ## Shared commands
 
 ```text
