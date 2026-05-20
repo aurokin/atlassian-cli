@@ -30,7 +30,9 @@ coverage: `issue assign`/`watch`/`unwatch`/`watchers`, `issue link` and
 in-repo shared-foundation review: the proven cross-product duplicates were
 extracted into `internal/restutil` (and `output.TabWriter`), leaving the
 divergent pagination followers per product. The Bitbucket `atl-bb`
-migration remains its own future phase.
+migration is now underway (Phases B0–B2 planned; B3a foundation merged;
+B3b ports the command tree in vertical slices — the `repo` group ships
+first).
 
 ```bash
 go test ./...
@@ -40,6 +42,7 @@ go run ./cmd/atl-conf search cql 'type = page' --site work
 go run ./cmd/atl-conf page create --space DEV --title Notes \
   --body '<p>hi</p>' --body-format storage --site work
 go run ./cmd/atl-jira issue view PROJ-1 --site work --jq '.fields.status.name'
+go run ./cmd/atl-bb repo view acme/widgets --site work --json
 ```
 
 See [docs/command-contract.md](docs/command-contract.md) for the implemented

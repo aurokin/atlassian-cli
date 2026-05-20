@@ -22,15 +22,23 @@ type Branch struct {
 	Name string `json:"name"`
 }
 
+// Project is the Bitbucket project a repository belongs to, reduced to the
+// fields human output renders.
+type Project struct {
+	Key  string `json:"key,omitempty"`
+	Name string `json:"name,omitempty"`
+}
+
 // Repository is the subset of a Bitbucket repository that human output
 // renders.
 type Repository struct {
-	UUID        string  `json:"uuid"`
-	FullName    string  `json:"full_name"`
-	Name        string  `json:"name"`
-	Description string  `json:"description,omitempty"`
-	IsPrivate   bool    `json:"is_private"`
-	MainBranch  *Branch `json:"mainbranch,omitempty"`
+	UUID        string   `json:"uuid"`
+	FullName    string   `json:"full_name"`
+	Name        string   `json:"name"`
+	Description string   `json:"description,omitempty"`
+	IsPrivate   bool     `json:"is_private"`
+	MainBranch  *Branch  `json:"mainbranch,omitempty"`
+	Project     *Project `json:"project,omitempty"`
 }
 
 // RepositoryPage is one page of a Bitbucket repository listing. Bitbucket
