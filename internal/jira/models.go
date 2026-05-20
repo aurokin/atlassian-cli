@@ -3,7 +3,7 @@ package jira
 import (
 	"encoding/json"
 
-	"github.com/aurokin/atlassian-cli/internal/apperr"
+	"github.com/aurokin/atlassian-cli/internal/restutil"
 )
 
 // User is the subset of a Jira user that human output renders.
@@ -131,10 +131,5 @@ type WorklogPage struct {
 // Decode unmarshals a raw Jira response body into a model value, wrapping a
 // decode failure as a structured error.
 func Decode[T any](raw json.RawMessage) (T, error) {
-	var v T
-	if err := json.Unmarshal(raw, &v); err != nil {
-		return v, apperr.New("response_decode_failed",
-			"could not decode the Jira API response: "+err.Error())
-	}
-	return v, nil
+	return restutil.Decode[T](raw, productName)
 }

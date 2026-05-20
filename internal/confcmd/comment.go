@@ -10,6 +10,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/conf"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // newPageCommentCommand builds the "page comment" sub-group, which operates on
@@ -211,7 +212,7 @@ func writeCommentList(w io.Writer, comments []conf.Comment) {
 		fmt.Fprintln(w, "No comments found.")
 		return
 	}
-	tw := tabWriter(w)
+	tw := output.TabWriter(w)
 	for _, c := range comments {
 		fmt.Fprintf(tw, "%s\t%s\t%s\n", c.ID, c.Status, c.Title)
 	}

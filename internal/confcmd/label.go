@@ -9,6 +9,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/conf"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // newPageLabelCommand builds the "page label" sub-group, which operates on a
@@ -113,7 +114,7 @@ func writeLabelList(w io.Writer, labels []conf.Label) {
 		fmt.Fprintln(w, "No labels found.")
 		return
 	}
-	tw := tabWriter(w)
+	tw := output.TabWriter(w)
 	for _, l := range labels {
 		fmt.Fprintf(tw, "%s\t%s\n", l.Prefix, l.Name)
 	}

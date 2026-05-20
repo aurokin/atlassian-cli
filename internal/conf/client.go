@@ -20,7 +20,11 @@ import (
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/httpclient"
+	"github.com/aurokin/atlassian-cli/internal/restutil"
 )
+
+// productName labels this product in shared structured error messages.
+const productName = "Confluence"
 
 // Client is a typed Confluence API client bound to one authenticated site.
 type Client struct {
@@ -59,7 +63,7 @@ func (c *Client) v1URL(path string, q url.Values) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return withQuery(strings.TrimSuffix(base, "/api/v2")+"/rest/api"+path, q), nil
+	return restutil.WithQuery(strings.TrimSuffix(base, "/api/v2")+"/rest/api"+path, q), nil
 }
 
 // send marshals payload as a JSON request body, issues method against an
@@ -96,7 +100,7 @@ func (c *Client) CurrentUser(ctx context.Context) (json.RawMessage, error) {
 func (c *Client) ListSpaces(ctx context.Context, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, withQuery("/spaces", q))
+	return c.get(ctx, restutil.WithQuery("/spaces", q))
 }
 
 // GetSpace returns a single space by id (GET /spaces/{id}).
@@ -110,7 +114,7 @@ func (c *Client) GetSpace(ctx context.Context, id string) (json.RawMessage, erro
 func (c *Client) FindSpaceByKey(ctx context.Context, key string) (json.RawMessage, error) {
 	q := url.Values{}
 	q.Set("keys", key)
-	return c.get(ctx, withQuery("/spaces", q))
+	return c.get(ctx, restutil.WithQuery("/spaces", q))
 }
 
 // ListPages returns a page of pages in a space (GET /pages?space-id={id}).
@@ -118,7 +122,7 @@ func (c *Client) ListPages(ctx context.Context, spaceID string, limit int) (json
 	q := url.Values{}
 	q.Set("space-id", spaceID)
 	setLimit(q, limit)
-	return c.get(ctx, withQuery("/pages", q))
+	return c.get(ctx, restutil.WithQuery("/pages", q))
 }
 
 // GetPage returns a single page by id with its storage-format body
@@ -126,7 +130,7 @@ func (c *Client) ListPages(ctx context.Context, spaceID string, limit int) (json
 func (c *Client) GetPage(ctx context.Context, id string) (json.RawMessage, error) {
 	q := url.Values{}
 	q.Set("body-format", "storage")
-	return c.get(ctx, withQuery("/pages/"+url.PathEscape(id), q))
+	return c.get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id), q))
 }
 
 // GetChildPages returns a page of a page's direct children
@@ -134,7 +138,7 @@ func (c *Client) GetPage(ctx context.Context, id string) (json.RawMessage, error
 func (c *Client) GetChildPages(ctx context.Context, id string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, withQuery("/pages/"+url.PathEscape(id)+"/children", q))
+	return c.get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/children", q))
 }
 
 // SearchCQL runs a CQL query. CQL is a v1-only surface, so this uses the v1
@@ -182,14 +186,9 @@ func (c *Client) UpdatePage(ctx context.Context, id, status, title, bodyFormat, 
 	})
 }
 
-// maxFollowPages caps how many pages an --all request follows, guarding
-// against an unbounded loop from a malformed cursor.
-const maxFollowPages = 100
-
 // decodeError wraps a pagination decode failure as a structured error.
 func decodeError(err error) error {
-	return apperr.New("response_decode_failed",
-		"could not decode the Confluence API response: "+err.Error())
+	return restutil.DecodeError(productName, err)
 }
 
 // nextPageURL builds the next-page request from the current request URL and
@@ -218,11 +217,11 @@ func nextPageURL(current, next string) (string, error) {
 // an aggregated {"results": [...]} body. Confluence list responses page via a
 // _links.next reference; nextPageURL threads each page onto the original
 // request path. Items are kept verbatim, so every field each page returned is
-// preserved. Following stops at maxFollowPages.
+// preserved. Following stops at restutil.MaxFollowPages.
 func (c *Client) followList(ctx context.Context, firstURL string) (json.RawMessage, error) {
 	all := []json.RawMessage{}
 	reqURL := firstURL
-	for page := 0; page < maxFollowPages; page++ {
+	for page := 0; page < restutil.MaxFollowPages; page++ {
 		raw, err := c.get(ctx, reqURL)
 		if err != nil {
 			return nil, err
@@ -255,7 +254,7 @@ func (c *Client) followList(ctx context.Context, firstURL string) (json.RawMessa
 func (c *Client) ListSpacesAll(ctx context.Context, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.followList(ctx, withQuery("/spaces", q))
+	return c.followList(ctx, restutil.WithQuery("/spaces", q))
 }
 
 // ListPagesAll follows GET /pages for a space to completion.
@@ -263,14 +262,14 @@ func (c *Client) ListPagesAll(ctx context.Context, spaceID string, limit int) (j
 	q := url.Values{}
 	q.Set("space-id", spaceID)
 	setLimit(q, limit)
-	return c.followList(ctx, withQuery("/pages", q))
+	return c.followList(ctx, restutil.WithQuery("/pages", q))
 }
 
 // GetChildPagesAll follows a page's children list to completion.
 func (c *Client) GetChildPagesAll(ctx context.Context, id string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.followList(ctx, withQuery("/pages/"+url.PathEscape(id)+"/children", q))
+	return c.followList(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/children", q))
 }
 
 // SearchCQLAll follows the v1 CQL search to completion.
@@ -290,14 +289,14 @@ func (c *Client) SearchCQLAll(ctx context.Context, cql string, limit int) (json.
 func (c *Client) ListFooterComments(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, withQuery("/pages/"+url.PathEscape(pageID)+"/footer-comments", q))
+	return c.get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(pageID)+"/footer-comments", q))
 }
 
 // ListFooterCommentsAll follows a page's footer-comment list to completion.
 func (c *Client) ListFooterCommentsAll(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.followList(ctx, withQuery("/pages/"+url.PathEscape(pageID)+"/footer-comments", q))
+	return c.followList(ctx, restutil.WithQuery("/pages/"+url.PathEscape(pageID)+"/footer-comments", q))
 }
 
 // GetFooterComment returns a single footer comment by id with its
@@ -305,7 +304,7 @@ func (c *Client) ListFooterCommentsAll(ctx context.Context, pageID string, limit
 func (c *Client) GetFooterComment(ctx context.Context, id string) (json.RawMessage, error) {
 	q := url.Values{}
 	q.Set("body-format", "storage")
-	return c.get(ctx, withQuery("/footer-comments/"+url.PathEscape(id), q))
+	return c.get(ctx, restutil.WithQuery("/footer-comments/"+url.PathEscape(id), q))
 }
 
 // CreateFooterComment adds a footer comment to a page (POST /footer-comments)
@@ -345,14 +344,14 @@ func (c *Client) DeleteFooterComment(ctx context.Context, id string) error {
 func (c *Client) ListLabels(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, withQuery("/pages/"+url.PathEscape(pageID)+"/labels", q))
+	return c.get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(pageID)+"/labels", q))
 }
 
 // ListLabelsAll follows a page's label list to completion.
 func (c *Client) ListLabelsAll(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.followList(ctx, withQuery("/pages/"+url.PathEscape(pageID)+"/labels", q))
+	return c.followList(ctx, restutil.WithQuery("/pages/"+url.PathEscape(pageID)+"/labels", q))
 }
 
 // AddLabel attaches a label to a page. Confluence v2 has no page-label write
@@ -380,14 +379,14 @@ func (c *Client) RemoveLabel(ctx context.Context, pageID, label string) error {
 func (c *Client) ListAttachments(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, withQuery("/pages/"+url.PathEscape(pageID)+"/attachments", q))
+	return c.get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(pageID)+"/attachments", q))
 }
 
 // ListAttachmentsAll follows a page's attachment list to completion.
 func (c *Client) ListAttachmentsAll(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.followList(ctx, withQuery("/pages/"+url.PathEscape(pageID)+"/attachments", q))
+	return c.followList(ctx, restutil.WithQuery("/pages/"+url.PathEscape(pageID)+"/attachments", q))
 }
 
 // GetAttachment returns a single attachment's metadata, including the
@@ -441,12 +440,4 @@ func setLimit(q url.Values, limit int) {
 	if limit > 0 {
 		q.Set("limit", strconv.Itoa(limit))
 	}
-}
-
-// withQuery appends an encoded query string to path when it is non-empty.
-func withQuery(path string, q url.Values) string {
-	if len(q) == 0 {
-		return path
-	}
-	return path + "?" + q.Encode()
 }

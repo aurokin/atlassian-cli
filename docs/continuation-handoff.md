@@ -8,23 +8,25 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `phase-8-jira-coverage` (Phase 8 work). Phases 1–7 and the post-MVP
-roadmap are merged to `main`.
+Branch: `phase-9-shared-foundation` (Phase 9 work). Phases 1–8 and the
+post-MVP roadmap are merged to `main`.
 
-Status at handoff: Phases 1–7 are merged to `main` — both product CLIs have
-a full MVP command surface, the output and pagination polish (`--jq`,
+Status at handoff: Phases 1–8 are merged to `main` — both product CLIs
+have a full MVP command surface, the output and pagination polish (`--jq`,
 `--all`), secure token storage (OS keychain via
 `github.com/zalando/go-keyring`, with a `0600` `credentials.json` fallback;
-`config.json` never holds a raw token), and the Confluence content depth
-(`page comment`, `page label`, `attachment`). `docs/post-mvp-roadmap.md`
-sequences the post-MVP work into Phases 5–8. Phase 8 — deeper Jira coverage
-— is implemented on the `phase-8-jira-coverage` branch per
-`docs/phase-8-jira-coverage-plan.md`: `atl-jira` `issue` gains
-`assign`/`watch`/`unwatch`/`watchers` (`-` unassigns; `unwatch` looks up the
-caller via `/myself`), `link <inward> <outward> --type` plus `link types`,
-and the `worklog` sub-group (`list` with `--all`, `add` with verbatim
-`--time` and an optional ADF-wrapped `--comment`). `go test ./...` passes.
-See `docs/command-contract.md` for the implemented surface.
+`config.json` never holds a raw token), the Confluence content depth
+(`page comment`, `page label`, `attachment`), and the deeper Jira coverage
+(`issue assign`/`watch`/`unwatch`/`watchers`, `issue link` + `link types`,
+`issue worklog`). Phase 9 — the in-repo shared-foundation review — is
+implemented on the `phase-9-shared-foundation` branch per
+`docs/phase-9-shared-foundation-plan.md` and scored in
+`docs/shared-foundation-scorecard.md`: the proven byte-for-byte duplicates
+were extracted into a new `internal/restutil` (`WithQuery`,
+`MaxFollowPages`, generic `Decode`/`DecodeError`) and `output.TabWriter`,
+while the divergent pagination followers, `setLimit`, `get`/`send`, and
+command wiring stay per-product. Pure refactor, no behavior change;
+`go test ./...` passes. See `docs/command-contract.md` for the surface.
 
 ## Canonical CLI names
 
@@ -65,23 +67,31 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 14. `docs/phase-6-secure-token-storage-plan.md`
 15. `docs/phase-7-confluence-content-plan.md`
 16. `docs/phase-8-jira-coverage-plan.md`
-17. Product docs only after foundation work:
+17. `docs/shared-foundation-scorecard.md`
+18. `docs/phase-9-shared-foundation-plan.md`
+19. Product docs only after foundation work:
    - `docs/jira-mvp.md`
    - `docs/confluence-mvp.md`
-18. Bitbucket future docs only when planning migration:
+20. Bitbucket future docs only when planning migration:
    - `docs/bitbucket-migration-roadmap.md`
    - `docs/bb-rewrite-plan.md`
 
 ## Next action
 
-Phase 8 (deeper Jira coverage) is implemented on `phase-8-jira-coverage`
-and ready for its PR: `issue assign`, `issue watch`/`unwatch`/`watchers`,
-`issue link` and `issue link types`, and `issue worklog list`/`add`.
+Phase 9 (in-repo shared-foundation review) is implemented on
+`phase-9-shared-foundation` and ready for its PR: `internal/restutil` and
+`output.TabWriter` extracted from the proven cross-product duplicates,
+scored in `docs/shared-foundation-scorecard.md`.
 
-Next: **Phase 9 — monorepo / shared-foundation review and the Bitbucket
-`atl-bb` migration question** per `docs/implementation-plan.md` and
-`docs/bitbucket-migration-roadmap.md`. OAuth 3LO remains deferred until
-token-based auth is proven robust in production use.
+Next: the **Bitbucket `atl-bb` migration** is its own dedicated future
+phase, to be taken up once Jira and Confluence are considered complete and
+the legacy `bb` source is available as a behavior oracle — inventory `bb`,
+write `bb-rewrite-plan.md`/`bb-compatibility-plan.md`, and decide
+import-vs-module-vs-separate per `docs/bitbucket-migration-roadmap.md`.
+OAuth 3LO remains deferred until token-based auth is proven robust in
+production use. Otherwise, continue deepening Jira/Confluence coverage
+(e.g. issue links edit/delete, worklog edit/delete, Confluence inline
+comments or attachment upload) as standalone phases.
 
 Architecture note: the shared command wiring (`root`, `version`, `auth`,
 `api`, `resolve`, `browse`) lives in `internal/cli`, which also exports

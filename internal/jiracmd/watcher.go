@@ -9,6 +9,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/jira"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 func newIssueWatchCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
@@ -93,7 +94,7 @@ func writeWatchers(w io.Writer, users []jira.User) {
 		fmt.Fprintln(w, "No watchers.")
 		return
 	}
-	tw := tabWriter(w)
+	tw := output.TabWriter(w)
 	for _, u := range users {
 		fmt.Fprintf(tw, "%s\t%s\n", u.AccountID, u.DisplayName)
 	}

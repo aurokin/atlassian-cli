@@ -10,6 +10,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/jira"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // newIssueLinkCommand builds the "issue link" command, which both creates a
@@ -86,7 +87,7 @@ func writeLinkTypes(w io.Writer, types []jira.LinkType) {
 		fmt.Fprintln(w, "No link types.")
 		return
 	}
-	tw := tabWriter(w)
+	tw := output.TabWriter(w)
 	for _, t := range types {
 		fmt.Fprintf(tw, "%s\t%s\t%s\n", t.Name, t.Inward, t.Outward)
 	}

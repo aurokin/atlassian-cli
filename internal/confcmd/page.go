@@ -10,6 +10,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/conf"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // newPageCommand builds the "page" command group.
@@ -288,7 +289,7 @@ func writePageList(w io.Writer, pages []conf.Page) {
 		fmt.Fprintln(w, "No pages found.")
 		return
 	}
-	tw := tabWriter(w)
+	tw := output.TabWriter(w)
 	for _, p := range pages {
 		fmt.Fprintf(tw, "%s\t%s\t%s\n", p.ID, p.Status, p.Title)
 	}

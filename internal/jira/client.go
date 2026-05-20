@@ -14,7 +14,11 @@ import (
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/httpclient"
+	"github.com/aurokin/atlassian-cli/internal/restutil"
 )
+
+// productName labels this product in shared structured error messages.
+const productName = "Jira"
 
 // Client is a typed Jira API client bound to one authenticated site.
 type Client struct {
@@ -76,7 +80,7 @@ func (c *Client) GetProject(ctx context.Context, idOrKey string) (json.RawMessag
 func (c *Client) SearchProjects(ctx context.Context, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, withQuery("/project/search", q))
+	return c.get(ctx, restutil.WithQuery("/project/search", q))
 }
 
 // GetIssue returns a single issue by id or key (GET /issue/{idOrKey}).
@@ -94,7 +98,7 @@ func (c *Client) SearchIssues(ctx context.Context, jql string, limit int) (json.
 	q.Set("jql", jql)
 	q.Set("fields", "*navigable")
 	setLimit(q, limit)
-	return c.get(ctx, withQuery("/search/jql", q))
+	return c.get(ctx, restutil.WithQuery("/search/jql", q))
 }
 
 // ListComments returns a page of comments on an issue
@@ -102,7 +106,7 @@ func (c *Client) SearchIssues(ctx context.Context, jql string, limit int) (json.
 func (c *Client) ListComments(ctx context.Context, issue string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, withQuery("/issue/"+url.PathEscape(issue)+"/comment", q))
+	return c.get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(issue)+"/comment", q))
 }
 
 // GetComment returns a single comment (GET /issue/{idOrKey}/comment/{id}).
@@ -195,7 +199,7 @@ func (c *Client) RemoveWatcher(ctx context.Context, idOrKey, accountID string) e
 	q := url.Values{}
 	q.Set("accountId", accountID)
 	_, err := c.send(ctx, "DELETE",
-		withQuery("/issue/"+url.PathEscape(idOrKey)+"/watchers", q), nil)
+		restutil.WithQuery("/issue/"+url.PathEscape(idOrKey)+"/watchers", q), nil)
 	return err
 }
 
@@ -228,7 +232,7 @@ func (c *Client) ListIssueLinkTypes(ctx context.Context) (json.RawMessage, error
 func (c *Client) ListWorklogs(ctx context.Context, idOrKey string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, withQuery("/issue/"+url.PathEscape(idOrKey)+"/worklog", q))
+	return c.get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(idOrKey)+"/worklog", q))
 }
 
 // AddWorklog appends a worklog entry to an issue
@@ -243,27 +247,22 @@ func (c *Client) AddWorklog(ctx context.Context, idOrKey, timeSpent string, comm
 	return c.send(ctx, "POST", "/issue/"+url.PathEscape(idOrKey)+"/worklog", payload)
 }
 
-// maxFollowPages caps how many pages an --all request follows, guarding
-// against an unbounded loop from a malformed cursor.
-const maxFollowPages = 100
-
 // decodeError wraps a pagination decode failure as a structured error.
 func decodeError(err error) error {
-	return apperr.New("response_decode_failed",
-		"could not decode the Jira API response: "+err.Error())
+	return restutil.DecodeError(productName, err)
 }
 
 // followAll follows a paginated endpoint to completion. fetch issues the
 // request for a cursor ("" for the first page); extract pulls a page's raw
 // items and the next cursor ("" when there is no next page) from a response.
-// It returns every collected item, stopping at maxFollowPages.
+// It returns every collected item, stopping at restutil.MaxFollowPages.
 func followAll(ctx context.Context,
 	fetch func(context.Context, string) (json.RawMessage, error),
 	extract func(json.RawMessage) ([]json.RawMessage, string, error),
 ) ([]json.RawMessage, error) {
 	all := []json.RawMessage{}
 	cursor := ""
-	for page := 0; page < maxFollowPages; page++ {
+	for page := 0; page < restutil.MaxFollowPages; page++ {
 		raw, err := fetch(ctx, cursor)
 		if err != nil {
 			return nil, err
@@ -301,7 +300,7 @@ func (c *Client) SearchProjectsAll(ctx context.Context, limit int) (json.RawMess
 			if cursor != "" {
 				q.Set("startAt", cursor)
 			}
-			return c.get(ctx, withQuery("/project/search", q))
+			return c.get(ctx, restutil.WithQuery("/project/search", q))
 		},
 		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
 			var pg struct {
@@ -338,7 +337,7 @@ func (c *Client) SearchIssuesAll(ctx context.Context, jql string, limit int) (js
 			if cursor != "" {
 				q.Set("nextPageToken", cursor)
 			}
-			return c.get(ctx, withQuery("/search/jql", q))
+			return c.get(ctx, restutil.WithQuery("/search/jql", q))
 		},
 		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
 			var pg struct {
@@ -367,7 +366,7 @@ func (c *Client) ListCommentsAll(ctx context.Context, issue string, limit int) (
 			if cursor != "" {
 				q.Set("startAt", cursor)
 			}
-			return c.get(ctx, withQuery("/issue/"+url.PathEscape(issue)+"/comment", q))
+			return c.get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(issue)+"/comment", q))
 		},
 		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
 			var pg struct {
@@ -401,7 +400,7 @@ func (c *Client) ListWorklogsAll(ctx context.Context, idOrKey string, limit int)
 			if cursor != "" {
 				q.Set("startAt", cursor)
 			}
-			return c.get(ctx, withQuery("/issue/"+url.PathEscape(idOrKey)+"/worklog", q))
+			return c.get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(idOrKey)+"/worklog", q))
 		},
 		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
 			var pg struct {
@@ -430,12 +429,4 @@ func setLimit(q url.Values, limit int) {
 	if limit > 0 {
 		q.Set("maxResults", strconv.Itoa(limit))
 	}
-}
-
-// withQuery appends an encoded query string to path when it is non-empty.
-func withQuery(path string, q url.Values) string {
-	if len(q) == 0 {
-		return path
-	}
-	return path + "?" + q.Encode()
 }

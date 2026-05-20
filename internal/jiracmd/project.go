@@ -9,6 +9,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/jira"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // newProjectCommand builds the "project" command group.
@@ -96,7 +97,7 @@ func writeProjectList(w io.Writer, projects []jira.Project) {
 		fmt.Fprintln(w, "No projects found.")
 		return
 	}
-	tw := tabWriter(w)
+	tw := output.TabWriter(w)
 	for _, p := range projects {
 		fmt.Fprintf(tw, "%s\t%s\n", p.Key, p.Name)
 	}

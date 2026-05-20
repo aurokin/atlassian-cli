@@ -10,6 +10,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/jira"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // newWorklogCommand builds the "issue worklog" command group.
@@ -119,7 +120,7 @@ func writeWorklogList(w io.Writer, worklogs []jira.Worklog) {
 		fmt.Fprintln(w, "No worklog entries.")
 		return
 	}
-	tw := tabWriter(w)
+	tw := output.TabWriter(w)
 	for _, wl := range worklogs {
 		author := ""
 		if wl.Author != nil {

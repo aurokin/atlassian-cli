@@ -26,7 +26,11 @@ secure token storage: `auth login` can store a token in the OS keychain (or a
 Phase 7 deepens Confluence coverage: `page comment` (footer comments),
 `page label`, and `attachment` (list and download). Phase 8 deepens Jira
 coverage: `issue assign`/`watch`/`unwatch`/`watchers`, `issue link` and
-`issue link types`, and `issue worklog` (list/add).
+`issue link types`, and `issue worklog` (list/add). Phase 9 is the
+in-repo shared-foundation review: the proven cross-product duplicates were
+extracted into `internal/restutil` (and `output.TabWriter`), leaving the
+divergent pagination followers per product. The Bitbucket `atl-bb`
+migration remains its own future phase.
 
 ```bash
 go test ./...

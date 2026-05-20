@@ -11,6 +11,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/conf"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // newAttachmentCommand builds the "attachment" command group.
@@ -124,7 +125,7 @@ func writeAttachmentList(w io.Writer, attachments []conf.Attachment) {
 		fmt.Fprintln(w, "No attachments found.")
 		return
 	}
-	tw := tabWriter(w)
+	tw := output.TabWriter(w)
 	for _, a := range attachments {
 		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\n", a.ID, a.MediaType, a.FileSize, a.Title)
 	}

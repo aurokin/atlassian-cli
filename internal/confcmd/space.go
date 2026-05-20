@@ -11,6 +11,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/conf"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // newSpaceCommand builds the "space" command group.
@@ -119,7 +120,7 @@ func writeSpaceList(w io.Writer, spaces []conf.Space) {
 		fmt.Fprintln(w, "No spaces found.")
 		return
 	}
-	tw := tabWriter(w)
+	tw := output.TabWriter(w)
 	for _, s := range spaces {
 		fmt.Fprintf(tw, "%s\t%s\n", s.Key, s.Name)
 	}
