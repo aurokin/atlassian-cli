@@ -8,8 +8,8 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `bb-migration-b0-inventory` (Bitbucket migration Phase B0, docs
-only). Phases 1–9 are all merged to `main`.
+Branch: `bb-migration-b1-scorecard` (Bitbucket migration Phase B1, docs
+only). Phases 1–9 and Phase B0 are merged to `main`.
 
 Status at handoff: Phases 1–9 are merged to `main` — both product CLIs
 have a full MVP command surface, the output and pagination polish (`--jq`,
@@ -21,8 +21,11 @@ have a full MVP command surface, the output and pagination polish (`--jq`,
 `issue worklog`), and the in-repo shared-foundation extraction
 (`internal/restutil` and `output.TabWriter`, scored in
 `docs/shared-foundation-scorecard.md`). `go test ./...` passes. The
-**Bitbucket `atl-bb` migration** has now begun: Phase B0 (inventory of
-legacy `bb`) is captured in `docs/bb-inventory.md`. See
+**Bitbucket `atl-bb` migration** is underway: Phase B0 (inventory of
+legacy `bb`) is captured in `docs/bb-inventory.md`, and Phase B1
+(shared-foundation comparison) extends `docs/shared-foundation-scorecard.md`
+with the per-package reuse/adapt/keep/net-new decisions — the third
+product validates the Phase 9 foundation rather than overturning it. See
 `docs/command-contract.md` for the implemented Atlassian surface.
 
 ## Canonical CLI names
@@ -76,24 +79,23 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 ## Next action
 
 The **Bitbucket `atl-bb` migration** is underway per
-`docs/bitbucket-migration-roadmap.md`. Phase B0 (inventory of legacy `bb`)
-is done — `docs/bb-inventory.md` analyzes `~/code/bitbucket_cli`
-(`github.com/aurokin/bitbucket_cli`) and records the migration-relevant
-deltas: plaintext token in `config.json` (→ keychain/`0600`), guided-prose
-errors (→ structured `apperr` codes), and the host-keyed config schema/path
-(`bb/config.json` → site-keyed `atlassian-cli/config.json`). The shared
-output/`--json`/`--jq` contract and the `httptest`-based test harness
-already match; `bb` additionally brings a generated-docs pipeline, fuzz
-targets, and a stability gate.
+`docs/bitbucket-migration-roadmap.md`. Phase B0 (inventory) →
+`docs/bb-inventory.md`; Phase B1 (shared-foundation comparison) → the new
+Bitbucket section in `docs/shared-foundation-scorecard.md`. B1's verdict:
+`atl-bb` reuses `httpclient`, `output`/`cli.Render`, `restutil`, `apperr`,
+`secrets`, the config mechanics, and the resolve/browse *frameworks*; keeps
+Bitbucket models, command vocabulary, pagination, and git integration
+product-specific; and brings net-new capabilities (generated docs, fuzz/
+stability, aliases, extensions) for a deliberate monorepo decision. The
+third product validated the Phase 9 seams rather than overturning them.
 
-Next: **Phase B1 — shared-foundation comparison.** Extend
-`docs/shared-foundation-scorecard.md` with the per-package
-share-now/adapt/keep-separate decisions from the inventory's §9, then
-**B1.5** (`docs/bb-rewrite-plan.md`, currently a placeholder) and **B2**
-(`docs/bb-compatibility-plan.md`). The big compatibility tasks: plaintext-
-token→secret-store migration, config path/host→site reshaping, the `bb`→
-`atl-bb` rename/alias decision, and golden tests pinning `resolve` JSON /
-`browse` URLs / `--json`/`--jq`/`--no-prompt` before any change.
+Next: **Phase B1.5 — `docs/bb-rewrite-plan.md`** (currently a placeholder):
+target package layout for `atl-bb` over the shared foundation, the `apperr`
+recovery mapping, and the generated-docs adoption decision. Then **B2 —
+`docs/bb-compatibility-plan.md`**: the plaintext-token→secrets migration,
+config path/host→site reshaping, the `bb`→`atl-bb` rename/alias decision,
+the fate of `aliases`/`extensions`, and golden tests pinning `resolve` JSON
+/ `browse` URLs / `--json`/`--jq`/`--no-prompt` before any change.
 
 OAuth 3LO remains deferred until token-based auth is proven robust in
 production use. Standalone Jira/Confluence deepening (issue link
