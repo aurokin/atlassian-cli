@@ -9,6 +9,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/conf"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // newSearchCommand builds the "search" command group.
@@ -66,7 +67,7 @@ func writeSearchResults(w io.Writer, results []conf.SearchResult) {
 		fmt.Fprintln(w, "No results found.")
 		return
 	}
-	tw := tabWriter(w)
+	tw := output.TabWriter(w)
 	for _, r := range results {
 		fmt.Fprintf(tw, "%s\t%s\t%s\n", r.Content.ID, r.Content.Type, r.Content.Title)
 	}

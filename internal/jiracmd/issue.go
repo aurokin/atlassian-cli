@@ -12,6 +12,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/jira"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // newIssueCommand builds the "issue" command group.
@@ -351,7 +352,7 @@ func writeTransitionList(w io.Writer, transitions []jira.Transition) {
 		fmt.Fprintln(w, "No transitions available.")
 		return
 	}
-	tw := tabWriter(w)
+	tw := output.TabWriter(w)
 	for _, tr := range transitions {
 		fmt.Fprintf(tw, "%s\t%s\n", tr.ID, tr.Name)
 	}
@@ -403,7 +404,7 @@ func writeIssueList(w io.Writer, issues []jira.Issue) {
 		fmt.Fprintln(w, "No issues found.")
 		return
 	}
-	tw := tabWriter(w)
+	tw := output.TabWriter(w)
 	for _, iss := range issues {
 		fmt.Fprintf(tw, "%s\t%s\t%s\n", iss.Key, namedOr(iss.Fields.Status, "-"), iss.Fields.Summary)
 	}

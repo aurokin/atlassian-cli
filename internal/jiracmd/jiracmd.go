@@ -5,9 +5,6 @@
 package jiracmd
 
 import (
-	"io"
-	"text/tabwriter"
-
 	"github.com/spf13/cobra"
 
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
@@ -32,9 +29,4 @@ func jiraClient(info appinfo.Info, g *cli.GlobalFlags) (*jira.Client, error) {
 		return nil, err
 	}
 	return jira.New(c), nil
-}
-
-// tabWriter returns a tabwriter for aligned, column-separated list output.
-func tabWriter(w io.Writer) *tabwriter.Writer {
-	return tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 }

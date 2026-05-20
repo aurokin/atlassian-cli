@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/itchyny/gojq"
 
@@ -179,4 +180,10 @@ func splitFields(s string) []string {
 		}
 	}
 	return out
+}
+
+// TabWriter returns a tabwriter configured uniformly for every atl-* command's
+// aligned, column-separated list output.
+func TabWriter(w io.Writer) *tabwriter.Writer {
+	return tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 }
