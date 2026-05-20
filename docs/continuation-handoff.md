@@ -93,9 +93,10 @@ Phase B1.5 (`docs/bb-rewrite-plan.md`) is done: it sets the target
 package layout (`cmd/atl-bb`, `internal/bitbucket` over `httpclient`,
 `internal/bbcmd`, `internal/atlbbcmd`), the Bitbucket product/Basic-auth
 model, the `apperr` recovery mapping, the docs-gen strategy, the required
-test coverage, and the B3+ sequence. It carries several flagged decisions
-(D1 monorepo-vs-module, D2 `--site` vs `--host`, D3 `feature_disabled`
-code, D4 docs-gen scope, D5 aliases/extensions promotion).
+test coverage, and the B3+ sequence. Its decisions are now **resolved (Auro,
+2026-05-20)**: D1 monorepo-with-rewrite; D2 `--site` only (no `--host`); D3
+add a `feature_disabled` apperr code; D4 generalize `gen-docs` now; D5 keep
+aliases/extensions Bitbucket-only initially.
 
 Phase B2 (`docs/bb-compatibility-plan.md`) is done and reflects the
 **clean-break decision (Auro): no `bb` alias/shim/deprecation window — ship
@@ -105,17 +106,18 @@ token→`secrets`, legacy file scrubbed) so existing users do not have to
 re-login, JSON-field guarantees plus the documented intentional contract
 changes (structured `apperr` error output; `api` same-origin guard; `--site`
 with no `--host` alias), the `bb-cli`→`atl-bb` skill retirement (pointer
-note), the live-test boundary, and the "migration done" checklist. It adds
-decisions D6–D12 — D6 and D11 resolved by the clean break; D7, D8, D9, D10,
-D12 remain flagged.
+note), the live-test boundary, and the "migration done" checklist. Its
+decisions D6–D12 are now **resolved (Auro, 2026-05-20)**: D6 no window; D7
+scrub legacy token; D8 site name `bitbucket`; D9 importer-only `BB_CONFIG_DIR`;
+D10 structured errors only; D11 clean skill break; D12 freeze-with-pointer.
 
 This completes the **planning arc** of the Bitbucket migration
-(B0→B1→B1.5→B2). Next: **Phase B3 — extract + port** (the first
-implementation phase), which should not start until the flagged decisions
-(D1–D12, in `bb-rewrite-plan.md` and `bb-compatibility-plan.md`) are
-confirmed, since several shape the very first PRs (repo shape, config
-migration, error model). Standalone Jira/Confluence deepening remains
-available in parallel.
+(B0→B1→B1.5→B2), and **all flagged decisions D1–D12 are resolved**, so
+**Phase B3 — extract + port** (the first implementation phase) is unblocked
+and underway. **B3a** is the first slice: add `ProductBitbucket` + the
+Bitbucket Cloud Basic-auth path to the foundation, port the typed client over
+`httpclient`, with golden + error-mapping tests and no commands yet.
+Standalone Jira/Confluence deepening remains available in parallel.
 
 OAuth 3LO remains deferred until token-based auth is proven robust in
 production use. Standalone Jira/Confluence deepening (issue link
