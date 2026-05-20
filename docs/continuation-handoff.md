@@ -112,11 +112,24 @@ scrub legacy token; D8 site name `bitbucket`; D9 importer-only `BB_CONFIG_DIR`;
 D10 structured errors only; D11 clean skill break; D12 freeze-with-pointer.
 
 This completes the **planning arc** of the Bitbucket migration
-(B0→B1→B1.5→B2), and **all flagged decisions D1–D12 are resolved**, so
-**Phase B3 — extract + port** (the first implementation phase) is unblocked
-and underway. **B3a** is the first slice: add `ProductBitbucket` + the
-Bitbucket Cloud Basic-auth path to the foundation, port the typed client over
-`httpclient`, with golden + error-mapping tests and no commands yet.
+(B0→B1→B1.5→B2), and **all flagged decisions D1–D12 are resolved**.
+**Phase B3 — extract + port** is underway:
+
+- **B3a (merged):** `ProductBitbucket` + the Bitbucket Cloud Basic-auth API
+  base in `internal/httpclient`/`internal/appinfo`, the new `feature_disabled`
+  apperr code, and the typed `internal/bitbucket` client over `httpclient`
+  (raw `json.RawMessage` returns, `Decode[T]`, `next`-URL pagination follower,
+  the `feature_disabled` remap), with error-mapping tests. No commands.
+- **B3b (in progress):** the command tree in `internal/bbcmd` +
+  `internal/atlbbcmd` + `cmd/atl-bb`, ported in vertical slices. The first
+  slice is `repo` (`view`, `list`) plus the `--repo`/`--workspace` targeting
+  helper. Decision (Auro): under `--json`/`--jq`, `atl-bb` emits the **verbatim
+  Bitbucket API body** like `atl-jira`/`atl-conf` — a documented break from
+  legacy `bb`'s custom payload field names. Remaining B3b slices: pr →
+  pipeline → issue → workspace/project → commit/branch/tag/deployment →
+  search/status → resolve/browse → api/auth. Git inference, aliases, and
+  extensions are B3c.
+
 Standalone Jira/Confluence deepening remains available in parallel.
 
 OAuth 3LO remains deferred until token-based auth is proven robust in

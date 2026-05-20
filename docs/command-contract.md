@@ -29,8 +29,10 @@ and `attachment` commands. Phase 8 deepens the Jira `issue` surface with
 
 - `atl-jira` — Jira CLI (`product: jira`)
 - `atl-conf` — Confluence CLI (`product: confluence`)
+- `atl-bb` — Bitbucket Cloud CLI (`product: bitbucket`) — under construction
+  (Phase B3b); the `repo` slice is the first command group shipped.
 
-Both binaries share one command tree built in `internal/cli`; only product
+All binaries share one command tree built in `internal/cli`; only product
 identity and build metadata differ.
 
 ## Global flags
@@ -428,6 +430,43 @@ atl-conf status
 A live authentication check: it calls the v1 current-user endpoint with the
 `--site` credential and reports the authenticated account and resolved API
 base. Distinct from `auth status`, which inspects local config offline.
+
+## Bitbucket commands
+
+These commands exist only on `atl-bb` (`product: bitbucket`). Each needs
+`--site` to name a configured Cloud credential. Bitbucket Cloud uses Basic
+auth (account email + API token, the `cloud-classic` style) against the fixed
+`https://api.bitbucket.org/2.0` base.
+
+> **JSON shape — intentional change from legacy `bb`.** Under `--json`/`--jq`,
+> `atl-bb` emits the **verbatim Bitbucket REST API body** (e.g. `full_name`,
+> `is_private`, `project.key`, `mainbranch.name`), exactly like `atl-jira` and
+> `atl-conf`. Legacy `bb` emitted hand-built payloads with renamed fields
+> (`private`, `project_key`, `main_branch`, `https_clone`, …); those names are
+> **not** preserved. This is a documented break, alongside the structured
+> `apperr` error output and the `api` same-origin guard.
+
+### Repository targeting (`--repo` / `--workspace`)
+
+Repo-scoped commands identify a repository as `<workspace>/<repo>`, supplied as
+a positional argument or via `--repo`. A bare `<repo>` is allowed when paired
+with `--workspace`. A positional argument wins over `--repo`; a `--workspace`
+that conflicts with the workspace in a qualified target is rejected.
+Git-checkout inference (running with no target inside a clone) is deferred to a
+later slice (B3c).
+
+### `repo`
+
+```
+atl-bb repo view [<workspace>/<repo>] [--repo <workspace>/<repo>] [--workspace <slug>]
+atl-bb repo list [<workspace>] [--workspace <slug>] [--limit N] [--all]
+```
+
+`repo view` shows one repository (`GET /repositories/{ws}/{repo}`); human
+output lists full name, visibility, project, main branch, and description.
+`repo list` lists a workspace's repositories (`GET /repositories/{ws}`),
+honoring `--limit` (the Bitbucket `pagelen`) and `--all` (follow the API's
+`next`-URL pagination to completion, capped at 100 pages).
 
 ## Config file
 
