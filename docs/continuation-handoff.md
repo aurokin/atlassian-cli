@@ -122,11 +122,12 @@ This completes the **planning arc** of the Bitbucket migration
   the `feature_disabled` remap), with error-mapping tests. No commands.
 - **B3b (in progress):** the command tree in `internal/bbcmd` +
   `internal/atlbbcmd` + `cmd/atl-bb`, ported in vertical slices. Shipped:
-  `repo` (`view`, `list`) with the `--repo`/`--workspace` targeting helper, and
-  `pr` (`list`, `view`, `create`) with `--state` filtering. Decision (Auro):
-  under `--json`/`--jq`, `atl-bb` emits the **verbatim Bitbucket API body**
-  like `atl-jira`/`atl-conf` — a documented break from legacy `bb`'s custom
-  payload field names. Remaining B3b slices: pipeline → issue →
+  `repo` (`view`, `list`) with the `--repo`/`--workspace` targeting helper,
+  `pr` (`list`, `view`, `create`) with `--state` filtering, and `pipeline`
+  (`list`, `view` by build-number or UUID, `run`) with `--status` filtering.
+  Decision (Auro): under `--json`/`--jq`, `atl-bb` emits the **verbatim
+  Bitbucket API body** like `atl-jira`/`atl-conf` — a documented break from
+  legacy `bb`'s custom payload field names. Remaining B3b slices: issue →
   workspace/project → commit/branch/tag/deployment → search/status →
   resolve/browse → api/auth. Git inference, aliases, and extensions are B3c.
 

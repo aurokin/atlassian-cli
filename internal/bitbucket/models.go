@@ -79,6 +79,41 @@ type PullRequestPage struct {
 	Next   string        `json:"next,omitempty"`
 }
 
+// PipelineResult is the outcome of a finished pipeline state.
+type PipelineResult struct {
+	Name string `json:"name,omitempty"`
+}
+
+// PipelineState is a pipeline run's lifecycle state.
+type PipelineState struct {
+	Name   string          `json:"name,omitempty"`
+	Result *PipelineResult `json:"result,omitempty"`
+}
+
+// PipelineTarget is what a pipeline run was triggered against.
+type PipelineTarget struct {
+	RefType string `json:"ref_type,omitempty"`
+	RefName string `json:"ref_name,omitempty"`
+}
+
+// Pipeline is the subset of a Bitbucket pipeline run that human output
+// renders.
+type Pipeline struct {
+	UUID        string          `json:"uuid"`
+	BuildNumber int             `json:"build_number,omitempty"`
+	State       *PipelineState  `json:"state,omitempty"`
+	Target      *PipelineTarget `json:"target,omitempty"`
+	Creator     *Account        `json:"creator,omitempty"`
+	CreatedOn   string          `json:"created_on,omitempty"`
+}
+
+// PipelinePage is one page of a pipeline listing. Bitbucket paginates with an
+// absolute "next" URL; an empty Next marks the last page.
+type PipelinePage struct {
+	Values []Pipeline `json:"values"`
+	Next   string     `json:"next,omitempty"`
+}
+
 // Decode unmarshals a raw Bitbucket API body into a model value, wrapping a
 // decode failure as a structured error.
 func Decode[T any](raw json.RawMessage) (T, error) {
