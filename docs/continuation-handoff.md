@@ -8,21 +8,23 @@ Repository: `/Users/auro/code/atlassian-cli`
 
 Remote: `git@github.com:aurokin/atlassian-cli.git`
 
-Branch: `phase-7-confluence-content` (Phase 7 work). Phases 1–6 and the
-post-MVP roadmap are merged to `main`.
+Branch: `phase-8-jira-coverage` (Phase 8 work). Phases 1–7 and the post-MVP
+roadmap are merged to `main`.
 
-Status at handoff: Phases 1–6 are merged to `main` — both product CLIs have a
-full MVP command surface plus the output and pagination polish (`--jq`,
-`--all`) and secure token storage (OS keychain via `github.com/zalando/go-keyring`,
-with a `0600` `credentials.json` fallback; `config.json` never holds a raw
-token). `docs/post-mvp-roadmap.md` sequences the post-MVP work into Phases
-5–8. Phase 7 — Confluence content depth — is implemented on the
-`phase-7-confluence-content` branch per
-`docs/phase-7-confluence-content-plan.md`: `atl-conf` gains `page comment`
-(footer comments: list/view/create/edit/delete), `page label`
-(list/add/remove, written through the v1 content-label surface), and
-`attachment` (list, and download to a file or stdout). `go test ./...`
-passes. See `docs/command-contract.md` for the implemented surface.
+Status at handoff: Phases 1–7 are merged to `main` — both product CLIs have
+a full MVP command surface, the output and pagination polish (`--jq`,
+`--all`), secure token storage (OS keychain via
+`github.com/zalando/go-keyring`, with a `0600` `credentials.json` fallback;
+`config.json` never holds a raw token), and the Confluence content depth
+(`page comment`, `page label`, `attachment`). `docs/post-mvp-roadmap.md`
+sequences the post-MVP work into Phases 5–8. Phase 8 — deeper Jira coverage
+— is implemented on the `phase-8-jira-coverage` branch per
+`docs/phase-8-jira-coverage-plan.md`: `atl-jira` `issue` gains
+`assign`/`watch`/`unwatch`/`watchers` (`-` unassigns; `unwatch` looks up the
+caller via `/myself`), `link <inward> <outward> --type` plus `link types`,
+and the `worklog` sub-group (`list` with `--all`, `add` with verbatim
+`--time` and an optional ADF-wrapped `--comment`). `go test ./...` passes.
+See `docs/command-contract.md` for the implemented surface.
 
 ## Canonical CLI names
 
@@ -62,21 +64,24 @@ Do not revert to bare `jira`, bare `confluence`, `jj`, `cc`, or `conf`.
 13. `docs/phase-5-output-pagination-plan.md`
 14. `docs/phase-6-secure-token-storage-plan.md`
 15. `docs/phase-7-confluence-content-plan.md`
-16. Product docs only after foundation work:
+16. `docs/phase-8-jira-coverage-plan.md`
+17. Product docs only after foundation work:
    - `docs/jira-mvp.md`
    - `docs/confluence-mvp.md`
-17. Bitbucket future docs only when planning migration:
+18. Bitbucket future docs only when planning migration:
    - `docs/bitbucket-migration-roadmap.md`
    - `docs/bb-rewrite-plan.md`
 
 ## Next action
 
-Phase 7 (Confluence content depth) is implemented on
-`phase-7-confluence-content` and ready for its PR: `page comment`, `page
-label`, and `attachment` commands.
+Phase 8 (deeper Jira coverage) is implemented on `phase-8-jira-coverage`
+and ready for its PR: `issue assign`, `issue watch`/`unwatch`/`watchers`,
+`issue link` and `issue link types`, and `issue worklog list`/`add`.
 
-Next: **Phase 8 — deeper Jira coverage** (assign, watchers, links, worklog)
-per `docs/post-mvp-roadmap.md`.
+Next: **Phase 9 — monorepo / shared-foundation review and the Bitbucket
+`atl-bb` migration question** per `docs/implementation-plan.md` and
+`docs/bitbucket-migration-roadmap.md`. OAuth 3LO remains deferred until
+token-based auth is proven robust in production use.
 
 Architecture note: the shared command wiring (`root`, `version`, `auth`,
 `api`, `resolve`, `browse`) lives in `internal/cli`, which also exports

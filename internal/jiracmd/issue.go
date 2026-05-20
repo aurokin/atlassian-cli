@@ -26,6 +26,12 @@ func newIssueCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		newIssueCreateCommand(info, g),
 		newIssueEditCommand(info, g),
 		newIssueTransitionCommand(info, g),
+		newIssueAssignCommand(info, g),
+		newIssueWatchCommand(info, g),
+		newIssueUnwatchCommand(info, g),
+		newIssueWatchersCommand(info, g),
+		newIssueLinkCommand(info, g),
+		newWorklogCommand(info, g),
 		newCommentCommand(info, g),
 	)
 	return cmd

@@ -24,8 +24,9 @@ added output and pagination polish — the global `--jq` jq filter (5A) and the
 secure token storage: `auth login` can store a token in the OS keychain (or a
 `0600` fallback file), so `--token-env` is no longer required on every run.
 Phase 7 deepens Confluence coverage: `page comment` (footer comments),
-`page label`, and `attachment` (list and download). Still ahead: deeper Jira
-coverage.
+`page label`, and `attachment` (list and download). Phase 8 deepens Jira
+coverage: `issue assign`/`watch`/`unwatch`/`watchers`, `issue link` and
+`issue link types`, and `issue worklog` (list/add).
 
 ```bash
 go test ./...

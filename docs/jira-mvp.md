@@ -16,6 +16,9 @@ atl-jira browse
 atl-jira config
 atl-jira project list|view
 atl-jira issue list|view|create|edit|transition
+atl-jira issue assign|watch|unwatch|watchers
+atl-jira issue link [<inward> <outward> --type <link-type>] | types
+atl-jira issue worklog list|add
 atl-jira issue comment list|view|create|edit|delete
 atl-jira search issues
 atl-jira status
@@ -27,3 +30,7 @@ atl-jira status
 - Prefer JQL for issue search.
 - Account IDs are the stable user identifiers; email/username lookup is privacy-limited.
 - Boards/sprints come after core issue/project flows and product/license checks.
+- `issue assign -` unassigns; setting a project's default assignee is out of scope.
+- `issue link <inward> <outward> --type` matches Jira's API field names verbatim.
+- `issue worklog add --time` is passed through verbatim; the CLI never parses or
+  converts duration strings.
