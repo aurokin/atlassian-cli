@@ -47,20 +47,18 @@ It runs once, automatically, on first `atl-bb` invocation when an
 Fallback if migration is skipped or fails: `atl-bb auth login` produces a
 clean new credential (the always-available path).
 
-> **D7 — legacy token scrubbing.** Recommend scrubbing/renaming the old file
-> after a successful secret-store migration (security win) rather than leaving
-> the plaintext token in place. This mutates legacy state, so it is flagged.
+> **D7 — resolved (Auro, 2026-05-20): scrub.** After a successful secret-store
+> migration, scrub/rename the old `bb/config.json` so no plaintext token is
+> left on disk, and print a one-line notice naming both paths.
 >
-> **D8 — default site name.** Recommend mapping host `bitbucket.org` to a site
-> profile named `bitbucket`. Flagged (alternative: keep the literal
-> `bitbucket.org`).
+> **D8 — resolved (Auro, 2026-05-20): `bitbucket`.** Map host `bitbucket.org`
+> to a site profile named `bitbucket`.
 >
-> **D9 — legacy env vars.** At **runtime** `atl-bb` honors only the `atl-*`
-> conventions (`XDG_CONFIG_HOME`, the `atl-*` test-base override) — no
-> deprecated `BB_*` runtime aliases (consistent with the clean break). The
-> one-time **importer** may still read `BB_CONFIG_DIR` purely to *locate* the
-> legacy file to migrate. Flagged (whether the importer should consult
-> `BB_CONFIG_DIR` at all, or only the default `bb/` path).
+> **D9 — resolved (Auro, 2026-05-20): importer reads `BB_CONFIG_DIR`.** At
+> **runtime** `atl-bb` honors only the `atl-*` conventions (`XDG_CONFIG_HOME`,
+> the `atl-*` test-base override) — no `BB_*` runtime aliases (clean break).
+> The one-time **importer** consults `BB_CONFIG_DIR` (else the default `bb/`
+> path) purely to *locate* the legacy file to migrate.
 
 ## 3. Command behavior and JSON field guarantees
 
@@ -88,9 +86,9 @@ clean new credential (the always-available path).
 3. **Credential flag.** `--site` selects the credential. There is no `--host`
    alias (clean break; ties to D2).
 
-> **D10 — error-output compatibility.** Recommend shipping the structured
-> error model as an intentional improvement (no `bb`-prose compatibility
-> mode). Flagged in case any known consumer parses `bb` stderr prose.
+> **D10 — resolved (Auro, 2026-05-20): structured errors only.** Ship the
+> `apperr` model as an intentional improvement; no `bb`-prose compatibility
+> mode. Documented in release notes for anything that scraped `bb` stderr.
 
 ## 4. Repo-local `bb-cli` skill
 
@@ -113,9 +111,9 @@ are no public URLs to redirect. Plan: regenerate under the monorepo via the
 generalized `gen-docs` (B1.5/D4). If the legacy `bb` repo stays public, freeze
 its `docs/` with a pointer to the new home.
 
-> **D12 — legacy docs disposition.** Recommend freeze-with-pointer if the `bb`
-> repo remains public; delete if the repo is archived. Flagged (depends on D1
-> repo-shape and whether the `bb` repo stays public).
+> **D12 — resolved (Auro, 2026-05-20): freeze-with-pointer.** If the legacy
+> `bb` repo stays public, freeze its `docs/` with a pointer to the new
+> monorepo home; delete if the repo is archived.
 
 ## 6. Manual live-test boundary
 
@@ -145,23 +143,26 @@ sacrificial fixtures for destructive flows.
 
 ## 8. Open decisions carried forward
 
-| ID | Decision | Status / Recommendation |
+All B2 decisions are now **resolved (Auro, 2026-05-20)**:
+
+| ID | Decision | Resolution |
 |---|---|---|
-| D6 | `bb` deprecation window | **Resolved — none.** Clean break: ship `atl-bb`, no `bb` shim/alias/window. |
-| D7 | scrub legacy plaintext token after migration | Flagged — yes, scrub/rename the old file (security win). |
-| D8 | default site name for `bitbucket.org` | Flagged — `bitbucket` (alt: literal `bitbucket.org`). |
-| D9 | importer reads `BB_CONFIG_DIR` to locate legacy file | Flagged — runtime honors only `atl-*`; importer may read `BB_CONFIG_DIR` only to find the file to migrate. |
-| D10 | ship structured errors with no `bb`-prose compat mode | Flagged — yes (improvement). |
-| D11 | skill name/home | **Resolved — clean break.** New `atl-bb` skill; `bb-cli` retired with a pointer note. |
-| D12 | legacy `bb` repo docs disposition | Flagged — freeze-with-pointer if public, else delete. |
+| D6 | `bb` deprecation window | None — clean break; ship `atl-bb`, no `bb` shim/alias/window. |
+| D7 | scrub legacy plaintext token after migration | Scrub/rename the old file after a successful secret-store migration. |
+| D8 | default site name for `bitbucket.org` | `bitbucket`. |
+| D9 | importer reads `BB_CONFIG_DIR` to locate legacy file | Yes (importer-only); runtime honors only `atl-*` conventions. |
+| D10 | ship structured errors with no `bb`-prose compat mode | Yes (improvement); documented in release notes. |
+| D11 | skill name/home | New `atl-bb` skill; `bb-cli` retired with a pointer note. |
+| D12 | legacy `bb` repo docs disposition | Freeze-with-pointer if public, else delete. |
 
 (D1–D5 are in [bb-rewrite-plan.md](bb-rewrite-plan.md).)
 
 ## Next
 
 This completes the **planning** arc of the Bitbucket migration (B0→B1→B1.5→B2).
-**Phase B3** (extract shared libraries behind stable APIs, then port the
-typed client and command tree in vertical slices) is the first
-implementation phase and should not begin until the flagged decisions
-(D1–D12) are confirmed, since several (repo shape, config migration, error
-model) shape the very first PRs.
+All flagged decisions D1–D12 are now **resolved (Auro, 2026-05-20)**, so
+**Phase B3** (extract shared libraries behind stable APIs, then port the typed
+client and command tree in vertical slices) — the first implementation phase —
+is unblocked. B3a (add `ProductBitbucket` + Basic-auth path to the foundation,
+port the typed client over `httpclient`, golden + error-mapping tests, no
+commands) is the first slice.

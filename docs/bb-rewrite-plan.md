@@ -26,8 +26,10 @@ mechanics, and the resolve/browse frameworks — that reuse is only free inside
 one module. The legacy `bb` repo stays the public home until the
 rename/release transition (B2/B5).
 
-> **Open decision (D1):** monorepo-with-rewrite vs. shared Go module imported
-> by the existing `bb` repo. Recommending monorepo; flagged for confirmation.
+> **D1 — resolved (Auro, 2026-05-20): monorepo-with-rewrite.** `atl-bb` is
+> built inside `atlassian-cli` as the rewrite baseline; all three binaries
+> share one module/foundation. The legacy `bb` repo stays the public home
+> only until the release transition.
 
 ## Target package layout
 
@@ -107,10 +109,10 @@ Replace `bb`'s guided-prose `userFacingError` with the structured
 this is wiring + Bitbucket-specific detail extraction (`error.message`/
 `error.detail`).
 
-> **Open decision (D3):** introduce a dedicated `feature_disabled` apperr code
-> for the issue-tracker-disabled case, or fold it into `invalid_input`/
-> `forbidden`. Recommending a small new code for a clearer agent contract.
-> Flagged.
+> **D3 — resolved (Auro, 2026-05-20): add `feature_disabled`.** Introduce a
+> dedicated `apperr` code for the issue-tracker-disabled (and similar
+> repo-capability-off) case, for a clearer agent contract than overloading
+> `invalid_input`/`forbidden`.
 
 ## Generated docs / man / completion strategy
 
@@ -120,10 +122,11 @@ shell completions) is **net-new** capability the Atlassian CLIs lack. Plan:
 port it as `cmd/gen-docs` in the monorepo, generalized to take a root command
 + product name so it serves `atl-bb`, `atl-jira`, and `atl-conf`.
 
-> **Open decision (D4):** adopt the generated-docs pipeline monorepo-wide
-> (all three CLIs) in this migration, or port it `atl-bb`-only first and
-> generalize later. Recommending generalize-now since the generator is mostly
-> product-agnostic. Flagged.
+> **D4 — resolved (Auro, 2026-05-20): generalize now.** Port `gen-docs` as a
+> monorepo-wide `cmd/gen-docs` that takes a root command + product name, so it
+> serves `atl-bb`, `atl-jira`, and `atl-conf`. (Wiring Jira/Confluence into it
+> can land in a follow-up slice; the generator is built product-agnostic from
+> the start.)
 
 ## Aliases, extensions, git integration
 
@@ -133,10 +136,9 @@ port it as `cmd/gen-docs` in the monorepo, generalized to take a root command
 - **Aliases** (`bb alias`, recursive arg expansion) and **extensions**
   (`bb-<name>` dispatch): preserve in `atl-bb` to keep user value.
 
-> **Open decision (D5):** keep aliases + extensions Bitbucket-only, or promote
-> them to the shared `cli` root for all `atl-*` binaries. Recommending
-> Bitbucket-only initially (smaller blast radius), revisit if Jira/Confluence
-> users ask. Flagged.
+> **D5 — resolved (Auro, 2026-05-20): Bitbucket-only initially.** Keep aliases
+> + extensions in `atl-bb` (smaller blast radius); revisit promoting them to
+> the shared `cli` root if Jira/Confluence users ask.
 
 ## Performance opportunities and non-goals
 
