@@ -20,7 +20,13 @@ import (
 const (
 	ProductJira       = "jira"
 	ProductConfluence = "confluence"
+	ProductBitbucket  = "bitbucket"
 )
+
+// defaultBitbucketAPIBase is the Bitbucket Cloud REST base used when a site
+// profile does not configure its own base URL. Tests point a profile's base
+// URL at a local server instead.
+const defaultBitbucketAPIBase = "https://api.bitbucket.org/2.0"
 
 // defaultTimeout bounds a request when the caller does not supply its own
 // *http.Client.
@@ -29,7 +35,7 @@ const defaultTimeout = 30 * time.Second
 // Target describes where and how a product's API is reached. It is derived
 // from a configured site profile by the command layer.
 type Target struct {
-	Product    string          // ProductJira or ProductConfluence
+	Product    string          // ProductJira, ProductConfluence, or ProductBitbucket
 	TokenStyle auth.TokenStyle // selects URL resolution and signing
 	SiteName   string          // configured profile name, used in diagnostics
 	BaseURL    string          // configured site/instance URL
@@ -44,13 +50,24 @@ type Target struct {
 // resolve correctly. Data Center uses the configured URL verbatim because
 // Data Center API paths are not pinned in Phase 1.
 func (t Target) APIBase() (string, error) {
-	if t.Product != ProductJira && t.Product != ProductConfluence {
+	if t.Product != ProductJira && t.Product != ProductConfluence && t.Product != ProductBitbucket {
 		return "", apperr.InvalidInput(fmt.Sprintf("unknown product %q", t.Product))
 	}
 	// Strip any userinfo so a credential embedded in the configured URL can
 	// never survive into the API base, which is also surfaced in diagnostics
 	// (apperr.APIBaseURL) and persisted to config.
 	site := stripUserinfo(strings.TrimRight(t.BaseURL, "/"))
+
+	// Bitbucket Cloud exposes one fixed REST host for every account, so the
+	// API base is taken verbatim from the configured site URL (used as the
+	// override seam in tests) and falls back to the well-known Cloud base.
+	// The signing path is still Basic auth (StyleCloudClassic).
+	if t.Product == ProductBitbucket {
+		if site == "" {
+			return defaultBitbucketAPIBase, nil
+		}
+		return site, nil
+	}
 
 	switch t.TokenStyle {
 	case auth.StyleCloudClassic:
@@ -275,11 +292,17 @@ func (c *Client) classify(resp *Response) *apperr.Error {
 }
 
 // extractMessage makes a best-effort attempt to pull a human message out of a
-// Jira- or Confluence-shaped error body.
+// Jira-, Confluence-, or Bitbucket-shaped error body. Jira/Confluence put the
+// text at top level (message / errorMessages); Bitbucket nests it under an
+// "error" object ({"error":{"message":...,"detail":...}}).
 func extractMessage(body []byte) string {
 	var shaped struct {
 		Message       string   `json:"message"`
 		ErrorMessages []string `json:"errorMessages"`
+		Error         struct {
+			Message string `json:"message"`
+			Detail  string `json:"detail"`
+		} `json:"error"`
 	}
 	if json.Unmarshal(body, &shaped) == nil {
 		if shaped.Message != "" {
@@ -287,6 +310,12 @@ func extractMessage(body []byte) string {
 		}
 		if len(shaped.ErrorMessages) > 0 {
 			return strings.Join(shaped.ErrorMessages, "; ")
+		}
+		if shaped.Error.Message != "" {
+			return shaped.Error.Message
+		}
+		if shaped.Error.Detail != "" {
+			return shaped.Error.Detail
 		}
 	}
 	return ""

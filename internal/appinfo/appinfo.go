@@ -10,6 +10,8 @@ const (
 	ProductJira Product = "jira"
 	// ProductConfluence is the product value for the atl-conf binary.
 	ProductConfluence Product = "confluence"
+	// ProductBitbucket is the product value for the atl-bb binary.
+	ProductBitbucket Product = "bitbucket"
 )
 
 // Info describes a built CLI binary. It is safe to render directly as JSON.

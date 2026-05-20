@@ -12,6 +12,12 @@ const (
 	CodeNotFoundOrNotVisible = "not_found_or_not_visible"
 	CodeRateLimited          = "rate_limited"
 	CodeInvalidInput         = "invalid_input"
+	// CodeFeatureDisabled marks a request that targets a product capability
+	// that exists but is switched off for the resource (for example a
+	// Bitbucket repository whose issue tracker is disabled). It is distinct
+	// from not_found_or_not_visible so an agent can tell "turn the feature on"
+	// from "the resource is missing or hidden".
+	CodeFeatureDisabled = "feature_disabled"
 )
 
 // Error is a structured CLI error. It is safe to render directly as JSON and
@@ -73,4 +79,12 @@ func RateLimited(message string) *Error {
 // carries no HTTP status because it is detected before any request is made.
 func InvalidInput(message string) *Error {
 	return &Error{Code: CodeInvalidInput, Message: message}
+}
+
+// FeatureDisabled builds an error for a request that targets a product
+// capability that is switched off for the resource. The caller sets Status
+// from the originating HTTP response, since the underlying status varies by
+// product (Bitbucket reports a disabled issue tracker as 404).
+func FeatureDisabled(message string) *Error {
+	return &Error{Code: CodeFeatureDisabled, Message: message}
 }
