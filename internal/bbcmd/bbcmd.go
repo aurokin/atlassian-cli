@@ -58,6 +58,7 @@ func AddCommands(root *cobra.Command, info appinfo.Info, g *cli.GlobalFlags) {
 		newEnvironmentCommand(info, g),
 		newSearchCommand(info, g),
 		newStatusCommand(info, g),
+		newAliasCommand(info, g),
 	)
 }
 

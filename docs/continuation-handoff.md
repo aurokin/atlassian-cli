@@ -148,8 +148,12 @@ This completes the **planning arc** of the Bitbucket migration
   `gen-docs`** is done — `cmd/gen-docs` builds any product's root via its
   `atl*cmd.NewRoot` and emits a Markdown tree with `cobra/doc`
   (`go run ./cmd/gen-docs --product all --out docs/cli`); adding a product is a
-  one-line builder-map change. Remaining B3c: command aliases and the
-  extension mechanism.
+  one-line builder-map change. **Command aliases** are done — an
+  `atl-bb alias set/list/delete` group stores shorthands in the shared
+  config's top-level `aliases` map (atl-bb-only per D5), expanded before
+  dispatch in `atlbbcmd.Run` (shell-style split, depth-8 recursion,
+  cycle-safe). Remaining B3c: the extension mechanism (gh-style `bb-<name>`
+  external binaries on PATH).
 
 Standalone Jira/Confluence deepening remains available in parallel.
 
