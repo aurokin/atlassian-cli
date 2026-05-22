@@ -13,7 +13,8 @@ Agent instructions for this provisional Atlassian CLI workspace.
 7. `docs/implementation-plan.md`
 8. `docs/phase-1-foundation-plan.md` before starting Go implementation
 9. `docs/continuation-handoff.md` when resuming from the app or a fresh session
-10. Product docs before product-specific work:
+10. `CONTRIBUTING.md` for the development loop, PR workflow, and test-harness conventions
+11. Product docs before product-specific work:
    - `docs/jira-mvp.md`
    - `docs/confluence-mvp.md`
    - `docs/bb-inventory.md`, `docs/bb-rewrite-plan.md`, `docs/bb-compatibility-plan.md` (the `atl-bb` rewrite)
