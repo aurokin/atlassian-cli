@@ -1,4 +1,4 @@
-package bbcmd
+package cli
 
 import (
 	"fmt"
@@ -10,7 +10,6 @@ import (
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
-	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/config"
 	"github.com/aurokin/atlassian-cli/internal/output"
 )
@@ -20,14 +19,16 @@ import (
 const aliasMaxDepth = 8
 
 // newAliasCommand builds the "alias" command group: user-defined command
-// shorthands stored in the shared config and expanded before dispatch.
-func newAliasCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+// shorthands stored in the shared config and expanded before dispatch. It is
+// registered on every atl-* root by NewRoot, so each binary expands its own
+// aliases against the shared config.
+func newAliasCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "alias",
 		Short: "Manage command aliases",
 		Long: "Define, list, and delete command aliases. An alias replaces its name " +
 			"as the first argument with its expansion before the command runs, e.g. " +
-			"`alias set prs \"pr list\"` makes `atl-bb prs` run `atl-bb pr list`.",
+			"`alias set prs \"pr list\"` makes `" + info.Binary + " prs` run `" + info.Binary + " pr list`.",
 	}
 	cmd.AddCommand(
 		newAliasSetCommand(info, g),
@@ -37,7 +38,7 @@ func newAliasCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	return cmd
 }
 
-func newAliasSetCommand(_ appinfo.Info, _ *cli.GlobalFlags) *cobra.Command {
+func newAliasSetCommand(_ appinfo.Info, _ *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "set <name> <expansion>",
 		Short: "Define or overwrite an alias",
@@ -77,7 +78,7 @@ func newAliasSetCommand(_ appinfo.Info, _ *cli.GlobalFlags) *cobra.Command {
 	}
 }
 
-func newAliasListCommand(_ appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+func newAliasListCommand(_ appinfo.Info, g *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List defined aliases",
@@ -92,7 +93,7 @@ func newAliasListCommand(_ appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 				return err
 			}
 			if g.JSON != "" || g.JQ != "" {
-				return cli.Render(cmd, g, cfg.Aliases)
+				return Render(cmd, g, cfg.Aliases)
 			}
 			writeAliasList(cmd.OutOrStdout(), cfg.Aliases)
 			return nil
@@ -100,7 +101,7 @@ func newAliasListCommand(_ appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	}
 }
 
-func newAliasDeleteCommand(_ appinfo.Info, _ *cli.GlobalFlags) *cobra.Command {
+func newAliasDeleteCommand(_ appinfo.Info, _ *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
 		Use:     "delete <name>",
 		Aliases: []string{"remove", "rm"},
@@ -150,10 +151,10 @@ func writeAliasList(w io.Writer, aliases map[string]string) {
 	_ = tw.Flush()
 }
 
-// ExpandAliases loads the configured aliases and expands args accordingly. A
+// expandAliases loads the configured aliases and expands args accordingly. A
 // missing or unreadable config yields the args unchanged (best effort): alias
 // expansion must never block a command that does not use aliases.
-func ExpandAliases(args []string) ([]string, error) {
+func expandAliases(args []string) ([]string, error) {
 	path, err := config.DefaultPath()
 	if err != nil {
 		return args, nil

@@ -1,7 +1,8 @@
 // Package cli holds the foundation shared by every atl-* binary: the root
-// command shape, the global flag set, and the version subcommand. Product
-// command packages (atljiracmd, atlconfcmd) build on top of NewRoot rather
-// than duplicating this wiring.
+// command shape, the global flag set, the shared subcommands (version, auth,
+// api, resolve, browse, alias, extension), and the Run/Execute entry points.
+// Product command packages (atljiracmd, atlconfcmd, atlbbcmd) build on top of
+// NewRoot rather than duplicating this wiring.
 package cli
 
 import (
@@ -9,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -65,6 +67,8 @@ func NewRoot(info appinfo.Info, short string) (*cobra.Command, *GlobalFlags) {
 	root.AddCommand(newAPICommand(info, g))
 	root.AddCommand(newResolveCommand(info, g))
 	root.AddCommand(newBrowseCommand(info, g))
+	root.AddCommand(newAliasCommand(info, g))
+	root.AddCommand(newExtensionCommand(info, g))
 	return root, g
 }
 
@@ -76,7 +80,9 @@ func Render(cmd *cobra.Command, g *GlobalFlags, v any) error {
 }
 
 // Execute runs root and renders any resulting error, returning the process
-// exit code. It is the entry point used by each binary's main package.
+// exit code. It is the minimal entry point: it performs no alias expansion or
+// extension dispatch, and is used by tests and as the building block beneath
+// Run.
 func Execute(root *cobra.Command, g *GlobalFlags) int {
 	if err := root.Execute(); err != nil {
 		renderError(root.ErrOrStderr(), g, err)
@@ -85,13 +91,46 @@ func Execute(root *cobra.Command, g *GlobalFlags) int {
 	return 0
 }
 
-// RenderError writes err to w using the same formatting as Execute: the
-// structured JSON envelope when --json is set and err is an *apperr.Error,
-// otherwise a plain text line. It is exported so a binary that runs its own
-// dispatch (for example atl-bb's extension fallback) can render errors
-// identically to Execute.
-func RenderError(w io.Writer, g *GlobalFlags, err error) {
-	renderError(w, g, err)
+// Run is the production entry point shared by every atl-* binary. It expands
+// any configured command aliases against the process arguments, executes the
+// command tree, and—when an unknown command names an installed
+// <binary>-<name> extension on PATH—dispatches to that extension (gh-style). It
+// returns the process exit code. The extension prefix is derived from
+// info.Binary, so each binary discovers only its own extensions.
+func Run(info appinfo.Info, root *cobra.Command, g *GlobalFlags) int {
+	args, err := expandAliases(os.Args[1:])
+	if err != nil {
+		// A malformed alias in a hand-edited config fails before dispatch.
+		// Report it plainly and stop.
+		fmt.Fprintln(root.ErrOrStderr(), "Error:", err)
+		return 1
+	}
+	root.SetArgs(args)
+	execErr := root.Execute()
+	if execErr == nil {
+		return 0
+	}
+	// An extension invoked explicitly via `extension exec` that exited non-zero
+	// already wrote its own diagnostics, so propagate its exit code without
+	// rendering a redundant error.
+	if code, ok := extensionExitCode(execErr); ok {
+		return code
+	}
+	// gh-style fallback: an unknown command may name an external
+	// <binary>-<name> extension on PATH. Only a found-and-run extension is
+	// treated as handled; otherwise the original (clearer) error is rendered.
+	if handled, runErr := dispatchExtensionFallback(extensionPrefix(info), execErr, args); handled {
+		if runErr == nil {
+			return 0
+		}
+		if code, ok := extensionExitCode(runErr); ok {
+			return code
+		}
+		renderError(root.ErrOrStderr(), g, runErr)
+		return 1
+	}
+	renderError(root.ErrOrStderr(), g, execErr)
+	return 1
 }
 
 // renderError writes err to w. When --json is set and err carries a

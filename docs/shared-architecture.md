@@ -65,10 +65,15 @@ product (`atl-bb`) makes a shared shape concrete.
 <bin> api <path-or-url>
 <bin> resolve <url>
 <bin> browse ...
-<bin> alias get|set|delete|list
+<bin> alias set|list|delete
+<bin> extension list|exec
 <bin> completion bash|fish|powershell|zsh
 <bin> version
 ```
+
+`alias` and `extension` are shared across all three binaries (`atl-jira`,
+`atl-conf`, `atl-bb`). Each binary expands aliases against the shared config's
+`aliases` map and discovers extensions under its own `<binary>-` name prefix.
 
 ## Raw API behavior
 

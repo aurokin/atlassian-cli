@@ -28,6 +28,24 @@ func TestRootHelpContainsBinaryName(t *testing.T) {
 	}
 }
 
+// TestRootRegistersSharedAliasAndExtension confirms the alias and extension
+// command groups, promoted from atl-bb into the shared root, are now present on
+// atl-jira too.
+func TestRootRegistersSharedAliasAndExtension(t *testing.T) {
+	root, _ := NewRoot("test", "", "")
+	want := map[string]bool{"alias": false, "extension": false}
+	for _, c := range root.Commands() {
+		if _, ok := want[c.Name()]; ok {
+			want[c.Name()] = true
+		}
+	}
+	for name, found := range want {
+		if !found {
+			t.Errorf("atl-jira root is missing the shared %q command", name)
+		}
+	}
+}
+
 func TestVersionJSON(t *testing.T) {
 	root, _ := NewRoot("9.9.9", "", "")
 	var buf bytes.Buffer

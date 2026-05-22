@@ -1,4 +1,4 @@
-package bbcmd
+package cli
 
 import (
 	"reflect"
@@ -93,43 +93,46 @@ func TestExpandAliasArgsCycleTerminates(t *testing.T) {
 	}
 }
 
+// TestAliasSetListDelete exercises the alias command group end to end against a
+// temp config. It runs under jiraInfo to confirm aliases are now a shared
+// capability available to every atl-* binary, not just atl-bb.
 func TestAliasSetListDelete(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
-	out, err := execBB(t, "alias", "set", "prs", "pr list")
+	out, err := execRoot(t, jiraInfo(), "alias", "set", "ji", "issue view")
 	if err != nil {
 		t.Fatalf("alias set: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "set alias prs = pr list") {
+	if !strings.Contains(out, "set alias ji = issue view") {
 		t.Fatalf("unexpected set output:\n%s", out)
 	}
 
-	out, err = execBB(t, "alias", "list")
+	out, err = execRoot(t, jiraInfo(), "alias", "list")
 	if err != nil {
 		t.Fatalf("alias list: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "prs") || !strings.Contains(out, "pr list") {
+	if !strings.Contains(out, "ji") || !strings.Contains(out, "issue view") {
 		t.Fatalf("alias list missing entry:\n%s", out)
 	}
 
-	// Round-trip through ExpandAliases (reads the same config).
-	args, err := ExpandAliases([]string{"prs", "--all"})
+	// Round-trip through expandAliases (reads the same config).
+	args, err := expandAliases([]string{"ji", "ABC-1"})
 	if err != nil {
-		t.Fatalf("ExpandAliases: %v", err)
+		t.Fatalf("expandAliases: %v", err)
 	}
-	if !reflect.DeepEqual(args, []string{"pr", "list", "--all"}) {
-		t.Fatalf("ExpandAliases = %v", args)
+	if !reflect.DeepEqual(args, []string{"issue", "view", "ABC-1"}) {
+		t.Fatalf("expandAliases = %v", args)
 	}
 
-	out, err = execBB(t, "alias", "delete", "prs")
+	out, err = execRoot(t, jiraInfo(), "alias", "delete", "ji")
 	if err != nil {
 		t.Fatalf("alias delete: %v\n%s", err, out)
 	}
-	if !strings.Contains(out, "deleted alias prs") {
+	if !strings.Contains(out, "deleted alias ji") {
 		t.Fatalf("unexpected delete output:\n%s", out)
 	}
 
-	out, err = execBB(t, "alias", "list")
+	out, err = execRoot(t, jiraInfo(), "alias", "list")
 	if err != nil {
 		t.Fatalf("alias list (after delete): %v\n%s", err, out)
 	}
@@ -140,7 +143,7 @@ func TestAliasSetListDelete(t *testing.T) {
 
 func TestAliasSetRejectsBadExpansion(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	_, err := execBB(t, "alias", "set", "bad", `"unterminated`)
+	_, err := execRoot(t, jiraInfo(), "alias", "set", "bad", `"unterminated`)
 	if err == nil || !strings.Contains(err.Error(), "invalid alias expansion") {
 		t.Fatalf("expected invalid-expansion error, got %v", err)
 	}
@@ -148,7 +151,7 @@ func TestAliasSetRejectsBadExpansion(t *testing.T) {
 
 func TestAliasDeleteMissing(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	_, err := execBB(t, "alias", "delete", "nope")
+	_, err := execRoot(t, jiraInfo(), "alias", "delete", "nope")
 	if err == nil || !strings.Contains(err.Error(), `no alias named "nope"`) {
 		t.Fatalf("expected not-found error, got %v", err)
 	}

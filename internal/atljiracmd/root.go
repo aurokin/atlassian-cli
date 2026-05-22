@@ -11,19 +11,25 @@ import (
 
 const short = "atl-jira is a true-to-API command-line interface for Atlassian Jira"
 
+// buildInfo describes the atl-jira binary for the given build metadata.
+func buildInfo(version, commit, date string) appinfo.Info {
+	return appinfo.New("atl-jira", appinfo.ProductJira, version, commit, date)
+}
+
 // NewRoot builds the root command for the atl-jira binary together with the
 // global flags bound to it. It layers the Jira product commands onto the
 // shared root. The build metadata is supplied by the binary's main package.
 func NewRoot(version, commit, date string) (*cobra.Command, *cli.GlobalFlags) {
-	info := appinfo.New("atl-jira", appinfo.ProductJira, version, commit, date)
+	info := buildInfo(version, commit, date)
 	root, g := cli.NewRoot(info, short)
 	jiracmd.AddCommands(root, info, g)
 	return root, g
 }
 
-// Run builds the atl-jira command tree, executes it, and returns the process
-// exit code.
+// Run builds the atl-jira command tree and runs it through the shared entry
+// point (alias expansion + execute + extension fallback), returning the
+// process exit code.
 func Run(version, commit, date string) int {
 	root, g := NewRoot(version, commit, date)
-	return cli.Execute(root, g)
+	return cli.Run(buildInfo(version, commit, date), root, g)
 }

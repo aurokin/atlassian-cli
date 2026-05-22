@@ -2,9 +2,6 @@
 package atlbbcmd
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
@@ -14,52 +11,25 @@ import (
 
 const short = "atl-bb is a true-to-API command-line interface for Atlassian Bitbucket"
 
+// buildInfo describes the atl-bb binary for the given build metadata.
+func buildInfo(version, commit, date string) appinfo.Info {
+	return appinfo.New("atl-bb", appinfo.ProductBitbucket, version, commit, date)
+}
+
 // NewRoot builds the root command for the atl-bb binary together with the
 // global flags bound to it. It layers the Bitbucket product commands onto the
 // shared root. The build metadata is supplied by the binary's main package.
 func NewRoot(version, commit, date string) (*cobra.Command, *cli.GlobalFlags) {
-	info := appinfo.New("atl-bb", appinfo.ProductBitbucket, version, commit, date)
+	info := buildInfo(version, commit, date)
 	root, g := cli.NewRoot(info, short)
 	bbcmd.AddCommands(root, info, g)
 	return root, g
 }
 
-// Run builds the atl-bb command tree, expands any configured command aliases
-// against the process arguments, executes the tree, and returns the process
-// exit code.
+// Run builds the atl-bb command tree and runs it through the shared entry
+// point (alias expansion + execute + extension fallback), returning the
+// process exit code.
 func Run(version, commit, date string) int {
 	root, g := NewRoot(version, commit, date)
-	args, err := bbcmd.ExpandAliases(os.Args[1:])
-	if err != nil {
-		// An alias-expansion failure happens before dispatch (a malformed alias
-		// in a hand-edited config). Report it plainly and stop.
-		fmt.Fprintln(os.Stderr, "Error:", err)
-		return 1
-	}
-	root.SetArgs(args)
-	execErr := root.Execute()
-	if execErr == nil {
-		return 0
-	}
-	// An extension run explicitly via `extension exec` that exited non-zero:
-	// the child already wrote its own diagnostics, so propagate its exit code
-	// without rendering a redundant error.
-	if code, ok := bbcmd.ExtensionExitCode(execErr); ok {
-		return code
-	}
-	// gh-style fallback: an unknown command may be an external atl-bb-<name>
-	// extension on PATH. Only a found-and-run extension is treated as handled;
-	// otherwise the original (clearer) error is rendered.
-	if handled, runErr := bbcmd.DispatchExtensionFallback(execErr, args); handled {
-		if runErr == nil {
-			return 0
-		}
-		if code, ok := bbcmd.ExtensionExitCode(runErr); ok {
-			return code
-		}
-		cli.RenderError(root.ErrOrStderr(), g, runErr)
-		return 1
-	}
-	cli.RenderError(root.ErrOrStderr(), g, execErr)
-	return 1
+	return cli.Run(buildInfo(version, commit, date), root, g)
 }

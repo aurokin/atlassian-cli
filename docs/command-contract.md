@@ -29,14 +29,18 @@ and `attachment` commands. Phase 8 deepens the Jira `issue` surface with
 
 - `atl-jira` — Jira CLI (`product: jira`)
 - `atl-conf` — Confluence CLI (`product: confluence`)
-- `atl-bb` — Bitbucket Cloud CLI (`product: bitbucket`); command groups:
+- `atl-bb` — Bitbucket Cloud CLI (`product: bitbucket`); product command groups:
   `repo`, `pr`, `pipeline`, `issue`, `workspace`, `project`, `commit`, `branch`,
-  `tag`, `deployment`, `environment`, `search`, `status`, `alias`, and
-  `extension`, plus the shared `auth`, `api`, `resolve`, `browse`, and
-  `version`. Git-checkout repository inference is built in.
+  `tag`, `deployment`, `environment`, `search`, and `status`. Git-checkout
+  repository inference is built in (a Bitbucket-only affordance, since Jira and
+  Confluence are not repo-scoped).
 
 All binaries share one command tree built in `internal/cli`; only product
-identity and build metadata differ.
+identity and build metadata differ. The shared commands present on **every**
+binary are `version`, `auth`, `api`, `resolve`, `browse`, `alias`, and
+`extension`. (`alias` and `extension` were originally `atl-bb`-only and were
+promoted into the shared root so all three CLIs have command shorthands and
+gh-style external subcommands.)
 
 ## Global flags
 
@@ -210,6 +214,49 @@ contexts. Under `--json` it is emitted as a `{"url": "..."}` object. The
 browser is launched through the platform handler (`open`, `xdg-open`, or
 `rundll32`); only `http`/`https` URLs are ever passed to it.
 
+### `alias`
+
+```
+atl-jira alias set <name> <expansion>
+atl-jira alias list
+atl-jira alias delete <name>
+```
+
+User-defined command shorthands stored in the shared config under a top-level
+`aliases` map. They are a **shared capability available on every binary**
+(`atl-jira`, `atl-conf`, `atl-bb`) — each binary expands aliases against the
+same `aliases` map, so a shorthand naming product commands only makes sense for
+the binary it targets. Before dispatch, if the first argument matches an alias
+its expansion replaces it — e.g. `alias set prs "pr list"` makes
+`atl-bb prs --all` run `atl-bb pr list --all`. The expansion is split with
+shell-style quoting; an alias may reference another, with recursion bounded
+(depth 8) and cycles stopped rather than looped. `alias set` rejects an
+expansion that cannot be parsed, so a broken alias is never persisted.
+
+### `extension`
+
+```
+atl-jira extension list
+atl-jira extension exec <name> [args...]
+atl-jira <name> [args...]        # gh-style implicit dispatch
+```
+
+gh-style external commands, a **shared capability on every binary**. An
+executable named `<binary>-<name>` on `PATH` is an extension of that binary, so
+the discovery prefix is per-binary: `atl-jira-<name>` for `atl-jira`,
+`atl-conf-<name>` for `atl-conf`, `atl-bb-<name>` for `atl-bb`. `extension list`
+discovers them (the first match per name on `PATH` wins, mirroring shell
+resolution; non-executable and non-prefixed files are skipped). `extension exec
+<name>` runs `<binary>-<name>` with the remaining arguments forwarded verbatim
+(flag parsing is disabled so the extension sees its own flags), wiring the
+child's stdin/stdout/stderr to the CLI's. As a convenience, an **unknown**
+top-level command falls back to the matching extension (`atl-bb deploy-helper …`
+runs `atl-bb-deploy-helper …`) — but only when the command is the leading
+argument, so forwarded arguments are never ambiguous; with no matching extension
+the normal unknown-command error stands. An extension that exits non-zero
+propagates its exit code without the CLI re-rendering an error the child already
+reported.
+
 ## Jira commands
 
 These commands exist only on `atl-jira`. Each needs `--site` to name a
@@ -321,12 +368,28 @@ which inspects local config offline and makes no request.
 ## Confluence commands
 
 These commands exist only on `atl-conf`. Each needs `--site` to name a
-configured profile and makes a live, authenticated request. They target the
-Confluence Cloud REST **v2** API; CQL search and the current-user lookup have
-no v2 resource, so `search cql` and `status` fall back to REST **v1**. Under
-`--json` the raw response body is emitted verbatim; human output is a compact
-per-command summary. A non-2xx response is mapped to the structured error
-model below.
+configured profile and makes a live, authenticated request. Under `--json` the
+raw response body is emitted verbatim; human output is a compact per-command
+summary. A non-2xx response is mapped to the structured error model below.
+
+> **API version note (intentional, not a surprise).** Unlike `atl-jira` (pure
+> REST v3) and `atl-bb` (pure REST v2), `atl-conf` is a **mixed-version**
+> client. It targets the Confluence Cloud REST **v2** API for everything that
+> has a v2 resource, and deliberately falls back to the older REST **v1**
+> surface for the three things v2 does not (yet) cover:
+>
+> | Command | API | Endpoint |
+> |---|---|---|
+> | `search cql` | **v1** | `/rest/api/search` (CQL has no v2 equivalent) |
+> | `status` | **v1** | `/rest/api/user/current` (no v2 current-user) |
+> | `page label add` / `page label remove` | **v1** | `/rest/api/content/{id}/label` (no v2 label write) |
+>
+> Everything else — spaces, pages, page reads, footer comments, label *reads*,
+> attachments — is v2. Because output is the verbatim API body, a `search cql`
+> or `status` response is shaped like a v1 payload while a `page view` response
+> is shaped like a v2 payload; this is expected and follows from the true-to-API
+> contract. The fallback is driven by the Confluence API's own coverage gap, not
+> by a CLI preference, and will narrow as those v2 resources ship.
 
 ### `space`
 
@@ -650,42 +713,6 @@ A **live** authentication check against the configured site (`GET /user`),
 distinct from the offline `auth status`. Human output reports `authenticated`,
 the site name, the account (display name + account id), the username, and the
 resolved API base. Mirrors `atl-jira`/`atl-conf status`.
-
-### `alias`
-
-```
-atl-bb alias set <name> <expansion>
-atl-bb alias list
-atl-bb alias delete <name>
-```
-
-User-defined command shorthands stored in the shared config under a top-level
-`aliases` map (consumed only by `atl-bb`; other binaries ignore it). Before
-dispatch, if the first argument matches an alias its expansion replaces it —
-e.g. `alias set prs "pr list"` makes `atl-bb prs --all` run
-`atl-bb pr list --all`. The expansion is split with shell-style quoting; an
-alias may reference another, with recursion bounded (depth 8) and cycles
-stopped rather than looped. `alias set` rejects an expansion that cannot be
-parsed, so a broken alias is never persisted.
-
-### `extension`
-
-```
-atl-bb extension list
-atl-bb extension exec <name> [args...]
-atl-bb <name> [args...]        # gh-style implicit dispatch
-```
-
-gh-style external commands: an executable named `atl-bb-<name>` on `PATH` is an
-extension. `extension list` discovers them (the first match per name on `PATH`
-wins, mirroring shell resolution; non-executable and non-prefixed files are
-skipped). `extension exec <name>` runs `atl-bb-<name>` with the remaining
-arguments forwarded verbatim (flag parsing is disabled so the extension sees
-its own flags), wiring the child's stdin/stdout/stderr to the CLI's. As a
-convenience, an **unknown** top-level command falls back to the matching
-extension (`atl-bb deploy-helper …` runs `atl-bb-deploy-helper …`) — but only
-when the command is the leading argument, so forwarded arguments are never
-ambiguous; with no matching extension the normal unknown-command error stands.
 
 ### `resolve` / `browse` (Bitbucket forms)
 

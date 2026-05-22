@@ -27,8 +27,8 @@ type Config struct {
 	Version int                    `json:"version"`
 	Sites   map[string]SiteProfile `json:"sites"`
 	// Aliases maps a user-defined command name to its expansion (a shell-style
-	// argument string). It is currently consumed only by atl-bb; other binaries
-	// ignore it.
+	// argument string). It is shared by every atl-* binary: each expands aliases
+	// against this map before dispatch (see internal/cli).
 	Aliases map[string]string `json:"aliases,omitempty"`
 }
 
