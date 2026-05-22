@@ -131,11 +131,13 @@ This completes the **planning arc** of the Bitbucket migration
   (`list` with `--revision`, `view`), `branch` (`list`, `view`, `create`,
   `delete`), `tag` (`list`, `view`, `create`, `delete`), and `deployment` /
   `environment` (read-only `list`, `view`; deployment **variables** deferred
-  as they hold secret values). Decision
+  as they hold secret values), `search` (`repos`, `prs`, `issues` taking a
+  raw Bitbucket `q` query, mirroring atl-jira's raw-JQL search), and `status`
+  (live `GET /user` auth check). Decision
   (Auro): under `--json`/`--jq`, `atl-bb` emits the **verbatim Bitbucket API
   body** like `atl-jira`/`atl-conf` — a documented break from legacy `bb`'s
   custom payload field names. Remaining B3b slices:
-  search/status → resolve/browse → api/auth.
+  resolve/browse → api/auth.
   Git inference, aliases, and extensions are B3c.
 
 Standalone Jira/Confluence deepening remains available in parallel.
