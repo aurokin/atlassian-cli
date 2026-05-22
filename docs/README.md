@@ -10,6 +10,7 @@ Three separate CLIs — `atl-jira`, `atl-conf`, and `atl-bb` — with shared fou
 
 - [auth-design.md](auth-design.md) — Cloud classic/scoped tokens, Data Center PAT, OAuth later.
 - [auth-runbook.md](auth-runbook.md) — practical end-to-end authentication guide: pick a token style, supply and store the token, log in per product, verify, and troubleshoot.
+- [oauth-3lo-plan.md](oauth-3lo-plan.md) — design/implementation plan for the `oauth-3lo` token style: interactive bring-your-own-app browser flow, loopback callback, keychain-stored token bundle, and request-time refresh.
 - [access-error-model.md](access-error-model.md) — permission-aware UX and structured recovery.
 - [shared-architecture.md](shared-architecture.md) — shared packages, raw API, output, config, pagination.
 - [jira-mvp.md](jira-mvp.md) — first Jira command surface.
