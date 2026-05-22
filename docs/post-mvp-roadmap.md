@@ -1,5 +1,13 @@
 # Post-MVP Roadmap (Phases 5–8)
 
+> **Status: all complete and merged.** Phases 5–9 shipped (output/pagination
+> polish, secure token storage, Confluence depth, Jira depth, and the Phase 9
+> shared-foundation extraction), followed by the Bitbucket `atl-bb` rewrite
+> (Phases B0–B3c). This document is retained as the historical plan for the
+> 5–8 window; for the current command surface see
+> [command-contract.md](command-contract.md) and for the latest status see
+> [continuation-handoff.md](continuation-handoff.md).
+>
 > Sequenced plan for the work after the Jira and Confluence MVPs. Phases 1–4
 > are merged to `main`: the shared foundation, URL resolution, the Jira MVP
 > (`project`/`issue`/`search`/`status` plus issue and comment mutations), and

@@ -13,9 +13,10 @@ Agent instructions for this provisional Atlassian CLI workspace.
 7. `docs/implementation-plan.md`
 8. `docs/phase-1-foundation-plan.md` before starting Go implementation
 9. `docs/continuation-handoff.md` when resuming from the app or a fresh session
-10. Product MVP docs before product-specific work:
+10. Product docs before product-specific work:
    - `docs/jira-mvp.md`
    - `docs/confluence-mvp.md`
+   - `docs/bb-inventory.md`, `docs/bb-rewrite-plan.md`, `docs/bb-compatibility-plan.md` (the `atl-bb` rewrite)
 
 ## Product posture
 
@@ -25,7 +26,7 @@ Agent instructions for this provisional Atlassian CLI workspace.
 - Raw `api` command is a first-class escape hatch.
 - Unsupported or ambiguous behavior should be documented and surfaced clearly.
 - Users have different access levels. Design for good behavior under low-access, scoped-token, service-account, contributor, and admin contexts.
-- Start implementation from `docs/phase-1-foundation-plan.md`.
+- All three CLIs (`atl-jira`, `atl-conf`, `atl-bb`) are implemented; new work deepens an existing surface or shares a proven seam rather than bootstrapping. New code goes through the shared foundation in `internal/cli`.
 - Update `docs/continuation-handoff.md` whenever the next action, repo status, or implementation surface changes.
 
 ## Secrets

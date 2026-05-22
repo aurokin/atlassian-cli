@@ -4,7 +4,7 @@
 
 ## Goal
 
-Create two separate CLIs, `atl-jira` and `atl-conf`, with shared foundations where useful but separate product vocabularies where necessary. If Bitbucket is migrated later, its unified binary shape is `atl-bb`.
+Three separate CLIs — `atl-jira`, `atl-conf`, and `atl-bb` — with shared foundations where useful but separate product vocabularies where necessary. All three are now implemented (the docs below capture both the original Jira/Confluence design and the later Bitbucket rewrite); this directory is the design package and history behind the shipped command surface in [command-contract.md](command-contract.md).
 
 ## Design docs
 
@@ -34,4 +34,4 @@ Create two separate CLIs, `atl-jira` and `atl-conf`, with shared foundations whe
 
 ## Naming
 
-`atl-jira`, `atl-conf`, and future `atl-bb` are the binary names. The `atl-` prefix avoids collisions with common packages and makes these feel like one CLI family. Avoid bare `jira`, bare `confluence`, `jj`, `cc`, and `conf` because of collisions or ambiguity.
+`atl-jira`, `atl-conf`, and `atl-bb` are the binary names. The `atl-` prefix avoids collisions with common packages and makes these feel like one CLI family. Avoid bare `jira`, bare `confluence`, `jj`, `cc`, and `conf` because of collisions or ambiguity.
