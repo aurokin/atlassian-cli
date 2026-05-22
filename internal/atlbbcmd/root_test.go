@@ -12,17 +12,20 @@ func TestRootWiring(t *testing.T) {
 	root, _ := NewRoot("test", "", "")
 
 	want := map[string]bool{
-		"version":  false,
-		"auth":     false,
-		"api":      false,
-		"resolve":  false,
-		"browse":   false,
-		"repo":     false,
-		"pr":       false,
+		"version":   false,
+		"auth":      false,
+		"api":       false,
+		"resolve":   false,
+		"browse":    false,
+		"repo":      false,
+		"pr":        false,
 		"pipeline":  false,
 		"issue":     false,
 		"workspace": false,
 		"project":   false,
+		"commit":    false,
+		"branch":    false,
+		"tag":       false,
 	}
 	for _, c := range root.Commands() {
 		if _, ok := want[c.Name()]; ok {

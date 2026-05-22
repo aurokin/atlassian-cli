@@ -16,10 +16,65 @@ type CurrentUser struct {
 	UUID        string `json:"uuid,omitempty"`
 }
 
-// Branch is a Bitbucket ref reduced to its name, the shape shared by a
-// repository's main branch and ref listings.
+// Branch is a Bitbucket ref reduced to the fields human output renders. The
+// minimal {name} shape is shared by a repository's main branch and a pull
+// request's source/destination; a branch listing also carries the tip commit
+// in Target.
 type Branch struct {
-	Name string `json:"name"`
+	Name   string  `json:"name"`
+	Target *Commit `json:"target,omitempty"`
+}
+
+// BranchPage is one page of a branch listing. Bitbucket paginates with an
+// absolute "next" URL; an empty Next marks the last page.
+type BranchPage struct {
+	Values []Branch `json:"values"`
+	Next   string   `json:"next,omitempty"`
+}
+
+// Tag is a Bitbucket annotated or lightweight tag reduced to the fields human
+// output renders. Target is the commit the tag points at.
+type Tag struct {
+	Name    string  `json:"name"`
+	Message string  `json:"message,omitempty"`
+	Date    string  `json:"date,omitempty"`
+	Target  *Commit `json:"target,omitempty"`
+}
+
+// TagPage is one page of a tag listing. Bitbucket paginates with an absolute
+// "next" URL; an empty Next marks the last page.
+type TagPage struct {
+	Values []Tag  `json:"values"`
+	Next   string `json:"next,omitempty"`
+}
+
+// CommitSummary is a commit's rendered message body.
+type CommitSummary struct {
+	Raw string `json:"raw,omitempty"`
+}
+
+// CommitAuthor is the author of a commit: the raw "Name <email>" string and,
+// when Bitbucket can map it, the linked account.
+type CommitAuthor struct {
+	Raw  string   `json:"raw,omitempty"`
+	User *Account `json:"user,omitempty"`
+}
+
+// Commit is the subset of a Bitbucket commit that human output renders. It is
+// shared by the commit commands and by the Target of a branch or tag.
+type Commit struct {
+	Hash    string         `json:"hash,omitempty"`
+	Date    string         `json:"date,omitempty"`
+	Message string         `json:"message,omitempty"`
+	Summary *CommitSummary `json:"summary,omitempty"`
+	Author  *CommitAuthor  `json:"author,omitempty"`
+}
+
+// CommitPage is one page of a commit listing. Bitbucket paginates with an
+// absolute "next" URL; an empty Next marks the last page.
+type CommitPage struct {
+	Values []Commit `json:"values"`
+	Next   string   `json:"next,omitempty"`
 }
 
 // Project is a Bitbucket project — both the sub-object a repository belongs to
