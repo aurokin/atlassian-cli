@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -206,6 +207,7 @@ type Client struct {
 	target Target
 	cred   auth.Credential
 	http   *http.Client
+	trace  io.Writer // when non-nil, request/response diagnostics are written here
 }
 
 // New builds a Client. If hc is nil a client with a default timeout is used.
@@ -214,6 +216,13 @@ func New(target Target, cred auth.Credential, hc *http.Client) *Client {
 		hc = &http.Client{Timeout: defaultTimeout}
 	}
 	return &Client{target: target, cred: cred, http: hc}
+}
+
+// EnableTrace turns on verbose request tracing, writing one line per request
+// and response to w (typically os.Stderr, backing the global --trace flag).
+// Credential-bearing headers are redacted. Passing nil disables tracing.
+func (c *Client) EnableTrace(w io.Writer) {
+	c.trace = w
 }
 
 // APIBase returns the resolved API base URL the client sends requests against.
@@ -241,22 +250,74 @@ func (c *Client) Do(ctx context.Context, method, pathOrURL string, body io.Reade
 		return nil, err
 	}
 
+	c.traceRequest(req)
+	start := time.Now()
 	resp, err := c.http.Do(req)
 	if err != nil {
+		c.traceFailure(time.Since(start), err)
 		return nil, apperr.New("request_failed", fmt.Sprintf("request to %s failed: %v", target, err))
 	}
 	defer resp.Body.Close()
 
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
+		c.traceFailure(time.Since(start), err)
 		return nil, apperr.New("request_failed", fmt.Sprintf("read response body: %v", err))
 	}
 	out := &Response{Status: resp.StatusCode, Header: resp.Header, Body: raw}
+	c.traceResponse(out.Status, time.Since(start), len(raw))
 
 	if resp.StatusCode >= 400 {
 		return out, c.classify(out)
 	}
 	return out, nil
+}
+
+// sensitiveHeaders are request headers whose values must never be written to
+// the trace, since they carry credentials.
+var sensitiveHeaders = map[string]bool{
+	"Authorization":       true,
+	"Proxy-Authorization": true,
+	"Cookie":              true,
+}
+
+// traceRequest writes the request line and headers to the trace writer with
+// credential-bearing header values redacted. It is a no-op when tracing is off.
+func (c *Client) traceRequest(req *http.Request) {
+	if c.trace == nil {
+		return
+	}
+	fmt.Fprintf(c.trace, "[trace] > %s %s\n", req.Method, req.URL.String())
+	keys := make([]string, 0, len(req.Header))
+	for k := range req.Header {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		value := strings.Join(req.Header.Values(k), ", ")
+		if sensitiveHeaders[http.CanonicalHeaderKey(k)] {
+			value = "[redacted]"
+		}
+		fmt.Fprintf(c.trace, "[trace] > %s: %s\n", k, value)
+	}
+}
+
+// traceResponse writes the response status, elapsed time, and body size. It is
+// a no-op when tracing is off.
+func (c *Client) traceResponse(status int, elapsed time.Duration, size int) {
+	if c.trace == nil {
+		return
+	}
+	fmt.Fprintf(c.trace, "[trace] < %d (%s, %d bytes)\n", status, elapsed.Round(time.Millisecond), size)
+}
+
+// traceFailure writes a transport-level failure (no HTTP response) with the
+// elapsed time. It is a no-op when tracing is off.
+func (c *Client) traceFailure(elapsed time.Duration, err error) {
+	if c.trace == nil {
+		return
+	}
+	fmt.Fprintf(c.trace, "[trace] < error after %s: %v\n", elapsed.Round(time.Millisecond), err)
 }
 
 // classify maps a non-2xx Response to a structured *apperr.Error, enriched

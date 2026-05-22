@@ -50,7 +50,7 @@ gh-style external subcommands.)
 | `--jq` | string | Filter the JSON output through a jq expression. |
 | `--site` | string | Names the configured site profile a command targets. |
 | `--no-prompt` | bool | Forces non-interactive behavior. `browse` treats it as `--no-browser` (print the URL, never open one). No other command prompts yet. |
-| `--trace` | bool | Accepted and reserved. Request tracing is not implemented yet. |
+| `--trace` | bool | Emit verbose request tracing to **stderr**: one `[trace] > METHOD URL` line plus request headers (credential-bearing headers redacted), and a `[trace] < STATUS (elapsed, bytes)` line per request. Stdout stays pure, so it does not disturb `--json`/`--jq` consumers. |
 
 `--json` takes an *optional* value, so a value must be attached with `=`
 (`--json=field1,field2`) — passing it space-separated (`--json field1`) leaves
@@ -844,7 +844,7 @@ plain `Error: <code>: <message>` line.
   Against a Data Center instance the API base is the configured URL verbatim,
   so the Cloud paths these commands use will not match; use the raw `api`
   command there.
-- `--trace` is accepted but inert. `--no-prompt` is honored only by `browse`.
+- `--no-prompt` is honored only by `browse`.
 - A stored token is read at request time from the OS keychain or the `0600`
   fallback file; on macOS the keychain may prompt to authorize access the
   first time. There is no interactive no-echo token prompt — `--token-stdin`
