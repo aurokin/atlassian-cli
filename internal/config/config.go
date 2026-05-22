@@ -26,6 +26,10 @@ const (
 type Config struct {
 	Version int                    `json:"version"`
 	Sites   map[string]SiteProfile `json:"sites"`
+	// Aliases maps a user-defined command name to its expansion (a shell-style
+	// argument string). It is currently consumed only by atl-bb; other binaries
+	// ignore it.
+	Aliases map[string]string `json:"aliases,omitempty"`
 }
 
 // SiteProfile describes one configured Atlassian site for one product.
@@ -49,6 +53,7 @@ func New() Config {
 	return Config{
 		Version: CurrentVersion,
 		Sites:   map[string]SiteProfile{},
+		Aliases: map[string]string{},
 	}
 }
 
@@ -102,6 +107,9 @@ func Load(path string) (Config, error) {
 	}
 	if c.Sites == nil {
 		c.Sites = map[string]SiteProfile{}
+	}
+	if c.Aliases == nil {
+		c.Aliases = map[string]string{}
 	}
 	return c, nil
 }
