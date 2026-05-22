@@ -85,6 +85,15 @@ func Execute(root *cobra.Command, g *GlobalFlags) int {
 	return 0
 }
 
+// RenderError writes err to w using the same formatting as Execute: the
+// structured JSON envelope when --json is set and err is an *apperr.Error,
+// otherwise a plain text line. It is exported so a binary that runs its own
+// dispatch (for example atl-bb's extension fallback) can render errors
+// identically to Execute.
+func RenderError(w io.Writer, g *GlobalFlags, err error) {
+	renderError(w, g, err)
+}
+
 // renderError writes err to w. When --json is set and err carries a
 // structured *apperr.Error, the full machine-readable envelope is emitted;
 // otherwise a plain text line is written.

@@ -37,5 +37,29 @@ func Run(version, commit, date string) int {
 		return 1
 	}
 	root.SetArgs(args)
-	return cli.Execute(root, g)
+	execErr := root.Execute()
+	if execErr == nil {
+		return 0
+	}
+	// An extension run explicitly via `extension exec` that exited non-zero:
+	// the child already wrote its own diagnostics, so propagate its exit code
+	// without rendering a redundant error.
+	if code, ok := bbcmd.ExtensionExitCode(execErr); ok {
+		return code
+	}
+	// gh-style fallback: an unknown command may be an external atl-bb-<name>
+	// extension on PATH. Only a found-and-run extension is treated as handled;
+	// otherwise the original (clearer) error is rendered.
+	if handled, runErr := bbcmd.DispatchExtensionFallback(execErr, args); handled {
+		if runErr == nil {
+			return 0
+		}
+		if code, ok := bbcmd.ExtensionExitCode(runErr); ok {
+			return code
+		}
+		cli.RenderError(root.ErrOrStderr(), g, runErr)
+		return 1
+	}
+	cli.RenderError(root.ErrOrStderr(), g, execErr)
+	return 1
 }
