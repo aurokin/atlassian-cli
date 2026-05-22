@@ -165,7 +165,10 @@ This completes the **planning arc** of the Bitbucket migration
   functionally done.** The only intentional omission is deployment-variable
   commands (they hold secret values). Git-checkout inference stays
   Bitbucket-only by design (Jira/Confluence are not repo-scoped). Remaining
-  possible follow-up: OAuth 3LO once token auth is proven.
+  possible follow-up: OAuth 3LO — now planned in
+  [oauth-3lo-plan.md](oauth-3lo-plan.md) (BYO app, loopback callback,
+  interactive-only with API tokens still the CI path, keychain-stored token
+  bundle, request-time refresh), sequenced into 6 slices and ready to build.
 
 Standalone Jira/Confluence deepening remains available in parallel.
 
