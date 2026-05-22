@@ -144,9 +144,12 @@ This completes the **planning arc** of the Bitbucket migration
 - **B3c (in progress):** ergonomics. **Git-checkout inference** is done — a
   new `internal/git` package infers `<workspace>/<repo>` from the local
   Bitbucket remote (offline, best-effort), wired into `resolveRepoTarget` as
-  the no-target fallback (an explicit `--workspace` skips it). Remaining B3c:
-  command aliases, the extension mechanism, and generalizing `gen-docs`
-  (a `cmd/gen-docs` taking a root command + product name).
+  the no-target fallback (an explicit `--workspace` skips it). **Generalized
+  `gen-docs`** is done — `cmd/gen-docs` builds any product's root via its
+  `atl*cmd.NewRoot` and emits a Markdown tree with `cobra/doc`
+  (`go run ./cmd/gen-docs --product all --out docs/cli`); adding a product is a
+  one-line builder-map change. Remaining B3c: command aliases and the
+  extension mechanism.
 
 Standalone Jira/Confluence deepening remains available in parallel.
 
