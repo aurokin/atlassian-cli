@@ -58,6 +58,29 @@ See [docs/command-contract.md](docs/command-contract.md) for the implemented
 command surface and known limitations, and [CONTRIBUTING.md](CONTRIBUTING.md)
 for the development loop, PR workflow, and test-harness conventions.
 
+## Install & build
+
+From a clone of this repo (Go 1.26+):
+
+```bash
+make install              # go install all three binaries into $GOBIN
+make build                # or: write ./bin/atl-jira, ./bin/atl-conf, ./bin/atl-bb
+go install ./cmd/atl-jira # or one at a time
+```
+
+`make build` and `make install` stamp version metadata into each binary via
+`-ldflags` (reported by `atl-* version`); override it with
+`make build VERSION=1.2.0`. Run `make help` for the full target list
+(`check`, `test`, `vet`, `fmt`, `lint`, `docs`, `clean`); `make check` is the
+pre-merge gate (fmt-check + compile + vet + test).
+
+The per-command Markdown reference is generated on demand (not committed) with
+`make docs`, which wraps `go run ./cmd/gen-docs`.
+
+> This is a private module. `go install <module>/cmd/atl-jira@latest` works
+> only if your environment can fetch it (`GOPRIVATE` set plus repo access);
+> from a local clone the commands above always work.
+
 Start here:
 
 1. [docs/README.md](docs/README.md)

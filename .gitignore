@@ -1,0 +1,5 @@
+# Build artifacts (make build / make install)
+/bin/
+
+# Generated command reference (make docs) — generated on demand, not committed
+/docs/cli/
