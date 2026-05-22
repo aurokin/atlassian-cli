@@ -96,7 +96,9 @@ model, the `apperr` recovery mapping, the docs-gen strategy, the required
 test coverage, and the B3+ sequence. Its decisions are now **resolved (Auro,
 2026-05-20)**: D1 monorepo-with-rewrite; D2 `--site` only (no `--host`); D3
 add a `feature_disabled` apperr code; D4 generalize `gen-docs` now; D5 keep
-aliases/extensions Bitbucket-only initially.
+aliases/extensions Bitbucket-only initially — **since revised: aliases and
+extensions were promoted into the shared `internal/cli` and are now available on
+all three binaries.**
 
 Phase B2 (`docs/bb-compatibility-plan.md`) is done and reflects the
 **clean-break decision (Auro): no `bb` alias/shim/deprecation window — ship
@@ -148,18 +150,22 @@ This completes the **planning arc** of the Bitbucket migration
   `gen-docs`** is done — `cmd/gen-docs` builds any product's root via its
   `atl*cmd.NewRoot` and emits a Markdown tree with `cobra/doc`
   (`go run ./cmd/gen-docs --product all --out docs/cli`); adding a product is a
-  one-line builder-map change. **Command aliases** are done — an
-  `atl-bb alias set/list/delete` group stores shorthands in the shared
-  config's top-level `aliases` map (atl-bb-only per D5), expanded before
-  dispatch in `atlbbcmd.Run` (shell-style split, depth-8 recursion,
-  cycle-safe). **Extensions** are done — an `atl-bb extension list/exec` group
-  discovers and runs `atl-bb-<name>` executables on PATH, and an unknown
-  top-level command falls back to the matching extension (gh-style), wired in
-  `atlbbcmd.Run` via `DispatchExtensionFallback`. **B3c is complete; the
-  `atl-bb` rewrite is functionally done.** The only intentional omission is
-  deployment-variable commands (they hold secret values). Possible follow-ups:
-  promote aliases/extensions to the shared cli for atl-jira/atl-conf (revisit
-  D5), and OAuth 3LO once token auth is proven.
+  one-line builder-map change. **Command aliases** and **extensions** are done
+  and, as of the shared-promotion change, live in `internal/cli` and are
+  registered for **all three binaries** by `cli.NewRoot`. `alias set/list/delete`
+  stores shorthands in the shared config's top-level `aliases` map (shell-style
+  split, depth-8 recursion, cycle-safe). `extension list/exec` discovers and
+  runs `<binary>-<name>` executables on PATH (prefix derived from `info.Binary`,
+  so `atl-jira-`, `atl-conf-`, `atl-bb-`), and an unknown top-level command
+  falls back to the matching extension (gh-style). All of this now runs through
+  the shared `cli.Run(info, root, g)` entry point, which every product `Run`
+  delegates to (alias expansion + execute + extension fallback + error render).
+  This **closes the D5 follow-up** (aliases/extensions were originally
+  atl-bb-only; they are now shared). **B3c is complete; the `atl-bb` rewrite is
+  functionally done.** The only intentional omission is deployment-variable
+  commands (they hold secret values). Git-checkout inference stays
+  Bitbucket-only by design (Jira/Confluence are not repo-scoped). Remaining
+  possible follow-up: OAuth 3LO once token auth is proven.
 
 Standalone Jira/Confluence deepening remains available in parallel.
 

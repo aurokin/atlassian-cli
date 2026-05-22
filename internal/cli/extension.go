@@ -1,4 +1,4 @@
-package bbcmd
+package cli
 
 import (
 	"errors"
@@ -15,15 +15,16 @@ import (
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
-	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
-// extensionPrefix is the executable-name prefix for an atl-bb extension: an
-// external binary named atl-bb-<name> on PATH is invokable as
-// `atl-bb extension exec <name>` (and, for an unknown command, as
-// `atl-bb <name>`).
-const extensionPrefix = "atl-bb-"
+// extensionPrefix returns the executable-name prefix for a binary's extensions:
+// an external binary named <binary>-<name> on PATH is invokable as
+// `<binary> extension exec <name>` (and, for an unknown command, as
+// `<binary> <name>`). For atl-bb the prefix is "atl-bb-".
+func extensionPrefix(info appinfo.Info) string {
+	return info.Binary + "-"
+}
 
 // execLookPath and executeExternal are package variables so tests can stub
 // extension discovery and execution without real binaries.
@@ -32,20 +33,22 @@ var (
 	executeExternal = runExternalProcess
 )
 
-// ExtensionEntry is one discovered extension: its short name and the resolved
+// extensionEntry is one discovered extension: its short name and the resolved
 // executable path.
-type ExtensionEntry struct {
+type extensionEntry struct {
 	Name       string `json:"name"`
 	Executable string `json:"executable"`
 }
 
-// newExtensionCommand builds the "extension" command group.
-func newExtensionCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+// newExtensionCommand builds the "extension" command group. It is registered on
+// every atl-* root by NewRoot; the prefix it discovers under is derived from
+// the binary name, so each binary sees only its own <binary>-<name> extensions.
+func newExtensionCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "extension",
 		Aliases: []string{"extensions", "ext"},
-		Short:   "Discover and run external atl-bb commands",
-		Long:    "Discover and run external commands named atl-bb-<name> found on PATH.",
+		Short:   "Discover and run external commands",
+		Long:    "Discover and run external commands named " + extensionPrefix(info) + "<name> found on PATH.",
 	}
 	cmd.AddCommand(
 		newExtensionListCommand(info, g),
@@ -54,15 +57,16 @@ func newExtensionCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	return cmd
 }
 
-func newExtensionListCommand(_ appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+func newExtensionListCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
+	prefix := extensionPrefix(info)
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List discovered atl-bb-<name> commands on PATH",
+		Short: "List discovered " + prefix + "<name> commands on PATH",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			entries := discoverExtensions()
+			entries := discoverExtensions(prefix)
 			if g.JSON != "" || g.JQ != "" {
-				return cli.Render(cmd, g, entries)
+				return Render(cmd, g, entries)
 			}
 			writeExtensionList(cmd.OutOrStdout(), entries)
 			return nil
@@ -70,21 +74,22 @@ func newExtensionListCommand(_ appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 	}
 }
 
-func newExtensionExecCommand(_ appinfo.Info, _ *cli.GlobalFlags) *cobra.Command {
+func newExtensionExecCommand(info appinfo.Info, _ *GlobalFlags) *cobra.Command {
+	prefix := extensionPrefix(info)
 	return &cobra.Command{
 		Use:                "exec <name> [args...]",
-		Short:              "Run an external atl-bb-<name> command",
+		Short:              "Run an external " + prefix + "<name> command",
 		Args:               cobra.MinimumNArgs(1),
 		DisableFlagParsing: true, // pass flags through to the extension verbatim
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return RunExtension(args[0], args[1:])
+			return runExtension(prefix, args[0], args[1:])
 		},
 	}
 }
 
 // writeExtensionList prints discovered extensions as aligned name/executable
 // rows.
-func writeExtensionList(w io.Writer, entries []ExtensionEntry) {
+func writeExtensionList(w io.Writer, entries []extensionEntry) {
 	if len(entries) == 0 {
 		fmt.Fprintln(w, "No extensions found on PATH.")
 		return
@@ -96,28 +101,28 @@ func writeExtensionList(w io.Writer, entries []ExtensionEntry) {
 	_ = tw.Flush()
 }
 
-// RunExtension resolves atl-bb-<name> on PATH and runs it with args, wiring the
+// runExtension resolves <prefix><name> on PATH and runs it with args, wiring the
 // child's stdio to the current process. A missing extension is reported as a
 // not-found error.
-func RunExtension(name string, args []string) error {
+func runExtension(prefix, name string, args []string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return apperr.InvalidInput("an extension name is required")
 	}
-	executable, err := execLookPath(extensionPrefix + name)
+	executable, err := execLookPath(prefix + name)
 	if err != nil {
 		return apperr.NotFoundOrNotVisible(
-			fmt.Sprintf("no atl-bb extension named %q (expected an executable %q on PATH)", name, extensionPrefix+name))
+			fmt.Sprintf("no extension named %q (expected an executable %q on PATH)", name, prefix+name))
 	}
 	return executeExternal(executable, args)
 }
 
-// ExtensionExitCode reports the process exit code carried by an extension's
+// extensionExitCode reports the process exit code carried by an extension's
 // failure, when the extension actually ran and exited non-zero. It lets the
 // caller propagate the child's status without re-rendering an error the child
 // already reported on its own stderr. A signaled or otherwise codeless failure
 // is normalized to 1.
-func ExtensionExitCode(err error) (int, bool) {
+func extensionExitCode(err error) (int, bool) {
 	var ee *exec.ExitError
 	if errors.As(err, &ee) {
 		code := ee.ExitCode()
@@ -139,10 +144,10 @@ func runExternalProcess(executable string, args []string) error {
 	return cmd.Run()
 }
 
-// discoverExtensions scans PATH for executable atl-bb-<name> files, returning
+// discoverExtensions scans PATH for executable <prefix><name> files, returning
 // one entry per name sorted alphabetically. The first match for a name on PATH
 // wins, mirroring how the shell resolves a command.
-func discoverExtensions() []ExtensionEntry {
+func discoverExtensions(prefix string) []extensionEntry {
 	seen := map[string]string{}
 	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
 		if strings.TrimSpace(dir) == "" {
@@ -154,9 +159,9 @@ func discoverExtensions() []ExtensionEntry {
 		}
 		for _, entry := range entries {
 			name := entry.Name()
-			short := strings.TrimPrefix(name, extensionPrefix)
+			short := strings.TrimPrefix(name, prefix)
 			if short == name || short == "" {
-				continue // missing the atl-bb- prefix, or nothing after it
+				continue // missing the prefix, or nothing after it
 			}
 			info, err := entry.Info()
 			if err != nil || info.IsDir() || info.Mode()&0o111 == 0 {
@@ -172,34 +177,35 @@ func discoverExtensions() []ExtensionEntry {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	out := make([]ExtensionEntry, 0, len(names))
+	out := make([]extensionEntry, 0, len(names))
 	for _, name := range names {
-		out = append(out, ExtensionEntry{Name: name, Executable: seen[name]})
+		out = append(out, extensionEntry{Name: name, Executable: seen[name]})
 	}
 	return out
 }
 
 // unknownCommandRe extracts the command name from cobra's unknown-command error
-// (`unknown command "X" for "atl-bb"`).
+// (e.g. `unknown command "X" for "atl-jira"`); the trailing binary name is not
+// matched, so this works for any atl-* binary.
 var unknownCommandRe = regexp.MustCompile(`^unknown command "([^"]+)" for `)
 
-// DispatchExtensionFallback attempts to handle a failed root execution as an
+// dispatchExtensionFallback attempts to handle a failed root execution as an
 // extension: when the error is cobra's unknown-command error and an installed
-// atl-bb-<name> extension matches the leading argument, that extension is run.
+// <prefix><name> extension matches the leading argument, that extension is run.
 // It returns handled=true only when an extension was actually found and run;
 // runErr is the extension's exit error (nil on success). When handled is false,
 // the caller should render the original execution error — including the case
 // where the command simply has no matching extension, so the clearer
 // unknown-command message stands.
-func DispatchExtensionFallback(execErr error, args []string) (handled bool, runErr error) {
+func dispatchExtensionFallback(prefix string, execErr error, args []string) (handled bool, runErr error) {
 	name, rest, ok := extensionTarget(execErr, args)
 	if !ok {
 		return false, nil
 	}
-	if _, err := execLookPath(extensionPrefix + name); err != nil {
+	if _, err := execLookPath(prefix + name); err != nil {
 		return false, nil
 	}
-	return true, RunExtension(name, rest)
+	return true, runExtension(prefix, name, rest)
 }
 
 // extensionTarget reports whether a failed root execution should be retried as
