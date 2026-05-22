@@ -28,6 +28,8 @@ func TestRootWiring(t *testing.T) {
 		"tag":         false,
 		"deployment":  false,
 		"environment": false,
+		"search":      false,
+		"status":      false,
 	}
 	for _, c := range root.Commands() {
 		if _, ok := want[c.Name()]; ok {

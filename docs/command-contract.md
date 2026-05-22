@@ -30,7 +30,7 @@ and `attachment` commands. Phase 8 deepens the Jira `issue` surface with
 - `atl-jira` — Jira CLI (`product: jira`)
 - `atl-conf` — Confluence CLI (`product: confluence`)
 - `atl-bb` — Bitbucket Cloud CLI (`product: bitbucket`) — under construction
-  (Phase B3b); `repo`, `pr`, `pipeline`, `issue`, `workspace`, `project`, `commit`, `branch`, `tag`, `deployment`, and `environment` are the command groups shipped so far.
+  (Phase B3b); `repo`, `pr`, `pipeline`, `issue`, `workspace`, `project`, `commit`, `branch`, `tag`, `deployment`, `environment`, `search`, and `status` are the command groups shipped so far.
 
 All binaries share one command tree built in `internal/cli`; only product
 identity and build metadata differ.
@@ -613,6 +613,34 @@ require the trailing slash. A bare UUID is brace-wrapped (`{…}`) before the
 request, matching `pipeline view`. These are read-only; deployment **variables**
 hold secret values and are intentionally deferred to keep credential material
 out of scope.
+
+### `search`
+
+```
+atl-bb search repos  <query> --workspace <slug> [--sort <field>] [--limit N] [--all]
+atl-bb search prs    <query> [--repo <workspace>/<repo>] [--workspace <slug>] [--sort <field>] [--limit N] [--all]
+atl-bb search issues <query> [--repo <workspace>/<repo>] [--workspace <slug>] [--sort <field>] [--limit N] [--all]
+```
+
+Each subcommand takes a **raw Bitbucket query expression** (the `q` filter)
+as its positional argument and passes it through verbatim — the same raw-API
+philosophy as `atl-jira search issues <jql>`. `search repos` is workspace-scoped
+(`GET /repositories/{workspace}?q=…`); `search prs`/`search issues` are
+repo-scoped and render with the same human/JSON output as `pr list`/`issue
+list`. `--sort` (e.g. `-updated_on`) is optional and omitted by default, leaving
+the Bitbucket API's own ordering. `search issues` on a repository with its
+issue tracker disabled surfaces the `feature_disabled` error.
+
+### `status`
+
+```
+atl-bb status
+```
+
+A **live** authentication check against the configured site (`GET /user`),
+distinct from the offline `auth status`. Human output reports `authenticated`,
+the site name, the account (display name + account id), the username, and the
+resolved API base. Mirrors `atl-jira`/`atl-conf status`.
 
 ## Config file
 
