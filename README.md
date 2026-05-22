@@ -55,7 +55,8 @@ go run ./cmd/atl-bb repo view acme/widgets --site work --json
 ```
 
 See [docs/command-contract.md](docs/command-contract.md) for the implemented
-command surface and known limitations.
+command surface and known limitations, and [CONTRIBUTING.md](CONTRIBUTING.md)
+for the development loop, PR workflow, and test-harness conventions.
 
 Start here:
 
