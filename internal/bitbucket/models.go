@@ -22,11 +22,36 @@ type Branch struct {
 	Name string `json:"name"`
 }
 
-// Project is the Bitbucket project a repository belongs to, reduced to the
-// fields human output renders.
+// Project is a Bitbucket project — both the sub-object a repository belongs to
+// and the standalone resource the `project` commands render.
 type Project struct {
-	Key  string `json:"key,omitempty"`
-	Name string `json:"name,omitempty"`
+	Key         string `json:"key,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Description string `json:"description,omitempty"`
+	IsPrivate   bool   `json:"is_private,omitempty"`
+	UUID        string `json:"uuid,omitempty"`
+}
+
+// ProjectPage is one page of a project listing. Bitbucket paginates with an
+// absolute "next" URL; an empty Next marks the last page.
+type ProjectPage struct {
+	Values []Project `json:"values"`
+	Next   string    `json:"next,omitempty"`
+}
+
+// Workspace is the subset of a Bitbucket workspace that human output renders.
+type Workspace struct {
+	Slug      string `json:"slug"`
+	Name      string `json:"name,omitempty"`
+	UUID      string `json:"uuid,omitempty"`
+	IsPrivate bool   `json:"is_private,omitempty"`
+	CreatedOn string `json:"created_on,omitempty"`
+}
+
+// WorkspacePage is one page of a workspace listing.
+type WorkspacePage struct {
+	Values []Workspace `json:"values"`
+	Next   string      `json:"next,omitempty"`
 }
 
 // Repository is the subset of a Bitbucket repository that human output

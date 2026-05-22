@@ -1,0 +1,189 @@
+package bbcmd
+
+import (
+	"fmt"
+	"io"
+	"strings"
+
+	"github.com/spf13/cobra"
+
+	"github.com/aurokin/atlassian-cli/internal/apperr"
+	"github.com/aurokin/atlassian-cli/internal/appinfo"
+	"github.com/aurokin/atlassian-cli/internal/bitbucket"
+	"github.com/aurokin/atlassian-cli/internal/cli"
+	"github.com/aurokin/atlassian-cli/internal/output"
+)
+
+// newProjectCommand builds the "project" command group.
+func newProjectCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "project",
+		Aliases: []string{"projects"},
+		Short:   "List, view, and create Bitbucket projects",
+	}
+	cmd.AddCommand(
+		newProjectListCommand(info, g),
+		newProjectViewCommand(info, g),
+		newProjectCreateCommand(info, g),
+	)
+	return cmd
+}
+
+func newProjectListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var (
+		workspaceFlag string
+		limit         int
+		all           bool
+	)
+	cmd := &cobra.Command{
+		Use:   "list [<workspace>]",
+		Short: "List a workspace's projects",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			workspace, err := resolveWorkspace(args, workspaceFlag)
+			if err != nil {
+				return err
+			}
+			bc, err := bbClient(info, g)
+			if err != nil {
+				return err
+			}
+			list := bc.ListProjects
+			if all {
+				list = bc.ListProjectsAll
+			}
+			raw, err := list(cmd.Context(), workspace, limit)
+			if err != nil {
+				return err
+			}
+			if g.JSON != "" || g.JQ != "" {
+				return cli.Render(cmd, g, raw)
+			}
+			page, err := bitbucket.Decode[bitbucket.ProjectPage](raw)
+			if err != nil {
+				return err
+			}
+			writeProjectList(cmd.OutOrStdout(), page.Values)
+			return nil
+		},
+	}
+	f := cmd.Flags()
+	f.StringVar(&workspaceFlag, "workspace", "", "workspace slug to list projects from")
+	f.IntVar(&limit, "limit", 0, "maximum number of projects per page")
+	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	return cmd
+}
+
+func newProjectViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var workspaceFlag string
+	cmd := &cobra.Command{
+		Use:   "view <project-key>",
+		Short: "View a single project",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			workspace, err := resolveWorkspace(nil, workspaceFlag)
+			if err != nil {
+				return err
+			}
+			bc, err := bbClient(info, g)
+			if err != nil {
+				return err
+			}
+			raw, err := bc.GetProject(cmd.Context(), workspace, args[0])
+			if err != nil {
+				return err
+			}
+			if g.JSON != "" || g.JQ != "" {
+				return cli.Render(cmd, g, raw)
+			}
+			p, err := bitbucket.Decode[bitbucket.Project](raw)
+			if err != nil {
+				return err
+			}
+			writeProject(cmd.OutOrStdout(), p)
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&workspaceFlag, "workspace", "", "workspace slug the project belongs to (required)")
+	return cmd
+}
+
+func newProjectCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var (
+		workspaceFlag string
+		name          string
+		description   string
+		private       bool
+	)
+	cmd := &cobra.Command{
+		Use:   "create <project-key>",
+		Short: "Create a project in a workspace",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if strings.TrimSpace(name) == "" {
+				return apperr.InvalidInput("a name is required; pass --name")
+			}
+			workspace, err := resolveWorkspace(nil, workspaceFlag)
+			if err != nil {
+				return err
+			}
+			bc, err := bbClient(info, g)
+			if err != nil {
+				return err
+			}
+			opts := bitbucket.CreateProjectOptions{Name: name, Description: description}
+			// Only forward --private when the user set it, so an unset flag
+			// leaves Bitbucket's default visibility in place.
+			if cmd.Flags().Changed("private") {
+				opts.IsPrivate = &private
+			}
+			raw, err := bc.CreateProject(cmd.Context(), workspace, args[0], opts)
+			if err != nil {
+				return err
+			}
+			if g.JSON != "" || g.JQ != "" {
+				return cli.Render(cmd, g, raw)
+			}
+			p, err := bitbucket.Decode[bitbucket.Project](raw)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "created project %s: %s\n", p.Key, p.Name)
+			return nil
+		},
+	}
+	f := cmd.Flags()
+	f.StringVar(&workspaceFlag, "workspace", "", "workspace slug to create the project in (required)")
+	f.StringVar(&name, "name", "", "project name (required)")
+	f.StringVar(&description, "description", "", "project description")
+	f.BoolVar(&private, "private", false, "create the project as private")
+	return cmd
+}
+
+// writeProjectList prints projects as aligned key/name rows.
+func writeProjectList(w io.Writer, projects []bitbucket.Project) {
+	if len(projects) == 0 {
+		fmt.Fprintln(w, "No projects found.")
+		return
+	}
+	tw := output.TabWriter(w)
+	for _, p := range projects {
+		fmt.Fprintf(tw, "%s\t%s\n", p.Key, p.Name)
+	}
+	_ = tw.Flush()
+}
+
+// writeProject prints a single project as aligned label/value lines.
+func writeProject(w io.Writer, p bitbucket.Project) {
+	fmt.Fprintf(w, "%-12s %s\n", "key:", p.Key)
+	if p.Name != "" {
+		fmt.Fprintf(w, "%-12s %s\n", "name:", p.Name)
+	}
+	fmt.Fprintf(w, "%-12s %s\n", "visibility:", visibilityLabel(p.IsPrivate))
+	if p.Description != "" {
+		fmt.Fprintf(w, "%-12s %s\n", "description:", p.Description)
+	}
+	if p.UUID != "" {
+		fmt.Fprintf(w, "%-12s %s\n", "uuid:", p.UUID)
+	}
+}

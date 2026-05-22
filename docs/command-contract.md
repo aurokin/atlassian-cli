@@ -30,7 +30,7 @@ and `attachment` commands. Phase 8 deepens the Jira `issue` surface with
 - `atl-jira` — Jira CLI (`product: jira`)
 - `atl-conf` — Confluence CLI (`product: confluence`)
 - `atl-bb` — Bitbucket Cloud CLI (`product: bitbucket`) — under construction
-  (Phase B3b); `repo`, `pr`, `pipeline`, and `issue` are the command groups shipped so far.
+  (Phase B3b); `repo`, `pr`, `pipeline`, `issue`, `workspace`, and `project` are the command groups shipped so far.
 
 All binaries share one command tree built in `internal/cli`; only product
 identity and build metadata differ.
@@ -525,6 +525,33 @@ recognizable message; `atl-bb` surfaces this as the `feature_disabled` error
 code (distinct from `not_found_or_not_visible`) so an agent can tell "enable
 the tracker" from "the repo or issue is missing". Issue comments, attachments,
 state changes, and taxonomy (milestones/components/versions) are later slices.
+
+### `workspace`
+
+```
+atl-bb workspace list [--limit N] [--all]
+atl-bb workspace view [<workspace>] [--workspace <slug>]
+```
+
+`workspace list` lists the workspaces the authenticated account is a member of
+(`GET /workspaces?role=member`). `workspace view` shows one workspace by slug
+(positional or `--workspace`). Members, permissions, and repo-permissions are
+later slices.
+
+### `project`
+
+```
+atl-bb project list [<workspace>] [--workspace <slug>] [--limit N] [--all]
+atl-bb project view <project-key> --workspace <slug>
+atl-bb project create <project-key> --workspace <slug> --name <text> [--description <text>] [--private]
+```
+
+`project list` lists a workspace's projects (`GET /workspaces/{ws}/projects`).
+`project view`/`create` take the project key as the positional argument and the
+workspace from `--workspace`. `project create` requires `--name`; `--private`
+is forwarded only when set, so an unset flag leaves Bitbucket's default
+visibility in place. Project permissions and default reviewers are later
+slices.
 
 ## Config file
 

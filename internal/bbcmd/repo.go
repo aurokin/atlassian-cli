@@ -121,11 +121,7 @@ func writeRepo(w io.Writer, r bitbucket.Repository) {
 	if r.Name != "" && r.Name != r.FullName {
 		fmt.Fprintf(w, "%-12s %s\n", "name:", r.Name)
 	}
-	visibility := "public"
-	if r.IsPrivate {
-		visibility = "private"
-	}
-	fmt.Fprintf(w, "%-12s %s\n", "visibility:", visibility)
+	fmt.Fprintf(w, "%-12s %s\n", "visibility:", visibilityLabel(r.IsPrivate))
 	if r.Project != nil && (r.Project.Key != "" || r.Project.Name != "") {
 		fmt.Fprintf(w, "%-12s %s\n", "project:", projectLabel(r.Project))
 	}
@@ -145,11 +141,7 @@ func writeRepoList(w io.Writer, repos []bitbucket.Repository) {
 	}
 	tw := output.TabWriter(w)
 	for _, r := range repos {
-		visibility := "public"
-		if r.IsPrivate {
-			visibility = "private"
-		}
-		fmt.Fprintf(tw, "%s\t%s\n", r.FullName, visibility)
+		fmt.Fprintf(tw, "%s\t%s\n", r.FullName, visibilityLabel(r.IsPrivate))
 	}
 	_ = tw.Flush()
 }
