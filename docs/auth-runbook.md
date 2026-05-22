@@ -1,0 +1,195 @@
+# Authentication runbook
+
+A practical, end-to-end guide to authenticating the `atl-*` CLIs. For the
+exhaustive flag reference see [command-contract.md](command-contract.md)
+(`auth login`/`auth status`/`auth logout`, token styles, `api` URL resolution);
+for the design rationale see [auth-design.md](auth-design.md).
+
+The same model applies to all three binaries — `atl-jira`, `atl-conf`,
+`atl-bb`. Substitute the binary for your product in every example below.
+
+## How it works in one paragraph
+
+You record a **site profile** with `auth login` (a name like `work`, a base
+URL, and a token style). Commands then target it with `--site <name>`. The
+profile is stored in `config.json`, but **the token value is never written
+there** — `config.json` records only an indirect `token_ref`, and the secret
+lives in your OS keychain, a `0600` fallback file, or an environment variable.
+Every live command resolves the token at request time.
+
+## Step 1 — pick a token style
+
+| Your situation | `--token-style` | Also required |
+|---|---|---|
+| Atlassian **Cloud**, authenticating with an account email + API token | `cloud-classic` | `--username <email>` |
+| Atlassian **Cloud**, going through the `api.atlassian.com` gateway with a tenant cloud id | `cloud-scoped` | `--username <email>`, `--cloud-id <id>` |
+| **Server / Data Center**, authenticating with a Personal Access Token | `data-center-pat` | — |
+
+If you are unsure on Cloud, start with **`cloud-classic`**: it talks directly to
+`https://<your-site>.atlassian.net` and needs only your email and an API token.
+
+## Step 2 — choose how the token is supplied
+
+`auth login` accepts the token by at most one of three mutually exclusive
+flags (supply one to authenticate). Pick by context:
+
+| Flag | Stored where | Use for |
+|---|---|---|
+| `--token-stdin` | OS keychain (or `0600` file fallback) | **Interactive use.** The token never enters your shell history. Recommended. |
+| `--token-env NAME` | nothing stored — read from `$NAME` at request time | **CI / headless / containers.** The reference `env:NAME` is recorded; the value stays in the environment. |
+| `--token <value>` | OS keychain (or `0600` file fallback) | Scripts, when stdin is awkward. Note: the value is visible in shell history and the process list. |
+
+When a stored token can't reach a keychain (CI, containers, minimal Linux),
+`auth login` falls back to a `0600` `credentials.json` next to `config.json`
+and prints a warning that the token is not keychain-protected.
+
+## Step 3 — create the token
+
+- **Cloud API token** (for `cloud-classic` and `cloud-scoped`): create one at
+  <https://id.atlassian.com/manage-profile/security/api-tokens>. Your
+  `--username` is the Atlassian account email that owns the token.
+- **Data Center PAT** (for `data-center-pat`): create one from your profile →
+  **Personal Access Tokens** on the instance.
+- **Cloud id** (only for `cloud-scoped`): fetch it from
+  `https://<your-site>.atlassian.net/_edge/tenant_info` — the `cloudId` field.
+
+## Step 4 — log in
+
+### Atlassian Cloud — `cloud-classic` (recommended)
+
+Interactive (token read from stdin, stored in the keychain):
+
+```bash
+printf '%s' "$YOUR_API_TOKEN" | atl-jira auth login \
+  --site work \
+  --url https://your-site.atlassian.net \
+  --token-style cloud-classic \
+  --username you@example.com \
+  --token-stdin
+```
+
+Confluence is identical with `atl-conf` and the same `--url` (the `/wiki`
+segment is added automatically):
+
+```bash
+printf '%s' "$YOUR_API_TOKEN" | atl-conf auth login \
+  --site work --url https://your-site.atlassian.net \
+  --token-style cloud-classic --username you@example.com --token-stdin
+```
+
+### Atlassian Cloud — `cloud-scoped`
+
+```bash
+printf '%s' "$YOUR_API_TOKEN" | atl-jira auth login \
+  --site work \
+  --url https://your-site.atlassian.net \
+  --token-style cloud-scoped \
+  --username you@example.com \
+  --cloud-id 11111111-2222-3333-4444-555555555555 \
+  --token-stdin
+```
+
+Requests then go through `https://api.atlassian.com/ex/<product>/<cloud-id>/…`.
+
+### Server / Data Center — `data-center-pat`
+
+PAT styles also accept `http` for internal instances:
+
+```bash
+printf '%s' "$YOUR_PAT" | atl-jira auth login \
+  --site dc \
+  --url https://jira.internal.example.com \
+  --token-style data-center-pat \
+  --token-stdin
+```
+
+Data Center API paths are not pinned, so the configured URL is used verbatim —
+reach endpoints through the raw `api` command with the full path, e.g.
+`atl-jira api /rest/api/2/myself --site dc`.
+
+### Bitbucket Cloud — `atl-bb`
+
+Bitbucket Cloud uses an app password / API token with your username via the
+`cloud-classic` (Basic) style; the fixed REST host is filled in automatically:
+
+```bash
+printf '%s' "$YOUR_APP_PASSWORD" | atl-bb auth login \
+  --site work \
+  --url https://api.bitbucket.org/2.0 \
+  --token-style cloud-classic \
+  --username your-bitbucket-username \
+  --token-stdin
+```
+
+## Step 5 — verify
+
+Two complementary checks:
+
+```bash
+# Offline: is a token resolvable for this profile? (never prints the token)
+atl-jira auth status --site work
+
+# Live: make a real authenticated call and report the account.
+atl-jira status --site work
+```
+
+`auth status` reports `token_status` (resolvable from env / keychain / file or
+not) without contacting the API. `status` (no `auth`) performs a live
+authenticated request and reports the account, so it confirms the token,
+style, and base URL all actually work together.
+
+## Managing multiple sites
+
+`--site` selects the profile, so several can coexist:
+
+```bash
+atl-jira auth login --site work ...      # production tenant
+atl-jira auth login --site sandbox ...   # test tenant
+atl-jira auth status                     # lists every profile
+atl-jira issue view ABC-1 --site sandbox
+atl-jira auth logout --site sandbox      # removes the profile + its stored token
+```
+
+`auth logout` deletes the named profile and any token stored for it in the
+keychain or fallback file. A `--token-env` profile has nothing stored to
+delete (the value lives in your environment).
+
+## Headless / CI
+
+Use `--token-env` so nothing secret is ever written to disk:
+
+```bash
+export ATL_API_TOKEN="$SECRET_FROM_CI"     # injected by the CI secret store
+atl-jira auth login --site ci \
+  --url https://your-site.atlassian.net \
+  --token-style cloud-classic --username ci-bot@example.com \
+  --token-env ATL_API_TOKEN
+atl-jira status --site ci
+```
+
+`config.json` records `token_ref: env:ATL_API_TOKEN`; the value is read from
+the environment on each call. **Never commit a real token** — see the security
+note below.
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `unauthorized` (401) | Wrong token, wrong style, or wrong base URL for this credential | Re-check email/token and that `--token-style` matches the instance; re-run `auth login`. |
+| `forbidden` (403) | Token is valid but the account lacks the permission/scope | Use an account or token with the needed permission/scope. |
+| `not_found_or_not_visible` (404) | Resource doesn't exist *or* isn't visible to this account | Confirm the key/id and that the account can see it. |
+| `feature_disabled` (Bitbucket) | The repo's issue tracker or wiki is turned off | Enable it in repo settings, or target a repo that has it. |
+| `untrusted_url` | An absolute URL passed to `api`/`browse` doesn't match the site or gateway | Use a relative path, or an absolute URL on the configured host. |
+| `auth login` warns the token isn't keychain-protected | No OS keychain available | Expected in CI/containers; the token is in a `0600` file. Prefer `--token-env` there. |
+| Token seems resolvable but calls fail | Style/URL mismatch | Run with `--trace` to see the exact request line, redacted headers, and status on stderr. |
+
+`--trace` is the first debugging tool: it prints `[trace] > METHOD URL`, the
+request headers (with the credential redacted), and `[trace] < STATUS` to
+stderr, leaving stdout clean.
+
+## Security
+
+`config.json` never holds a raw token — only the indirect `token_ref`. Tokens
+live in the OS keychain, a `0600` fallback file, or an environment variable.
+**Never commit API tokens, PATs, app passwords, or `credentials.json`** to this
+or any repository.
