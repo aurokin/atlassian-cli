@@ -152,8 +152,14 @@ This completes the **planning arc** of the Bitbucket migration
   `atl-bb alias set/list/delete` group stores shorthands in the shared
   config's top-level `aliases` map (atl-bb-only per D5), expanded before
   dispatch in `atlbbcmd.Run` (shell-style split, depth-8 recursion,
-  cycle-safe). Remaining B3c: the extension mechanism (gh-style `bb-<name>`
-  external binaries on PATH).
+  cycle-safe). **Extensions** are done — an `atl-bb extension list/exec` group
+  discovers and runs `atl-bb-<name>` executables on PATH, and an unknown
+  top-level command falls back to the matching extension (gh-style), wired in
+  `atlbbcmd.Run` via `DispatchExtensionFallback`. **B3c is complete; the
+  `atl-bb` rewrite is functionally done.** The only intentional omission is
+  deployment-variable commands (they hold secret values). Possible follow-ups:
+  promote aliases/extensions to the shared cli for atl-jira/atl-conf (revisit
+  D5), and OAuth 3LO once token auth is proven.
 
 Standalone Jira/Confluence deepening remains available in parallel.
 
