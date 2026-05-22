@@ -2,37 +2,46 @@
 
 > Provisional private workspace. Canonical binary family: `atl-*`.
 
-This repository is for designing and implementing true-to-API Atlassian CLIs:
+This repository designs and implements true-to-API Atlassian CLIs:
 
 - `atl-jira` for Jira
 - `atl-conf` for Confluence
-- `atl-bb` for Bitbucket, when/if the existing `bb` CLI is brought into the shared shape
+- `atl-bb` for Bitbucket Cloud
 
-The posture is inherited from `bb`, Auro's existing Bitbucket Cloud CLI, with `atl-bb` as the intended unified-name successor: official API behavior first, deterministic targeting, structured output for agents, no fake parity when Atlassian does not expose a real API path.
+All three are implemented and share one command tree built in `internal/cli`.
+The posture is inherited from `bb`, Auro's original Bitbucket Cloud CLI, with `atl-bb` as the unified-name successor: official API behavior first, deterministic targeting, structured output for agents, no fake parity when Atlassian does not expose a real API path.
 
 ## Current status
 
-Phases 1–4 are merged to `main`: the shared foundation, offline URL
-resolution, the Jira MVP (`project`/`issue`/`search`/`status` plus the
-mutating `issue` create/edit/transition and `issue comment`
-create/edit/delete), and the Confluence MVP (`space`/`page`/`search cql`/
-`status` plus `page create` and `page edit`). Both product CLIs now have a
-full MVP command surface. The post-MVP work is sequenced in
-[docs/post-mvp-roadmap.md](docs/post-mvp-roadmap.md) as Phases 5–8. Phase 5
-added output and pagination polish — the global `--jq` jq filter (5A) and the
-`--all` follow-all-pages flag on every list/search command (5B). Phase 6 adds
-secure token storage: `auth login` can store a token in the OS keychain (or a
-`0600` fallback file), so `--token-env` is no longer required on every run.
-Phase 7 deepens Confluence coverage: `page comment` (footer comments),
-`page label`, and `attachment` (list and download). Phase 8 deepens Jira
-coverage: `issue assign`/`watch`/`unwatch`/`watchers`, `issue link` and
-`issue link types`, and `issue worklog` (list/add). Phase 9 is the
-in-repo shared-foundation review: the proven cross-product duplicates were
-extracted into `internal/restutil` (and `output.TabWriter`), leaving the
-divergent pagination followers per product. The Bitbucket `atl-bb`
-migration is now underway (Phases B0–B2 planned; B3a foundation merged;
-B3b ports the command tree in vertical slices — the `repo` group ships
-first).
+All three CLIs are implemented and merged to `main`. The shared foundation
+(root command, global flags, output rendering, config, auth, the raw `api`
+escape hatch, offline `resolve`/`browse`) plus the per-product surfaces below
+are complete; see [docs/command-contract.md](docs/command-contract.md) for the
+exact command behavior and known limitations.
+
+- **`atl-jira`** — `project`, `issue` (view/list, create/edit/transition,
+  `assign`/`watch`/`unwatch`/`watchers`, `link` + `link types`,
+  `worklog` list/add, `comment` create/edit/delete), `search issues` (JQL),
+  and `status`.
+- **`atl-conf`** — `space`, `page` (read plus create/edit), `page comment`,
+  `page label`, `attachment` (list/download), `search cql`, and `status`. It
+  is a mixed-version client (REST v2, with documented v1 fallbacks for CQL
+  search, the current-user lookup, and label writes).
+- **`atl-bb`** — `repo`, `pr`, `pipeline`, `issue`, `workspace`, `project`,
+  `commit`, `branch`, `tag`, `deployment`, `environment`, `search`, and
+  `status`, with built-in git-checkout repository inference.
+
+Shared across **every** binary: `version`, `auth`, `api`, `resolve`, `browse`,
+plus `alias` (command shorthands) and `extension` (gh-style `<binary>-<name>`
+external commands). Output is human-readable by default and verbatim API JSON
+under `--json`/`--jq`; list/search commands take `--limit` and `--all`
+(follow all pages); tokens are stored in the OS keychain (or a `0600`-mode
+fallback file).
+
+The phased build history (Phases 1–9 for the shared foundation and the
+Jira/Confluence MVPs and depth, then B0–B3c for the Bitbucket rewrite) is
+recorded in [docs/post-mvp-roadmap.md](docs/post-mvp-roadmap.md) and the
+phase plans under `docs/`.
 
 ```bash
 go test ./...
@@ -61,13 +70,12 @@ Start here:
 9. [docs/phase-3-jira-mvp-plan.md](docs/phase-3-jira-mvp-plan.md)
 10. [docs/phase-4-confluence-mvp-plan.md](docs/phase-4-confluence-mvp-plan.md)
 11. [docs/post-mvp-roadmap.md](docs/post-mvp-roadmap.md)
-12. [docs/continuation-handoff.md](docs/continuation-handoff.md)
+12. [docs/bb-inventory.md](docs/bb-inventory.md), [docs/bb-rewrite-plan.md](docs/bb-rewrite-plan.md), [docs/bb-compatibility-plan.md](docs/bb-compatibility-plan.md) — the Bitbucket (`atl-bb`) rewrite
+13. [docs/continuation-handoff.md](docs/continuation-handoff.md)
 
 ## Guardrails
 
-- Keep Jira and Confluence as separate CLIs from the user's perspective.
-- Do not over-abstract before implementation teaches us the real seams.
-- Keep Bitbucket migration as a later roadmap item, not an early constraint.
-- Start implementation from `docs/phase-1-foundation-plan.md`.
+- Keep Jira, Confluence, and Bitbucket as separate CLIs from the user's perspective.
+- Do not over-abstract; promote shared shapes only once implementation has proven the seam (as was done for `internal/restutil` and the shared `alias`/`extension` commands).
 - Keep `docs/continuation-handoff.md` current when plans, status, or next actions change.
 - Never store real tokens, passwords, OAuth refresh tokens, cookies, or private credential files in this repo.
