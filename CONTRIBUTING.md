@@ -36,7 +36,9 @@ go test ./...
 ```
 
 `gofmt -l` lists files that need formatting; it should print nothing. Use
-`gofmt -w` to fix.
+`gofmt -w` (or `make fmt`) to fix. The shortcut for the whole gate is
+`make check` (fmt-check + compile + vet + test); see `make help` for all
+targets.
 
 ## Pull-request workflow
 
