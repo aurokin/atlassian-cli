@@ -65,6 +65,7 @@ func TestDeploymentViewHumanAndJSON(t *testing.T) {
 }
 
 func TestDeploymentViewRequiresRepo(t *testing.T) {
+	stubInferDisabled(t)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	_, err := execBB(t, "deployment", "view", "{d-1}", "--site", "work")
 	if err == nil || !strings.Contains(err.Error(), "a repository is required") {

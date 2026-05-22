@@ -31,6 +31,26 @@ func execBB(t *testing.T, args ...string) (string, error) {
 	return buf.String(), err
 }
 
+// stubInferDisabled makes git-checkout inference report "not inferable" for the
+// duration of a test, so a test that exercises the missing-target path does not
+// accidentally pick up the ambient checkout's git remote.
+func stubInferDisabled(t *testing.T) {
+	t.Helper()
+	orig := inferRepoTarget
+	inferRepoTarget = func() (repoTarget, bool) { return repoTarget{}, false }
+	t.Cleanup(func() { inferRepoTarget = orig })
+}
+
+// stubInfer makes git-checkout inference return a fixed workspace/repo.
+func stubInfer(t *testing.T, workspace, repo string) {
+	t.Helper()
+	orig := inferRepoTarget
+	inferRepoTarget = func() (repoTarget, bool) {
+		return repoTarget{Workspace: workspace, Repo: repo}, true
+	}
+	t.Cleanup(func() { inferRepoTarget = orig })
+}
+
 // loginBBSite records a cloud-classic Bitbucket site profile named "work"
 // pointing at srvURL, arming ATL_API_TOKEN as its token reference. It writes
 // the config directly rather than through `auth login`, because auth login

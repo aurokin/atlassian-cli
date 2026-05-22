@@ -130,6 +130,7 @@ func TestRepoListAllFollowsPagination(t *testing.T) {
 }
 
 func TestRepoTargetErrors(t *testing.T) {
+	stubInferDisabled(t)
 	cases := []struct {
 		name      string
 		args      []string

@@ -90,6 +90,7 @@ func TestCommitViewHumanAndJSON(t *testing.T) {
 }
 
 func TestCommitViewRequiresRepo(t *testing.T) {
+	stubInferDisabled(t)
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	_, err := execBB(t, "commit", "view", "abc123", "--site", "work")
 	if err == nil || !strings.Contains(err.Error(), "a repository is required") {
