@@ -140,9 +140,13 @@ This completes the **planning arc** of the Bitbucket migration
   inherited from the cli root and work for Bitbucket unchanged. Decision
   (Auro): under `--json`/`--jq`, `atl-bb` emits the **verbatim Bitbucket API
   body** like `atl-jira`/`atl-conf` — a documented break from legacy `bb`'s
-  custom payload field names. B3b is functionally complete; remaining work is
-  B3c: git-checkout inference, aliases, extensions, and generalizing
-  `gen-docs`.
+  custom payload field names. B3b is functionally complete.
+- **B3c (in progress):** ergonomics. **Git-checkout inference** is done — a
+  new `internal/git` package infers `<workspace>/<repo>` from the local
+  Bitbucket remote (offline, best-effort), wired into `resolveRepoTarget` as
+  the no-target fallback (an explicit `--workspace` skips it). Remaining B3c:
+  command aliases, the extension mechanism, and generalizing `gen-docs`
+  (a `cmd/gen-docs` taking a root command + product name).
 
 Standalone Jira/Confluence deepening remains available in parallel.
 

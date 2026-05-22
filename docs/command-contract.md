@@ -452,8 +452,14 @@ Repo-scoped commands identify a repository as `<workspace>/<repo>`, supplied as
 a positional argument or via `--repo`. A bare `<repo>` is allowed when paired
 with `--workspace`. A positional argument wins over `--repo`; a `--workspace`
 that conflicts with the workspace in a qualified target is rejected.
-Git-checkout inference (running with no target inside a clone) is deferred to a
-later slice (B3c).
+
+When **no** target is supplied — no positional, no `--repo`, no `--workspace` —
+the command infers the `<workspace>/<repo>` from the local git checkout's
+Bitbucket remote (the current branch's upstream, else `origin`, else the first
+remote). Inference is best-effort and offline: outside a git repository, with
+no usable remote, or when the remote is not a `bitbucket.org` host, the command
+reports that a repository is required instead. Passing `--workspace` alone (a
+deliberate partial target) skips inference rather than guessing the repository.
 
 ### `repo`
 
@@ -737,8 +743,8 @@ plain `Error: <code>: <message>` line.
 ## Known limitations
 
 - No OAuth 3LO; no browser/cookie login.
-- `atl-bb` is still under construction (Phase B3b): git-checkout inference,
-  aliases/extensions, and deployment-variable commands are not yet implemented.
+- `atl-bb` is still under construction (Phase B3c): command aliases, the
+  extension mechanism, and deployment-variable commands are not yet implemented.
 - `issue create`/`edit` accept a plain-text `--description` (wrapped as ADF) or
   raw ADF via `--field description=<adf-json>`; richer markup helpers are not
   implemented.

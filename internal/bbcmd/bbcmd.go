@@ -5,6 +5,7 @@
 package bbcmd
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -15,7 +16,20 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/bitbucket"
 	"github.com/aurokin/atlassian-cli/internal/cli"
+	"github.com/aurokin/atlassian-cli/internal/git"
 )
+
+// inferRepoTarget infers a workspace/repo from the local git checkout. It is a
+// package variable so tests can stub inference without a real git repository.
+// A false result means inference was not possible (no git repo, no Bitbucket
+// remote, etc.), and the caller falls back to requiring an explicit target.
+var inferRepoTarget = func() (repoTarget, bool) {
+	rt, ok := git.InferBitbucketRepo(context.Background(), ".")
+	if !ok {
+		return repoTarget{}, false
+	}
+	return repoTarget{Workspace: rt.Workspace, Repo: rt.Repo}, true
+}
 
 // parsePositiveInt parses a positive integer, returning an error for a
 // non-integer or non-positive value. Callers wrap it with a domain-specific
@@ -66,16 +80,26 @@ type repoTarget struct {
 // on, honoring the decision-D2 targeting surface: an optional positional
 // "<workspace>/<repo>" argument, the --repo flag (same form, or a bare "<repo>"
 // paired with --workspace), and --workspace as the workspace fallback. The
-// positional argument wins when both it and --repo are supplied. Git-checkout
-// inference is deferred to a later slice (B3c).
+// positional argument wins when both it and --repo are supplied. When no
+// target is supplied at all (no positional, no --repo, no --workspace), it
+// falls back to inferring the workspace/repo from the local git checkout's
+// Bitbucket remote.
 func resolveRepoTarget(args []string, repoFlag, workspaceFlag string) (repoTarget, error) {
 	raw := strings.TrimSpace(repoFlag)
 	if len(args) == 1 {
 		raw = strings.TrimSpace(args[0])
 	}
 	if raw == "" {
+		// With nothing specified, try git-checkout inference before failing. An
+		// explicit --workspace means the caller is targeting deliberately, so
+		// inference is skipped and the missing repository is reported.
+		if strings.TrimSpace(workspaceFlag) == "" {
+			if t, ok := inferRepoTarget(); ok {
+				return t, nil
+			}
+		}
 		return repoTarget{}, apperr.InvalidInput(
-			"a repository is required; pass it as <workspace>/<repo> (positional or --repo), optionally with --workspace")
+			"a repository is required; pass it as <workspace>/<repo> (positional or --repo), optionally with --workspace, or run inside a Bitbucket git checkout")
 	}
 
 	workspace := strings.TrimSpace(workspaceFlag)
