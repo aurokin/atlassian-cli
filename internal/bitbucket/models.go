@@ -220,6 +220,49 @@ type IssuePage struct {
 	Next   string  `json:"next,omitempty"`
 }
 
+// DeploymentState is a deployment's lifecycle state.
+type DeploymentState struct {
+	Name string `json:"name,omitempty"`
+	Type string `json:"type,omitempty"`
+}
+
+// DeploymentRelease is the release (pipeline run) a deployment shipped.
+type DeploymentRelease struct {
+	Name string `json:"name,omitempty"`
+}
+
+// Deployment is the subset of a Bitbucket deployment that human output renders.
+type Deployment struct {
+	UUID        string             `json:"uuid,omitempty"`
+	State       *DeploymentState   `json:"state,omitempty"`
+	Environment *Environment       `json:"environment,omitempty"`
+	Release     *DeploymentRelease `json:"release,omitempty"`
+}
+
+// DeploymentPage is one page of a deployment listing. Bitbucket paginates with
+// an absolute "next" URL; an empty Next marks the last page.
+type DeploymentPage struct {
+	Values []Deployment `json:"values"`
+	Next   string       `json:"next,omitempty"`
+}
+
+// Environment is the subset of a Bitbucket deployment environment that human
+// output renders.
+type Environment struct {
+	UUID string `json:"uuid,omitempty"`
+	Name string `json:"name,omitempty"`
+	Slug string `json:"slug,omitempty"`
+	Type string `json:"type,omitempty"`
+	Rank int    `json:"rank,omitempty"`
+}
+
+// EnvironmentPage is one page of an environment listing. Bitbucket paginates
+// with an absolute "next" URL; an empty Next marks the last page.
+type EnvironmentPage struct {
+	Values []Environment `json:"values"`
+	Next   string        `json:"next,omitempty"`
+}
+
 // Decode unmarshals a raw Bitbucket API body into a model value, wrapping a
 // decode failure as a structured error.
 func Decode[T any](raw json.RawMessage) (T, error) {

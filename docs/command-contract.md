@@ -30,7 +30,7 @@ and `attachment` commands. Phase 8 deepens the Jira `issue` surface with
 - `atl-jira` — Jira CLI (`product: jira`)
 - `atl-conf` — Confluence CLI (`product: confluence`)
 - `atl-bb` — Bitbucket Cloud CLI (`product: bitbucket`) — under construction
-  (Phase B3b); `repo`, `pr`, `pipeline`, `issue`, `workspace`, `project`, `commit`, `branch`, and `tag` are the command groups shipped so far.
+  (Phase B3b); `repo`, `pr`, `pipeline`, `issue`, `workspace`, `project`, `commit`, `branch`, `tag`, `deployment`, and `environment` are the command groups shipped so far.
 
 All binaries share one command tree built in `internal/cli`; only product
 identity and build metadata differ.
@@ -595,6 +595,24 @@ Tag refs live under `GET/POST/DELETE /repositories/{ws}/{repo}/refs/tags`.
 `tag create` requires `--name` and `--target`; `--message` is forwarded only
 when set (an annotated tag) and omitted otherwise. `tag delete` returns no
 content on success.
+
+### `deployment` / `environment`
+
+```
+atl-bb deployment list [--repo <workspace>/<repo>] [--workspace <slug>] [--limit N] [--all]
+atl-bb deployment view <uuid> [--repo <workspace>/<repo>] [--workspace <slug>]
+atl-bb environment list [--repo <workspace>/<repo>] [--workspace <slug>] [--limit N] [--all]
+atl-bb environment view <uuid> [--repo <workspace>/<repo>] [--workspace <slug>]
+```
+
+`deployment list`/`view` read deployments
+(`GET /repositories/{ws}/{repo}/deployments/` and `/deployments/{uuid}`);
+`environment list`/`view` read deployment environments
+(`.../environments/` and `/environments/{uuid}`). Both listing endpoints
+require the trailing slash. A bare UUID is brace-wrapped (`{…}`) before the
+request, matching `pipeline view`. These are read-only; deployment **variables**
+hold secret values and are intentionally deferred to keep credential material
+out of scope.
 
 ## Config file
 
