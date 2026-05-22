@@ -55,7 +55,8 @@ go run ./cmd/atl-bb repo view acme/widgets --site work --json
 ```
 
 See [docs/command-contract.md](docs/command-contract.md) for the implemented
-command surface and known limitations, and [CONTRIBUTING.md](CONTRIBUTING.md)
+command surface and known limitations, [docs/auth-runbook.md](docs/auth-runbook.md)
+for end-to-end authentication setup, and [CONTRIBUTING.md](CONTRIBUTING.md)
 for the development loop, PR workflow, and test-harness conventions.
 
 ## Install & build
