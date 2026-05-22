@@ -46,7 +46,9 @@ targets.
    (`feat/...`, `fix/...`, `docs/...`).
 2. **Implement in small slices.** Prefer a vertical slice (client method →
    models → command → tests → docs) over a broad sweep.
-3. **Verify.** The four-command loop above must be green.
+3. **Verify.** The four-command loop above must be green. GitHub Actions runs
+   the same gate (`make check`) on every push to `main` and every pull request
+   (`.github/workflows/ci.yml`).
 4. **Review.** Every PR — code *or* docs — passes a subagent code review
    (`codexrabbit-code-reviewer`) before merge. Address findings and re-review
    until clean.
