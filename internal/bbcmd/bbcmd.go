@@ -6,6 +6,7 @@ package bbcmd
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -16,12 +17,24 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/cli"
 )
 
+// parsePositiveInt parses a positive integer, returning an error for a
+// non-integer or non-positive value. Callers wrap it with a domain-specific
+// message (e.g. "invalid issue id").
+func parsePositiveInt(s string) (int, error) {
+	n, err := strconv.Atoi(strings.TrimSpace(s))
+	if err != nil || n <= 0 {
+		return 0, fmt.Errorf("not a positive integer: %q", s)
+	}
+	return n, nil
+}
+
 // AddCommands registers the Bitbucket product commands on the atl-bb root.
 func AddCommands(root *cobra.Command, info appinfo.Info, g *cli.GlobalFlags) {
 	root.AddCommand(
 		newRepoCommand(info, g),
 		newPRCommand(info, g),
 		newPipelineCommand(info, g),
+		newIssueCommand(info, g),
 	)
 }
 

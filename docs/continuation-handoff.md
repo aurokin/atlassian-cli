@@ -123,13 +123,15 @@ This completes the **planning arc** of the Bitbucket migration
 - **B3b (in progress):** the command tree in `internal/bbcmd` +
   `internal/atlbbcmd` + `cmd/atl-bb`, ported in vertical slices. Shipped:
   `repo` (`view`, `list`) with the `--repo`/`--workspace` targeting helper,
-  `pr` (`list`, `view`, `create`) with `--state` filtering, and `pipeline`
-  (`list`, `view` by build-number or UUID, `run`) with `--status` filtering.
-  Decision (Auro): under `--json`/`--jq`, `atl-bb` emits the **verbatim
-  Bitbucket API body** like `atl-jira`/`atl-conf` — a documented break from
-  legacy `bb`'s custom payload field names. Remaining B3b slices: issue →
-  workspace/project → commit/branch/tag/deployment → search/status →
-  resolve/browse → api/auth. Git inference, aliases, and extensions are B3c.
+  `pr` (`list`, `view`, `create`) with `--state` filtering, `pipeline`
+  (`list`, `view` by build-number or UUID, `run`) with `--status` filtering,
+  and `issue` (`list`, `view`, `create`) — the first commands to exercise the
+  `feature_disabled` remap (a repo with its issue tracker off). Decision
+  (Auro): under `--json`/`--jq`, `atl-bb` emits the **verbatim Bitbucket API
+  body** like `atl-jira`/`atl-conf` — a documented break from legacy `bb`'s
+  custom payload field names. Remaining B3b slices: workspace/project →
+  commit/branch/tag/deployment → search/status → resolve/browse → api/auth.
+  Git inference, aliases, and extensions are B3c.
 
 Standalone Jira/Confluence deepening remains available in parallel.
 

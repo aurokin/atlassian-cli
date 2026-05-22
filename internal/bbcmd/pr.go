@@ -3,7 +3,6 @@ package bbcmd
 import (
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -199,8 +198,8 @@ func newPRCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 
 // parsePRID parses a positive pull-request id.
 func parsePRID(s string) (int, error) {
-	id, err := strconv.Atoi(strings.TrimSpace(s))
-	if err != nil || id <= 0 {
+	id, err := parsePositiveInt(s)
+	if err != nil {
 		return 0, apperr.InvalidInput(fmt.Sprintf("invalid pull request id %q; expected a positive integer", s))
 	}
 	return id, nil
