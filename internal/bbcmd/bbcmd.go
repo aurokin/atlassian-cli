@@ -40,6 +40,8 @@ func AddCommands(root *cobra.Command, info appinfo.Info, g *cli.GlobalFlags) {
 		newCommitCommand(info, g),
 		newBranchCommand(info, g),
 		newTagCommand(info, g),
+		newDeploymentCommand(info, g),
+		newEnvironmentCommand(info, g),
 	)
 }
 

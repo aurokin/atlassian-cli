@@ -129,11 +129,13 @@ This completes the **planning arc** of the Bitbucket migration
   `feature_disabled` remap (a repo with its issue tracker off) — `workspace`
   (`list`, `view`), `project` (`list`, `view`, `create`), `commit`
   (`list` with `--revision`, `view`), `branch` (`list`, `view`, `create`,
-  `delete`), and `tag` (`list`, `view`, `create`, `delete`). Decision
+  `delete`), `tag` (`list`, `view`, `create`, `delete`), and `deployment` /
+  `environment` (read-only `list`, `view`; deployment **variables** deferred
+  as they hold secret values). Decision
   (Auro): under `--json`/`--jq`, `atl-bb` emits the **verbatim Bitbucket API
   body** like `atl-jira`/`atl-conf` — a documented break from legacy `bb`'s
   custom payload field names. Remaining B3b slices:
-  deployment → search/status → resolve/browse → api/auth.
+  search/status → resolve/browse → api/auth.
   Git inference, aliases, and extensions are B3c.
 
 Standalone Jira/Confluence deepening remains available in parallel.
