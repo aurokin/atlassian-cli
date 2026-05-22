@@ -60,3 +60,35 @@ func TestRootHelp(t *testing.T) {
 		t.Fatalf("help missing repo command:\n%s", out)
 	}
 }
+
+// TestResolveBitbucketURL confirms the shared resolve command dispatches to the
+// Bitbucket parser for the atl-bb product (an offline parse, no network).
+func TestResolveBitbucketURL(t *testing.T) {
+	root, _ := NewRoot("test", "", "")
+	var buf bytes.Buffer
+	root.SetOut(&buf)
+	root.SetErr(&buf)
+	root.SetArgs([]string{"resolve", "https://bitbucket.org/acme/widgets/pull-requests/42", "--jq", ".kind + \" \" + .id"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("resolve: %v\n%s", err, buf.String())
+	}
+	if got := strings.TrimSpace(buf.String()); got != `"bitbucket_pull_request 42"` {
+		t.Fatalf("resolve output = %q", got)
+	}
+}
+
+// TestBrowseBitbucketURL confirms the shared browse command builds the
+// canonical bitbucket.org URL and, with --no-browser, prints it.
+func TestBrowseBitbucketURL(t *testing.T) {
+	root, _ := NewRoot("test", "", "")
+	var buf bytes.Buffer
+	root.SetOut(&buf)
+	root.SetErr(&buf)
+	root.SetArgs([]string{"browse", "https://bitbucket.org/acme/widgets/commits/abc123", "--no-browser"})
+	if err := root.Execute(); err != nil {
+		t.Fatalf("browse: %v\n%s", err, buf.String())
+	}
+	if got := strings.TrimSpace(buf.String()); got != "https://bitbucket.org/acme/widgets/commits/abc123" {
+		t.Fatalf("browse output = %q", got)
+	}
+}

@@ -14,16 +14,21 @@ import (
 type ResourceKind string
 
 const (
-	KindJiraIssue       ResourceKind = "jira_issue"
-	KindJiraProject     ResourceKind = "jira_project"
-	KindConfluencePage  ResourceKind = "confluence_page"
-	KindConfluenceSpace ResourceKind = "confluence_space"
+	KindJiraIssue            ResourceKind = "jira_issue"
+	KindJiraProject          ResourceKind = "jira_project"
+	KindConfluencePage       ResourceKind = "confluence_page"
+	KindConfluenceSpace      ResourceKind = "confluence_space"
+	KindBitbucketRepo        ResourceKind = "bitbucket_repository"
+	KindBitbucketPullRequest ResourceKind = "bitbucket_pull_request"
+	KindBitbucketIssue       ResourceKind = "bitbucket_issue"
+	KindBitbucketCommit      ResourceKind = "bitbucket_commit"
 )
 
 // Product identifiers recorded on a resolved Resource.
 const (
 	productJira       = "jira"
 	productConfluence = "confluence"
+	productBitbucket  = "bitbucket"
 )
 
 // Resource is a resolved Atlassian resource. It is safe to render as JSON.
@@ -49,14 +54,16 @@ type Parser interface {
 }
 
 // ParserFor returns the resolver for an Atlassian product. It accepts the
-// appinfo product values "jira" and "confluence"; any other value yields a
-// structured error.
+// appinfo product values "jira", "confluence", and "bitbucket"; any other
+// value yields a structured error.
 func ParserFor(product string) (Parser, error) {
 	switch product {
 	case productJira:
 		return Jira, nil
 	case productConfluence:
 		return Confluence, nil
+	case productBitbucket:
+		return Bitbucket, nil
 	default:
 		return nil, apperr.InvalidInput(fmt.Sprintf("unknown product %q", product))
 	}

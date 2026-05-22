@@ -642,6 +642,24 @@ distinct from the offline `auth status`. Human output reports `authenticated`,
 the site name, the account (display name + account id), the username, and the
 resolved API base. Mirrors `atl-jira`/`atl-conf status`.
 
+### `resolve` / `browse` (Bitbucket forms)
+
+The shared `resolve` and `browse` commands recognize Bitbucket inputs via the
+`internal/resolve` Bitbucket parser:
+
+- bare `workspace/repo` → repository
+- `https://bitbucket.org/{ws}/{repo}` → repository
+- `.../pull-requests/{id}` → pull request
+- `.../issues/{id}` → issue
+- `.../commits/{hash}` → commit
+- any other repository sub-page (`/src/…`, `/branches`, …) falls back to the
+  repository
+
+`resolve` is offline string parsing. `browse` builds the canonical
+`bitbucket.org` web URL: a URL input carries its own host, while a bare
+`workspace/repo` uses the `--site` profile's base URL with the API host
+(`api.bitbucket.org/2.0`) mapped to the web host (`bitbucket.org`).
+
 ## Config file
 
 - Path: `$XDG_CONFIG_HOME/atlassian-cli/config.json`, or
@@ -719,7 +737,8 @@ plain `Error: <code>: <message>` line.
 ## Known limitations
 
 - No OAuth 3LO; no browser/cookie login.
-- No Bitbucket (`atl-bb`).
+- `atl-bb` is still under construction (Phase B3b): git-checkout inference,
+  aliases/extensions, and deployment-variable commands are not yet implemented.
 - `issue create`/`edit` accept a plain-text `--description` (wrapped as ADF) or
   raw ADF via `--field description=<adf-json>`; richer markup helpers are not
   implemented.
