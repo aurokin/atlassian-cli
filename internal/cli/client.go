@@ -1,11 +1,19 @@
 package cli
 
 import (
+	"io"
+	"os"
+
 	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/auth"
 	"github.com/aurokin/atlassian-cli/internal/httpclient"
 )
+
+// traceOut is where --trace diagnostics are written. It is a package variable
+// (defaulting to os.Stderr, keeping stdout pure for --json consumers) so tests
+// can capture the trace output.
+var traceOut io.Writer = os.Stderr
 
 // SiteClient builds an authenticated HTTP client for the profile named by the
 // global --site flag. It enforces that --site is set, loads the profile,
@@ -44,5 +52,9 @@ func SiteClient(info appinfo.Info, g *GlobalFlags) (*httpclient.Client, error) {
 		BaseURL:    profile.BaseURL,
 		CloudID:    profile.CloudID,
 	}
-	return httpclient.New(target, cred, nil), nil
+	client := httpclient.New(target, cred, nil)
+	if g.Trace {
+		client.EnableTrace(traceOut)
+	}
+	return client, nil
 }
