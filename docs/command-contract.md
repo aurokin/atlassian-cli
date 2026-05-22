@@ -30,7 +30,7 @@ and `attachment` commands. Phase 8 deepens the Jira `issue` surface with
 - `atl-jira` — Jira CLI (`product: jira`)
 - `atl-conf` — Confluence CLI (`product: confluence`)
 - `atl-bb` — Bitbucket Cloud CLI (`product: bitbucket`) — under construction
-  (Phase B3b); `repo`, `pr`, `pipeline`, `issue`, `workspace`, and `project` are the command groups shipped so far.
+  (Phase B3b); `repo`, `pr`, `pipeline`, `issue`, `workspace`, `project`, `commit`, `branch`, and `tag` are the command groups shipped so far.
 
 All binaries share one command tree built in `internal/cli`; only product
 identity and build metadata differ.
@@ -552,6 +552,49 @@ workspace from `--workspace`. `project create` requires `--name`; `--private`
 is forwarded only when set, so an unset flag leaves Bitbucket's default
 visibility in place. Project permissions and default reviewers are later
 slices.
+
+### `commit`
+
+```
+atl-bb commit list [--repo <workspace>/<repo>] [--workspace <slug>] [--revision <branch|tag|hash>] [--limit N] [--all]
+atl-bb commit view <revision> [--repo <workspace>/<repo>] [--workspace <slug>]
+```
+
+`commit list` lists a repository's commit history
+(`GET /repositories/{ws}/{repo}/commits`); `--revision` scopes it to a branch,
+tag, or commit (`GET .../commits/{revision}`) and defaults to the main branch.
+Human output shows the short hash, the first line of the message, and the
+author. `commit view` resolves a single commit by hash, branch, or tag
+(`GET .../commit/{revision}`).
+
+### `branch`
+
+```
+atl-bb branch list [--repo <workspace>/<repo>] [--workspace <slug>] [--limit N] [--all]
+atl-bb branch view <name> [--repo <workspace>/<repo>] [--workspace <slug>]
+atl-bb branch create [--repo <workspace>/<repo>] [--workspace <slug>] --name <branch> --target <hash|branch>
+atl-bb branch delete <name> [--repo <workspace>/<repo>] [--workspace <slug>]
+```
+
+Branch refs live under `GET/POST/DELETE /repositories/{ws}/{repo}/refs/branches`.
+`branch create` requires `--name` and `--target` (the commit hash or existing
+branch the new branch points at); the request body is
+`{"name":…, "target":{"hash":…}}`. `branch delete` returns no content on
+success.
+
+### `tag`
+
+```
+atl-bb tag list [--repo <workspace>/<repo>] [--workspace <slug>] [--limit N] [--all]
+atl-bb tag view <name> [--repo <workspace>/<repo>] [--workspace <slug>]
+atl-bb tag create [--repo <workspace>/<repo>] [--workspace <slug>] --name <tag> --target <hash> [--message <text>]
+atl-bb tag delete <name> [--repo <workspace>/<repo>] [--workspace <slug>]
+```
+
+Tag refs live under `GET/POST/DELETE /repositories/{ws}/{repo}/refs/tags`.
+`tag create` requires `--name` and `--target`; `--message` is forwarded only
+when set (an annotated tag) and omitted otherwise. `tag delete` returns no
+content on success.
 
 ## Config file
 
