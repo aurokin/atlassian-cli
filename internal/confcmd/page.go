@@ -1,6 +1,7 @@
 package confcmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -195,8 +196,9 @@ func newPageEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		Short: "Edit a Confluence page",
 		Long: "Edits a page's title and/or body. Confluence treats an update as a\n" +
 			"full replacement, so a title-only edit re-sends the page's current\n" +
-			"body in storage representation; pass --body with --body-format to\n" +
-			"replace the body instead.",
+			"body: storage representation for classic pages, falling back to\n" +
+			"atlas_doc_format for pages authored in the modern editor. Pass --body\n" +
+			"with --body-format to replace the body instead.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			titleSet := cmd.Flags().Changed("title")
@@ -235,14 +237,25 @@ func newPageEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			newFormat, newBody := bodyFormat, body
 			if !bodySet {
 				// A title-only edit must re-send the existing body, since a v2
-				// update replaces the whole page. Refuse rather than PUT an
-				// empty body when the page has no storage body to reuse.
-				if cur.Body.Storage.Value == "" {
-					return apperr.InvalidInput(fmt.Sprintf(
-						"page %s has no storage-format body to preserve; pass "+
-							"--body with --body-format to set the body explicitly", args[0]))
+				// update replaces the whole page. Pages authored in the modern
+				// editor store their body as atlas_doc_format and have an empty
+				// storage representation, so fall back to a second GET for that
+				// representation before giving up.
+				switch {
+				case cur.Body.Storage.Value != "":
+					newFormat, newBody = "storage", cur.Body.Storage.Value
+				default:
+					adf, err := fetchADFBody(cmd.Context(), cc, args[0])
+					if err != nil {
+						return err
+					}
+					if adf == "" {
+						return apperr.InvalidInput(fmt.Sprintf(
+							"page %s has no storage or atlas_doc_format body to preserve; "+
+								"pass --body with --body-format to set the body explicitly", args[0]))
+					}
+					newFormat, newBody = "atlas_doc_format", adf
 				}
-				newFormat, newBody = "storage", cur.Body.Storage.Value
 			}
 			updated, err := cc.UpdatePage(cmd.Context(), args[0],
 				cur.Status, newTitle, newFormat, newBody, cur.Version.Number+1)
@@ -266,6 +279,21 @@ func newPageEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	f.StringVar(&bodyFormat, "body-format", "",
 		"body representation for --body: storage, atlas_doc_format, or wiki")
 	return cmd
+}
+
+// fetchADFBody re-fetches a page in the atlas_doc_format representation and
+// returns its body value (empty if the page has none). It backs the title-only
+// edit fallback for modern-editor pages, whose storage representation is empty.
+func fetchADFBody(ctx context.Context, cc *conf.Client, id string) (string, error) {
+	raw, err := cc.GetPageWithFormat(ctx, id, "atlas_doc_format")
+	if err != nil {
+		return "", err
+	}
+	p, err := conf.Decode[conf.Page](raw)
+	if err != nil {
+		return "", err
+	}
+	return p.Body.AtlasDocFormat.Value, nil
 }
 
 // validateBodyFormat checks a --body-format value against the body

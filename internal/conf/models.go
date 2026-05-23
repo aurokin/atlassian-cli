@@ -43,11 +43,15 @@ type Page struct {
 	Body    PageBody    `json:"body"`
 }
 
-// PageBody holds the body representations a v2 page GET returns. Only the
-// representation named by the request's body-format parameter is populated;
-// the CLI requests storage, so Storage carries the current body.
+// PageBody holds the body representations a v2 page GET returns. The v2
+// body-format query param takes a single value, so only the representation
+// named by the request is populated: a storage GET fills Storage, an
+// atlas_doc_format GET fills AtlasDocFormat. Pages authored in the modern
+// editor have no storage body, so a title-only edit must fall back to the
+// atlas_doc_format representation to preserve the body.
 type PageBody struct {
-	Storage PageRepresentation `json:"storage"`
+	Storage        PageRepresentation `json:"storage"`
+	AtlasDocFormat PageRepresentation `json:"atlas_doc_format"`
 }
 
 // PageRepresentation is a page body expressed in one representation.
