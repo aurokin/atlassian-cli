@@ -33,12 +33,17 @@ func newCommentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 	var (
 		limit int
 		all   bool
+		order string
 	)
 	cmd := &cobra.Command{
 		Use:   "list <issue>",
 		Short: "List comments on an issue",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			orderBy, err := commentOrderBy(order)
+			if err != nil {
+				return err
+			}
 			jc, err := jiraClient(info, g)
 			if err != nil {
 				return err
@@ -47,7 +52,7 @@ func newCommentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if all {
 				list = jc.ListCommentsAll
 			}
-			raw, err := list(cmd.Context(), args[0], limit)
+			raw, err := list(cmd.Context(), args[0], orderBy, limit)
 			if err != nil {
 				return err
 			}
@@ -57,8 +62,27 @@ func newCommentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 				})
 		},
 	}
+	cmd.Flags().StringVar(&order, "order", "",
+		"sort by creation time: asc (oldest first) or desc (newest first)")
 	cli.AddPaginationFlags(cmd, &limit, &all, "comments")
 	return cmd
+}
+
+// commentOrderBy maps the --order flag (asc/desc) to the Jira comment API's
+// orderBy parameter. An empty flag leaves it unset (the API default); any other
+// value is rejected.
+func commentOrderBy(order string) (string, error) {
+	switch order {
+	case "":
+		return "", nil
+	case "asc":
+		return "created", nil
+	case "desc":
+		return "-created", nil
+	default:
+		return "", apperr.InvalidInput(
+			fmt.Sprintf("invalid --order %q; expected asc or desc", order))
+	}
 }
 
 func newCommentViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {

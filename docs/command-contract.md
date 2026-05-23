@@ -377,7 +377,7 @@ atl-jira issue unwatch <issue>
 atl-jira issue watchers <issue>
 atl-jira issue link <inward> <outward> --type <link-type>
 atl-jira issue link types
-atl-jira issue worklog list <issue> [--limit N]
+atl-jira issue worklog list <issue> [--since <date>] [--limit N]
 atl-jira issue worklog add <issue> --time <duration> [--comment <text>]
 atl-jira issue attachment list <issue>
 atl-jira issue attachment download <attachment-id> --out <path|->
@@ -412,11 +412,15 @@ null` and unassigns the issue. The assignee value accepts an account id, an
 email (resolved via `/user/search`, which must match exactly one user), or
 `@me` (the authenticated account, via `/myself`). The same resolution applies
 to `create`/`edit` `--assignee`. Setting a project's default assignee from the
-CLI is intentionally out of scope.
+CLI is intentionally out of scope. These write APIs return no body, so under
+`--json`/`--jq` `assign` emits a synthesized result object
+(`{"issue","assignee","assigned"}`, with `assignee` null when unassigned).
 
 `watch` adds the authenticated account to the issue's watchers; `unwatch`
 removes it (the API requires an explicit account id, so `unwatch` first
 looks up the caller via `/myself`). `watchers` lists the issue's watchers.
+Under `--json`/`--jq` `watch`/`unwatch` emit a synthesized
+`{"issue","watching"}` result object.
 
 `link` creates a directional link between two issues. The first positional
 is the inward issue and the second is the outward issue, matching the Jira
@@ -424,8 +428,11 @@ API field names: with `--type Blocks`, `issue link A B --type Blocks` means
 A is blocked by B and B blocks A. `issue link types` lists the link types
 configured on the site with their inward and outward phrases.
 
-`worklog list` returns the worklog entries on an issue; pagination is
-controlled by `--limit` and `--all`. `worklog add` appends a new entry:
+`worklog list` returns the worklog entries on an issue (each rendered with its
+comment); pagination is controlled by `--limit` and `--all`. `--since` filters
+to worklogs started on or after the given time, accepting a date (`YYYY-MM-DD`,
+treated as midnight UTC) or a full RFC3339 timestamp (the API's `startedAfter`
+parameter). `worklog add` appends a new entry:
 `--time` is passed through verbatim as Jira's `timeSpent` (duration strings
 like `3h 30m` or seconds with units; the CLI does not parse or convert),
 and `--comment` is plain text wrapped as an ADF document. Editing or
@@ -466,7 +473,7 @@ is a convenience wrapper over the same endpoint.
 ### `issue comment`
 
 ```
-atl-jira issue comment list <issue> [--limit N]
+atl-jira issue comment list <issue> [--order asc|desc] [--limit N]
 atl-jira issue comment view <issue> <comment-id>
 atl-jira issue comment create <issue> --body <text>
 atl-jira issue comment edit <issue> <comment-id> --body <text>
@@ -475,8 +482,10 @@ atl-jira issue comment delete <issue> <comment-id>
 
 Lists, views, and manages comments on an issue. Comment bodies are stored as
 Atlassian Document Format; human output renders a best-effort plain-text
-extraction, while `--json` preserves the raw ADF body. `create` and `edit`
-take a plain-text `--body` that is wrapped as an ADF document.
+extraction, while `--json` preserves the raw ADF body. `list --order asc`
+sorts oldest-first and `--order desc` newest-first (the API's `orderBy`
+parameter); omitting it uses the API default. `create` and `edit` take a
+plain-text `--body` that is wrapped as an ADF document.
 
 ### `status`
 

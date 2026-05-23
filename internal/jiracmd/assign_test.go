@@ -41,6 +41,51 @@ func TestIssueAssign(t *testing.T) {
 	}
 }
 
+func TestIssueAssignJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "assign", "PROJ-1", "abc123", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("issue assign --json: %v\n%s", err, out)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("output is not valid JSON: %v\n%s", err, out)
+	}
+	if got["issue"] != "PROJ-1" || got["assignee"] != "abc123" || got["assigned"] != true {
+		t.Fatalf("unexpected assign json: %s", out)
+	}
+}
+
+func TestIssueUnassignJSONHasNullAssignee(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "assign", "PROJ-1", "-", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("issue assign - --json: %v\n%s", err, out)
+	}
+	var got map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("output is not valid JSON: %v\n%s", err, out)
+	}
+	if string(got["assignee"]) != "null" {
+		t.Errorf("assignee = %s, want null", got["assignee"])
+	}
+	if string(got["assigned"]) != "false" {
+		t.Errorf("assigned = %s, want false", got["assigned"])
+	}
+}
+
 func TestIssueAssignAtMe(t *testing.T) {
 	var gotBody map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

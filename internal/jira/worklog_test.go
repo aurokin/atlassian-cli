@@ -19,7 +19,7 @@ func TestClientListWorklogs(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	raw, err := newTestClient(srv).ListWorklogs(context.Background(), "PROJ-1", 5)
+	raw, err := newTestClient(srv).ListWorklogs(context.Background(), "PROJ-1", 0, 5)
 	if err != nil {
 		t.Fatalf("ListWorklogs: %v", err)
 	}
@@ -32,6 +32,21 @@ func TestClientListWorklogs(t *testing.T) {
 	}
 	if len(wp.Worklogs) != 1 || wp.Worklogs[0].TimeSpent != "1h" {
 		t.Fatalf("worklogs = %+v", wp.Worklogs)
+	}
+}
+
+func TestClientListWorklogsPassesStartedAfter(t *testing.T) {
+	var gotStartedAfter string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotStartedAfter = r.URL.Query().Get("startedAfter")
+		_, _ = w.Write([]byte(`{"worklogs":[]}`))
+	}))
+	defer srv.Close()
+	if _, err := newTestClient(srv).ListWorklogs(context.Background(), "PROJ-1", 1700000000000, 0); err != nil {
+		t.Fatalf("ListWorklogs: %v", err)
+	}
+	if gotStartedAfter != "1700000000000" {
+		t.Errorf("startedAfter = %q, want 1700000000000", gotStartedAfter)
 	}
 }
 
@@ -105,7 +120,7 @@ func TestClientListWorklogsAllFollowsPages(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	raw, err := newTestClient(srv).ListWorklogsAll(context.Background(), "PROJ-1", 1)
+	raw, err := newTestClient(srv).ListWorklogsAll(context.Background(), "PROJ-1", 0, 1)
 	if err != nil {
 		t.Fatalf("ListWorklogsAll: %v", err)
 	}

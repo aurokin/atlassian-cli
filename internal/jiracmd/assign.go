@@ -30,6 +30,10 @@ func newIssueAssignCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err := jc.AssignIssue(cmd.Context(), args[0], accountID); err != nil {
 				return err
 			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, assignResult{
+					Issue: args[0], Assignee: accountID, Assigned: accountID != nil})
+			}
 			if accountID == nil {
 				fmt.Fprintf(cmd.OutOrStdout(), "unassigned %s\n", args[0])
 			} else {
@@ -38,4 +42,13 @@ func newIssueAssignCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			return nil
 		},
 	}
+}
+
+// assignResult is the synthesized outcome of an assignment, whose API call
+// returns no body, so --json has a stable object to render. Assignee is null
+// when the issue was unassigned.
+type assignResult struct {
+	Issue    string  `json:"issue"`
+	Assignee *string `json:"assignee"`
+	Assigned bool    `json:"assigned"`
 }

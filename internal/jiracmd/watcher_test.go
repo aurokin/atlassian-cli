@@ -87,6 +87,55 @@ func TestIssueUnwatch(t *testing.T) {
 	}
 }
 
+func TestIssueWatchJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "watch", "PROJ-1", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("issue watch --json: %v\n%s", err, out)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("output is not valid JSON: %v\n%s", err, out)
+	}
+	if got["issue"] != "PROJ-1" || got["watching"] != true {
+		t.Fatalf("unexpected watch json: %s", out)
+	}
+}
+
+func TestIssueUnwatchJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/myself":
+			_, _ = w.Write([]byte(`{"accountId":"caller-id"}`))
+		case "/issue/PROJ-1/watchers":
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("unexpected path %q", r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "unwatch", "PROJ-1", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("issue unwatch --json: %v\n%s", err, out)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("output is not valid JSON: %v\n%s", err, out)
+	}
+	if got["issue"] != "PROJ-1" || got["watching"] != false {
+		t.Fatalf("unexpected unwatch json: %s", out)
+	}
+}
+
 func TestIssueWatchersHumanOutput(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/issue/PROJ-1/watchers" {
