@@ -346,3 +346,84 @@ func TestNormalizeMergeStrategy(t *testing.T) {
 		t.Fatal("expected error for invalid strategy")
 	}
 }
+
+func TestPRDiffWritesRawDiff(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/repositories/acme/widgets/pullrequests/7/diff" {
+			t.Errorf("path = %q", r.URL.Path)
+		}
+		_, _ = w.Write([]byte("diff --git a/f b/f\n+added line\n"))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "pr", "diff", "7", "--repo", "acme/widgets", "--site", "work")
+	if err != nil {
+		t.Fatalf("pr diff: %v\n%s", err, out)
+	}
+	if out != "diff --git a/f b/f\n+added line\n" {
+		t.Errorf("diff output = %q", out)
+	}
+}
+
+func TestPRCommentsListHuman(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/repositories/acme/widgets/pullrequests/7/comments" {
+			t.Errorf("path = %q", r.URL.Path)
+		}
+		_, _ = w.Write([]byte(`{"values":[{"id":1,"content":{"raw":"looks good"},"user":{"display_name":"Ada"}}]}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "pr", "comments", "list", "7", "--repo", "acme/widgets", "--site", "work")
+	if err != nil {
+		t.Fatalf("pr comments list: %v\n%s", err, out)
+	}
+	for _, want := range []string{"Ada", "looks good"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestPRCommentsAddSendsBody(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/repositories/acme/widgets/pullrequests/7/comments" {
+			t.Errorf("path = %q", r.URL.Path)
+		}
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &gotBody)
+		_, _ = w.Write([]byte(`{"id":9,"content":{"raw":"please rebase"}}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "pr", "comments", "add", "7", "--repo", "acme/widgets", "--site", "work",
+		"--body", "please rebase")
+	if err != nil {
+		t.Fatalf("pr comments add: %v\n%s", err, out)
+	}
+	content, _ := gotBody["content"].(map[string]any)
+	if content["raw"] != "please rebase" {
+		t.Fatalf("body = %+v", gotBody)
+	}
+	if !strings.Contains(out, "added comment 9 to pull request #7") {
+		t.Errorf("output missing confirmation:\n%s", out)
+	}
+}
+
+func TestPRCommentsAddRequiresBody(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	_, err := execBB(t, "pr", "comments", "add", "7", "--repo", "acme/widgets", "--site", "work")
+	if err == nil {
+		t.Fatal("pr comments add without --body returned no error")
+	}
+	if !strings.Contains(err.Error(), "requires --body") {
+		t.Errorf("error = %v, want requires --body", err)
+	}
+}

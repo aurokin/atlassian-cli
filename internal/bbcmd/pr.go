@@ -49,6 +49,8 @@ func newPRCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		newPRUnapproveCommand(info, g),
 		newPRDeclineCommand(info, g),
 		newPRMergeCommand(info, g),
+		newPRDiffCommand(info, g),
+		newPRCommentsCommand(info, g),
 	)
 	return cmd
 }

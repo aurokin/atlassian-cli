@@ -66,6 +66,19 @@ func (b *Base) Get(ctx context.Context, pathOrURL string) (json.RawMessage, erro
 	return json.RawMessage(resp.Body), nil
 }
 
+// GetAccepting issues a GET with an explicit Accept header and returns the raw
+// response bytes, which need not be JSON. It is the text/binary counterpart to
+// Get — used for endpoints that return a diff or file content rather than a
+// JSON document. A non-2xx response surfaces as the structured *apperr.Error
+// from httpclient, passed through RemapError when set.
+func (b *Base) GetAccepting(ctx context.Context, pathOrURL, accept string) ([]byte, error) {
+	resp, err := b.HTTP.DoAccepting(ctx, "GET", pathOrURL, nil, accept)
+	if err != nil {
+		return nil, b.remap(resp, err)
+	}
+	return resp.Body, nil
+}
+
 // Send marshals payload as a JSON request body, issues method against an
 // API-relative path or absolute URL, and returns the raw response body. A nil
 // payload sends no body. A non-2xx response surfaces as the structured
