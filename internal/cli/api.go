@@ -65,23 +65,49 @@ func runAPI(cmd *cobra.Command, info appinfo.Info, g *GlobalFlags, pathOrURL, me
 	return Render(cmd, g, json.RawMessage(resp.Body))
 }
 
-// loadSiteProfile reads the named site profile from the on-disk config,
-// returning a structured error when the config or the profile is absent.
-func loadSiteProfile(info appinfo.Info, site string) (config.SiteProfile, error) {
+// siteEnvVar is the environment variable that selects the target site when no
+// --site flag is given. It sits between the flag and the config's default_site
+// in precedence.
+const siteEnvVar = "ATL_SITE"
+
+// resolveSiteName applies the site-selection precedence: an explicit --site
+// flag wins, then the ATL_SITE environment variable, then the config's
+// default_site key. It returns "" when none is set, leaving the caller to
+// raise the "no site" error.
+func resolveSiteName(flagSite, defaultSite string) string {
+	if flagSite != "" {
+		return flagSite
+	}
+	if env := strings.TrimSpace(os.Getenv(siteEnvVar)); env != "" {
+		return env
+	}
+	return defaultSite
+}
+
+// loadSiteProfile resolves the effective site name (flag → ATL_SITE →
+// default_site) and reads its profile from the on-disk config. It returns the
+// resolved name alongside the profile, with a structured error when no site is
+// selected or the selected profile is absent.
+func loadSiteProfile(info appinfo.Info, flagSite string) (string, config.SiteProfile, error) {
 	path, err := config.DefaultPath()
 	if err != nil {
-		return config.SiteProfile{}, err
+		return "", config.SiteProfile{}, err
 	}
 	cfg, err := config.Load(path)
 	if err != nil {
-		return config.SiteProfile{}, err
+		return "", config.SiteProfile{}, err
+	}
+	site := resolveSiteName(flagSite, cfg.DefaultSite)
+	if site == "" {
+		return "", config.SiteProfile{}, apperr.InvalidInput(
+			"a site name is required; pass --site, set ATL_SITE, or set a default_site")
 	}
 	profile, ok := cfg.Sites[site]
 	if !ok {
-		return config.SiteProfile{}, apperr.New("site_not_configured",
+		return "", config.SiteProfile{}, apperr.New("site_not_configured",
 			fmt.Sprintf("site %q is not configured; run %s auth login", site, info.Binary))
 	}
-	return profile, nil
+	return site, profile, nil
 }
 
 // resolveToken reads the token value a profile's token_ref points at, for the

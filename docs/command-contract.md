@@ -48,7 +48,7 @@ gh-style external subcommands.)
 |---|---|---|
 | `--json` | string | JSON output. Bare `--json` renders all fields; `--json=field1,field2` selects top-level fields. |
 | `--jq` | string | Filter the JSON output through a jq expression. |
-| `--site` | string | Names the configured site profile a command targets. |
+| `--site` | string | Names the configured site profile a command targets. When omitted, the site is resolved from the `ATL_SITE` environment variable, then the `default_site` config key (see [Site selection](#site-selection)). |
 | `--no-prompt` | bool | Forces non-interactive behavior. `browse` treats it as `--no-browser` (print the URL, never open one). No other command prompts yet. |
 | `--trace` | bool | Emit verbose request tracing to **stderr**: one `[trace] > METHOD URL` line plus request headers (credential-bearing headers redacted), and a `[trace] < STATUS (elapsed, bytes)` line per request. Stdout stays pure, so it does not disturb `--json`/`--jq` consumers. |
 
@@ -184,7 +184,33 @@ atl-jira auth logout --site <name>
 
 Removes exactly the named profile and deletes any token stored for it in the
 OS keychain or the fallback file. A `--token-env` reference has nothing stored
-to delete. Errors if the site is not configured.
+to delete. Errors if the site is not configured. If the removed site was the
+`default_site`, the default is cleared too.
+
+### `auth default`
+
+```
+atl-jira auth default [<site>] [--clear]
+```
+
+Reads or sets the `default_site` config key — the site networked commands
+target when neither `--site` nor `ATL_SITE` is given. With no argument it prints
+the current default (or reports that none is set); with a site name it records
+that site, which must already be configured; with `--clear` it removes the
+default. Under `--json`/`--jq` the no-argument form renders
+`{"default_site": "<name>"}`.
+
+### Site selection
+
+Networked commands resolve their target site by precedence, highest first:
+
+1. the `--site` flag
+2. the `ATL_SITE` environment variable
+3. the `default_site` config key (`auth default <site>`)
+
+If none is set, the command fails with an `invalid_input` error. This is
+resolved once, in the shared `cli.SiteClient` chokepoint, so every product
+command behaves identically.
 
 ### `api`
 
@@ -232,8 +258,9 @@ atl-jira browse <url-or-key> [--site <name>] [--no-browser]
 ```
 
 Resolves the input, builds the canonical browser URL, and opens it in the
-default browser. A full URL carries its own host; a bare key/id needs `--site`
-to supply the site root — a bare key without `--site` is a structured error.
+default browser. A full URL carries its own host; a bare key/id needs a
+resolved site (see [Site selection](#site-selection)) to supply the site root —
+a bare key with no site resolvable is a structured error.
 Canonical URLs are the stable `<site>/browse/<KEY>` (Jira) and
 `<site>/wiki/spaces/<KEY>/pages/<id>` (Confluence) forms; a bare Confluence page
 id with no known space resolves to `<site>/wiki/pages/viewpage.action?pageId=<id>`.

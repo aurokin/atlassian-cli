@@ -173,6 +173,10 @@ func TestBrowseOpenerFailureIsPropagated(t *testing.T) {
 }
 
 func TestBrowseBareKeyWithoutSiteErrors(t *testing.T) {
+	// Isolate config and the ATL_SITE env so the bare key has no site to
+	// resolve from any source (flag, env, or default_site).
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv(siteEnvVar, "")
 	called := false
 	defer swapBrowseOpener(func(string) error { called = true; return nil })()
 

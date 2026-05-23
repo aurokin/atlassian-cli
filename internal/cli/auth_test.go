@@ -213,6 +213,96 @@ func TestAuthLogoutRemovesOnlyRequestedSite(t *testing.T) {
 	}
 }
 
+func TestAuthDefaultSetShowClear(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	if _, err := execRoot(t, jiraInfo(), "auth", "login", "--site", "work",
+		"--url", "https://example.atlassian.net", "--username", "user@example.com",
+		"--token-style", "cloud-classic"); err != nil {
+		t.Fatalf("login: %v", err)
+	}
+
+	// Setting records default_site.
+	if _, err := execRoot(t, jiraInfo(), "auth", "default", "work"); err != nil {
+		t.Fatalf("set default: %v", err)
+	}
+	cfg, err := config.Load(configPath(t, dir))
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if cfg.DefaultSite != "work" {
+		t.Fatalf("default_site = %q, want %q", cfg.DefaultSite, "work")
+	}
+
+	// Showing reports the current default.
+	out, err := execRoot(t, jiraInfo(), "auth", "default")
+	if err != nil {
+		t.Fatalf("show default: %v", err)
+	}
+	if !strings.Contains(out, "work") {
+		t.Fatalf("show output = %q, want it to mention %q", out, "work")
+	}
+
+	// Clearing removes it.
+	if _, err := execRoot(t, jiraInfo(), "auth", "default", "--clear"); err != nil {
+		t.Fatalf("clear default: %v", err)
+	}
+	cfg, err = config.Load(configPath(t, dir))
+	if err != nil {
+		t.Fatalf("reload config: %v", err)
+	}
+	if cfg.DefaultSite != "" {
+		t.Fatalf("default_site after clear = %q, want empty", cfg.DefaultSite)
+	}
+}
+
+func TestAuthDefaultRejectsUnconfiguredSite(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	_, err := execRoot(t, jiraInfo(), "auth", "default", "absent")
+	if err == nil {
+		t.Fatal("auth default with an unconfigured site returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != "site_not_configured" {
+		t.Fatalf("error = %v, want a site_not_configured *apperr.Error", err)
+	}
+}
+
+func TestAuthDefaultClearWithArgIsRejected(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	_, err := execRoot(t, jiraInfo(), "auth", "default", "work", "--clear")
+	if err == nil {
+		t.Fatal("auth default --clear with a site argument returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+		t.Fatalf("error = %v, want an invalid_input *apperr.Error", err)
+	}
+}
+
+func TestAuthLogoutClearsDanglingDefault(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	if _, err := execRoot(t, jiraInfo(), "auth", "login", "--site", "work",
+		"--url", "https://example.atlassian.net", "--username", "user@example.com",
+		"--token-style", "cloud-classic"); err != nil {
+		t.Fatalf("login: %v", err)
+	}
+	if _, err := execRoot(t, jiraInfo(), "auth", "default", "work"); err != nil {
+		t.Fatalf("set default: %v", err)
+	}
+	if _, err := execRoot(t, jiraInfo(), "auth", "logout", "--site", "work"); err != nil {
+		t.Fatalf("logout: %v", err)
+	}
+	cfg, err := config.Load(configPath(t, dir))
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+	if cfg.DefaultSite != "" {
+		t.Fatalf("default_site after logging out the default site = %q, want empty", cfg.DefaultSite)
+	}
+}
+
 func TestAuthLoginMissingFieldsReturnStructuredErrors(t *testing.T) {
 	cases := []struct {
 		name string
