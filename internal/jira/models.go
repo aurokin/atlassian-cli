@@ -28,8 +28,8 @@ type Project struct {
 	Lead           *User  `json:"lead"`
 }
 
-// ProjectPage is a page of project-search results. Only the values are
-// modelled; pagination cursors are deferred until --all support lands.
+// ProjectPage is a page of project-search results. Only the rendered values
+// are modelled here; the client's *All followers handle the offset cursors.
 type ProjectPage struct {
 	Values []Project `json:"values"`
 }
@@ -53,8 +53,8 @@ type Issue struct {
 	Fields IssueFields `json:"fields"`
 }
 
-// IssuePage is a page of JQL search results. Only the issues are modelled;
-// the /search/jql nextPageToken cursor is deferred until --all support lands.
+// IssuePage is a page of JQL search results. Only the rendered issues are
+// modelled here; the client follows the /search/jql nextPageToken cursor.
 type IssuePage struct {
 	Issues []Issue `json:"issues"`
 }
@@ -70,8 +70,8 @@ type Comment struct {
 	Body    json.RawMessage `json:"body"`
 }
 
-// CommentPage is a page of an issue's comments. Only the comments are
-// modelled; pagination cursors are deferred until --all support lands.
+// CommentPage is a page of an issue's comments. Only the rendered comments
+// are modelled here; the client's *All follower handles the offset cursors.
 type CommentPage struct {
 	Comments []Comment `json:"comments"`
 }

@@ -26,8 +26,9 @@ type GlobalFlags struct {
 	// JSON controls JSON rendering: "" means human output, "*" means all
 	// fields, and any other value is a comma-separated top-level field list.
 	JSON string
-	// JQ is a jq-style filter expression. Phase 1 leaves this as a documented
-	// stub; the output renderer reports it as not yet implemented.
+	// JQ is a jq-style filter expression applied to the structured JSON
+	// output (implemented via gojq in internal/output). A non-empty JQ, like
+	// a non-empty JSON, selects machine-readable output over human rendering.
 	JQ string
 	// Site names the configured site profile a command should target.
 	Site string
@@ -133,12 +134,14 @@ func Run(info appinfo.Info, root *cobra.Command, g *GlobalFlags) int {
 	return 1
 }
 
-// renderError writes err to w. When --json is set and err carries a
-// structured *apperr.Error, the full machine-readable envelope is emitted;
-// otherwise a plain text line is written.
+// renderError writes err to w. When machine-readable output is selected
+// (--json or --jq) and err carries a structured *apperr.Error, the full
+// machine-readable envelope is emitted; otherwise a plain text line is
+// written. Gating on both flags keeps the error path consistent with the
+// success path, where --jq alone also selects structured output.
 func renderError(w io.Writer, g *GlobalFlags, err error) {
 	var ae *apperr.Error
-	if g.JSON != "" && errors.As(err, &ae) {
+	if (g.JSON != "" || g.JQ != "") && errors.As(err, &ae) {
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
 		if enc.Encode(ae) == nil {

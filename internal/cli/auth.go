@@ -362,7 +362,7 @@ func persistProfile(cmd *cobra.Command, g *GlobalFlags, info appinfo.Info, profi
 		}
 	}
 
-	if g.JSON != "" {
+	if g.JSON != "" || g.JQ != "" {
 		return Render(cmd, g, toView(g.Site, profile))
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "Saved %s site profile %q (%s).\n", info.Product, g.Site, profile.TokenStyle)
