@@ -24,6 +24,7 @@ Every live command resolves the token at request time.
 | Atlassian **Cloud**, authenticating with an account email + API token | `cloud-classic` | `--username <email>` |
 | Atlassian **Cloud**, going through the `api.atlassian.com` gateway with a tenant cloud id | `cloud-scoped` | `--username <email>`, `--cloud-id <id>` |
 | **Server / Data Center**, authenticating with a Personal Access Token | `data-center-pat` | — |
+| Atlassian **Cloud**, interactive browser sign-in with your own OAuth app | `oauth-3lo` | `--client-id`, `--client-secret`, `--scopes` |
 
 If you are unsure on Cloud, start with **`cloud-classic`**: it talks directly to
 `https://<your-site>.atlassian.net` and needs only your email and an API token.
@@ -42,6 +43,9 @@ flags (supply one to authenticate). Pick by context:
 When a stored token can't reach a keychain (CI, containers, minimal Linux),
 `auth login` falls back to a `0600` `credentials.json` next to `config.json`
 and prints a warning that the token is not keychain-protected.
+
+> `oauth-3lo` does **not** use these flags — it obtains tokens through a browser
+> consent flow and stores its own bundle. Skip to its section under Step 4.
 
 ## Step 3 — create the token
 
@@ -90,6 +94,50 @@ printf '%s' "$YOUR_API_TOKEN" | atl-jira auth login \
 ```
 
 Requests then go through `https://api.atlassian.com/ex/<product>/<cloud-id>/…`.
+
+### Atlassian Cloud — `oauth-3lo` (interactive browser sign-in)
+
+`oauth-3lo` signs in through a real Atlassian OAuth 2.0 (3LO) consent flow
+instead of a stored API token, and refreshes the access token automatically.
+It is **interactive** — it opens a browser — so it is for desktop use, not CI
+(use `cloud-classic`/`cloud-scoped` there).
+
+**One-time app registration** (bring-your-own app, so no secret is embedded in
+the CLI):
+
+1. At <https://developer.atlassian.com/console/myapps/> create an **OAuth 2.0
+   (3LO)** app.
+2. Add the **callback URL** exactly: `http://localhost:8976/callback`.
+   Atlassian matches it byte-for-byte, so it must be this value (or pass a
+   different port with `--callback-port` and register that instead).
+3. Add the Jira and/or Confluence **scopes** your commands need, for example
+   Jira `read:jira-work write:jira-work read:jira-user`, Confluence
+   `read:confluence-content.all write:confluence-content search:confluence`.
+   The CLI adds `offline_access` itself (that is what grants a refresh token).
+4. Copy the app's **client ID** and **client secret**.
+
+Then log in (secret read from stdin so it stays out of shell history):
+
+```bash
+printf '%s' "$YOUR_CLIENT_SECRET" | atl-jira auth login \
+  --site work \
+  --url https://your-site.atlassian.net \
+  --token-style oauth-3lo \
+  --client-id "$YOUR_CLIENT_ID" \
+  --client-secret-stdin \
+  --scopes 'read:jira-work,write:jira-work,read:jira-user'
+```
+
+Your browser opens to the Atlassian consent screen; after you approve, the CLI
+captures the redirect on `localhost:8976`, exchanges the code, and resolves the
+tenant `cloud_id` from the sites your authorization covers. If more than one
+authorized site matches `--url`, pass `--cloud-id <id>` to disambiguate.
+
+The token bundle (client secret, access token, refresh token, expiry) is stored
+as one secret in the keychain (or the `0600` fallback). `config.json` records
+only `client_id`, `scopes`, `cloud_id`, and the `token_ref`. From then on,
+commands refresh the access token transparently; you only re-run `auth login`
+if the refresh token is revoked or expires.
 
 ### Server / Data Center — `data-center-pat`
 
@@ -176,6 +224,7 @@ note below.
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `unauthorized` (401) | Wrong token, wrong style, or wrong base URL for this credential | Re-check email/token and that `--token-style` matches the instance; re-run `auth login`. |
+| `unauthorized` on an `oauth-3lo` site that worked before | The refresh token was revoked or expired | Re-run `auth login --token-style oauth-3lo …` to re-authorize. |
 | `forbidden` (403) | Token is valid but the account lacks the permission/scope | Use an account or token with the needed permission/scope. |
 | `not_found_or_not_visible` (404) | Resource doesn't exist *or* isn't visible to this account | Confirm the key/id and that the account can see it. |
 | `feature_disabled` (Bitbucket) | The repo's issue tracker or wiki is turned off | Enable it in repo settings, or target a repo that has it. |
