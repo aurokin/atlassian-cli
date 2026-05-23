@@ -96,8 +96,7 @@ func newPRListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
 	f := cmd.Flags()
 	f.StringVar(&state, "state", "OPEN", "filter by state: OPEN, MERGED, DECLINED, SUPERSEDED, or ALL")
-	f.IntVar(&limit, "limit", 0, "maximum number of pull requests per page")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cli.AddPaginationFlags(cmd, &limit, &all, "pull requests")
 	return cmd
 }
 

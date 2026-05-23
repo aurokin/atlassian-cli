@@ -59,9 +59,7 @@ func newWorklogListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			return nil
 		},
 	}
-	f := cmd.Flags()
-	f.IntVar(&limit, "limit", 0, "maximum number of worklogs to return")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cli.AddPaginationFlags(cmd, &limit, &all, "worklogs")
 	return cmd
 }
 
@@ -117,7 +115,7 @@ func newWorklogAddCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 // id/author/time-spent/started rows.
 func writeWorklogList(w io.Writer, worklogs []jira.Worklog) {
 	if len(worklogs) == 0 {
-		fmt.Fprintln(w, "No worklog entries.")
+		fmt.Fprintln(w, "No worklogs found.")
 		return
 	}
 	tw := output.TabWriter(w)

@@ -74,8 +74,7 @@ func newPageListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.StringVar(&space, "space", "", "space key (required)")
-	f.IntVar(&limit, "limit", 0, "maximum number of pages to return")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cli.AddPaginationFlags(cmd, &limit, &all, "pages")
 	return cmd
 }
 
@@ -139,9 +138,7 @@ func newPageChildrenCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			return nil
 		},
 	}
-	f := cmd.Flags()
-	f.IntVar(&limit, "limit", 0, "maximum number of child pages to return")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cli.AddPaginationFlags(cmd, &limit, &all, "child pages")
 	return cmd
 }
 

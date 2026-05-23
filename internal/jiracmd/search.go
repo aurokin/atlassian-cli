@@ -51,8 +51,6 @@ func newSearchIssuesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			return nil
 		},
 	}
-	f := cmd.Flags()
-	f.IntVar(&limit, "limit", 0, "maximum number of issues to return")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cli.AddPaginationFlags(cmd, &limit, &all, "issues")
 	return cmd
 }

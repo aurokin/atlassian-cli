@@ -63,9 +63,7 @@ func newPageCommentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 			return nil
 		},
 	}
-	f := cmd.Flags()
-	f.IntVar(&limit, "limit", 0, "maximum number of comments to return")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cli.AddPaginationFlags(cmd, &limit, &all, "comments")
 	return cmd
 }
 

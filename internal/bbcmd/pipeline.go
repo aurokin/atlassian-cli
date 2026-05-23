@@ -74,8 +74,7 @@ func newPipelineListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
 	f := cmd.Flags()
 	f.StringVar(&status, "status", "", "filter by pipeline state name (e.g. PENDING, IN_PROGRESS, COMPLETED)")
-	f.IntVar(&limit, "limit", 0, "maximum number of pipeline runs per page")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cli.AddPaginationFlags(cmd, &limit, &all, "pipeline runs")
 	return cmd
 }
 

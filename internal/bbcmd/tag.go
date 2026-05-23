@@ -70,9 +70,7 @@ func newTagListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
-	f := cmd.Flags()
-	f.IntVar(&limit, "limit", 0, "maximum number of tags per page")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cli.AddPaginationFlags(cmd, &limit, &all, "tags")
 	return cmd
 }
 

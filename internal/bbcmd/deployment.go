@@ -68,9 +68,7 @@ func newDeploymentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comm
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
-	f := cmd.Flags()
-	f.IntVar(&limit, "limit", 0, "maximum number of deployments per page")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cli.AddPaginationFlags(cmd, &limit, &all, "deployments")
 	return cmd
 }
 
@@ -168,9 +166,7 @@ func newEnvironmentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
-	f := cmd.Flags()
-	f.IntVar(&limit, "limit", 0, "maximum number of environments per page")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cli.AddPaginationFlags(cmd, &limit, &all, "environments")
 	return cmd
 }
 

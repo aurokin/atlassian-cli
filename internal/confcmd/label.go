@@ -60,9 +60,7 @@ func newPageLabelListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 			return nil
 		},
 	}
-	f := cmd.Flags()
-	f.IntVar(&limit, "limit", 0, "maximum number of labels to return")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cli.AddPaginationFlags(cmd, &limit, &all, "labels")
 	return cmd
 }
 
