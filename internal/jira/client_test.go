@@ -113,7 +113,7 @@ func TestClientGetIssue(t *testing.T) {
 		`{"id":"1","key":"PROJ-1","fields":{"summary":"First","status":{"name":"To Do"},"issuetype":{"name":"Task"}}}`)
 	defer srv.Close()
 
-	raw, err := newTestClient(srv).GetIssue(context.Background(), "PROJ-1")
+	raw, err := newTestClient(srv).GetIssue(context.Background(), "PROJ-1", "", "")
 	if err != nil {
 		t.Fatalf("GetIssue: %v", err)
 	}
@@ -126,6 +126,43 @@ func TestClientGetIssue(t *testing.T) {
 	}
 	if iss.Fields.Status == nil || iss.Fields.Status.Name != "To Do" {
 		t.Fatalf("status = %+v", iss.Fields.Status)
+	}
+}
+
+func TestClientGetIssuePassesFieldsAndExpand(t *testing.T) {
+	var gotFields, gotExpand string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotFields = r.URL.Query().Get("fields")
+		gotExpand = r.URL.Query().Get("expand")
+		_, _ = w.Write([]byte(`{"id":"1","key":"PROJ-1"}`))
+	}))
+	defer srv.Close()
+
+	if _, err := newTestClient(srv).GetIssue(context.Background(), "PROJ-1", "summary,comment", "changelog"); err != nil {
+		t.Fatalf("GetIssue: %v", err)
+	}
+	if gotFields != "summary,comment" {
+		t.Fatalf("fields query = %q, want summary,comment", gotFields)
+	}
+	if gotExpand != "changelog" {
+		t.Fatalf("expand query = %q, want changelog", gotExpand)
+	}
+}
+
+func TestClientGetIssueOmitsEmptyFieldsAndExpand(t *testing.T) {
+	var hadFields, hadExpand bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, hadFields = r.URL.Query()["fields"]
+		_, hadExpand = r.URL.Query()["expand"]
+		_, _ = w.Write([]byte(`{"id":"1","key":"PROJ-1"}`))
+	}))
+	defer srv.Close()
+
+	if _, err := newTestClient(srv).GetIssue(context.Background(), "PROJ-1", "", ""); err != nil {
+		t.Fatalf("GetIssue: %v", err)
+	}
+	if hadFields || hadExpand {
+		t.Fatalf("empty fields/expand must not be sent (fields=%v expand=%v)", hadFields, hadExpand)
 	}
 }
 
@@ -221,7 +258,7 @@ func TestClientMapsHTTPStatusToStructuredError(t *testing.T) {
 			}))
 			defer srv.Close()
 
-			_, err := newTestClient(srv).GetIssue(context.Background(), "PROJ-1")
+			_, err := newTestClient(srv).GetIssue(context.Background(), "PROJ-1", "", "")
 			if err == nil {
 				t.Fatalf("status %d returned no error", tc.status)
 			}

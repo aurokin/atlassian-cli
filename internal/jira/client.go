@@ -51,8 +51,21 @@ func (c *Client) SearchProjects(ctx context.Context, limit int) (json.RawMessage
 }
 
 // GetIssue returns a single issue by id or key (GET /issue/{idOrKey}).
-func (c *Client) GetIssue(ctx context.Context, idOrKey string) (json.RawMessage, error) {
-	return c.Get(ctx, "/issue/"+url.PathEscape(idOrKey))
+//
+// fields and expand are passed through verbatim as the Jira `fields` and
+// `expand` query parameters when non-empty, letting a caller pull a custom
+// field set (for example "*all", "summary,comment", or a specific custom field
+// id) or expanded data (such as "changelog" or "renderedFields"). An empty
+// fields uses Jira's default navigable field set.
+func (c *Client) GetIssue(ctx context.Context, idOrKey, fields, expand string) (json.RawMessage, error) {
+	q := url.Values{}
+	if fields != "" {
+		q.Set("fields", fields)
+	}
+	if expand != "" {
+		q.Set("expand", expand)
+	}
+	return c.Get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(idOrKey), q))
 }
 
 // SearchIssues runs a JQL query (GET /search/jql).
