@@ -1,5 +1,5 @@
 // Package confcmd assembles the Confluence-specific command tree for the
-// atl-conf binary: space, page, search, and status. The shared commands (auth,
+// atl-conf binary: space, page, attachment, search, and status. The shared commands (auth,
 // api, resolve, browse, version) are built by internal/cli; AddCommands layers
 // the Confluence product commands on top of that root.
 package confcmd
