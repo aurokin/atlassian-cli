@@ -1,3 +1,5 @@
+> **Historical / archived.** This document is a completed planning or design artifact, kept for project history. It is **not** maintained and may not reflect the current code. For the implemented behavior see [`docs/command-contract.md`](../command-contract.md) and [`docs/shared-architecture.md`](../shared-architecture.md).
+
 # Phase 5: Output & Pagination Polish Implementation Plan
 
 **Goal:** Make `--jq` real and add an `--all` follow-all-pages flag, so both

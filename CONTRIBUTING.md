@@ -58,9 +58,8 @@ targets.
    `Co-Authored-By:` trailer; end PR bodies with the Claude Code generation
    line.
 
-Keep [`docs/command-contract.md`](docs/command-contract.md) and
-[`docs/continuation-handoff.md`](docs/continuation-handoff.md) current whenever
-a change alters command behavior, status, or the next action.
+Keep [`docs/command-contract.md`](docs/command-contract.md) current whenever a
+change alters command behavior or the command surface.
 
 ## Output and error conventions
 

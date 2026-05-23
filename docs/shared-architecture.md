@@ -27,7 +27,7 @@ internal/atlconfcmd/     # atl-conf Cobra tree
 
 The list above was the early aspiration. After Phases 1–8 the proven,
 genuinely-duplicated foundations were extracted per
-[shared-foundation-scorecard.md](shared-foundation-scorecard.md):
+[shared-foundation-scorecard.md](archive/shared-foundation-scorecard.md):
 
 ```text
 internal/restutil/      # WithQuery, MaxFollowPages, generic Decode/DecodeError
@@ -86,7 +86,7 @@ product (`atl-bb`) makes a shared shape concrete.
 
 After Jira and Confluence stabilize, consider importing legacy `bb` into the same Atlassian monorepo as `atl-bb` or extracting shared code. Do not constrain early design around this migration, but do expect a rewrite period where Bitbucket is brought up to the new standards set by `atl-jira` and `atl-conf`.
 
-The deeper roadmap lives in [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md). The short version:
+The deeper roadmap lives in [bitbucket-migration-roadmap.md](archive/bitbucket-migration-roadmap.md). The short version:
 
 - inventory `bb` first
 - compare real shared seams after Jira/Confluence MVPs exist

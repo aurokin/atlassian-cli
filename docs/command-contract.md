@@ -1,8 +1,8 @@
 # Command Contract
 
-> Implemented behavior as of Phase 6. This document describes what the
-> `atl-jira` and `atl-conf` binaries actually do today, not the long-term
-> design. Update it whenever the command surface changes.
+> Implemented behavior as of the current `main`. This document describes what
+> the `atl-jira`, `atl-conf`, and `atl-bb` binaries actually do today, not the
+> long-term design. Update it whenever the command surface changes.
 
 ## Scope
 

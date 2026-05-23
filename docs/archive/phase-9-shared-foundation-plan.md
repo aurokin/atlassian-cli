@@ -1,3 +1,5 @@
+> **Historical / archived.** This document is a completed planning or design artifact, kept for project history. It is **not** maintained and may not reflect the current code. For the implemented behavior see [`docs/command-contract.md`](../command-contract.md) and [`docs/shared-architecture.md`](../shared-architecture.md).
+
 # Phase 9 — Shared-foundation review (in-repo)
 
 > Implementation plan for the in-repo half of the Phase 9 milestone in
