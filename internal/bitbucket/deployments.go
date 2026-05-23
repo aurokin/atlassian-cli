@@ -26,7 +26,7 @@ func environmentsBase(workspace, repo string) string {
 func (c *Client) ListDeployments(ctx context.Context, workspace, repo string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery(deploymentsBase(workspace, repo), q))
+	return c.Get(ctx, restutil.WithQuery(deploymentsBase(workspace, repo), q))
 }
 
 // ListDeploymentsAll follows a repository's deployment listing to completion and
@@ -45,7 +45,7 @@ func (c *Client) GetDeployment(ctx context.Context, workspace, repo, uuid string
 	if norm == "" {
 		return nil, apperr.InvalidInput("a deployment UUID is required")
 	}
-	return c.get(ctx, deploymentsBase(workspace, repo)+url.PathEscape(norm))
+	return c.Get(ctx, deploymentsBase(workspace, repo)+url.PathEscape(norm))
 }
 
 // ListEnvironments returns one page of a repository's deployment environments
@@ -53,7 +53,7 @@ func (c *Client) GetDeployment(ctx context.Context, workspace, repo, uuid string
 func (c *Client) ListEnvironments(ctx context.Context, workspace, repo string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery(environmentsBase(workspace, repo), q))
+	return c.Get(ctx, restutil.WithQuery(environmentsBase(workspace, repo), q))
 }
 
 // ListEnvironmentsAll follows a repository's environment listing to completion
@@ -72,5 +72,5 @@ func (c *Client) GetEnvironment(ctx context.Context, workspace, repo, uuid strin
 	if norm == "" {
 		return nil, apperr.InvalidInput("an environment UUID is required")
 	}
-	return c.get(ctx, environmentsBase(workspace, repo)+url.PathEscape(norm))
+	return c.Get(ctx, environmentsBase(workspace, repo)+url.PathEscape(norm))
 }

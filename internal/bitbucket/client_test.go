@@ -256,7 +256,7 @@ func TestSendEncodesJSONBody(t *testing.T) {
 	defer srv.Close()
 
 	c := newTestClient(srv)
-	if _, err := c.send(context.Background(), http.MethodPost, "/repositories/acme/widgets/issues",
+	if _, err := c.Send(context.Background(), http.MethodPost, "/repositories/acme/widgets/issues",
 		map[string]string{"title": "hello"}); err != nil {
 		t.Fatalf("send: %v", err)
 	}

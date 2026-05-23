@@ -40,7 +40,7 @@ func pipelinesQuery(status string, limit int) url.Values {
 // first (GET /repositories/{ws}/{repo}/pipelines/). status filters by pipeline
 // state name (e.g. PENDING, IN_PROGRESS, COMPLETED); an empty status lists all.
 func (c *Client) ListPipelines(ctx context.Context, workspace, repo, status string, limit int) (json.RawMessage, error) {
-	return c.get(ctx, restutil.WithQuery(pipelinesListBase(workspace, repo), pipelinesQuery(status, limit)))
+	return c.Get(ctx, restutil.WithQuery(pipelinesListBase(workspace, repo), pipelinesQuery(status, limit)))
 }
 
 // ListPipelinesAll follows a repository's pipeline listing to completion and
@@ -57,7 +57,7 @@ func (c *Client) GetPipeline(ctx context.Context, workspace, repo, uuid string) 
 	if norm == "" {
 		return nil, apperr.InvalidInput("a pipeline UUID is required")
 	}
-	return c.get(ctx, pipelinesListBase(workspace, repo)+url.PathEscape(norm))
+	return c.Get(ctx, pipelinesListBase(workspace, repo)+url.PathEscape(norm))
 }
 
 // GetPipelineByBuildNumber finds a pipeline run by its build number by paging
@@ -69,7 +69,7 @@ func (c *Client) GetPipelineByBuildNumber(ctx context.Context, workspace, repo s
 	}
 	next := restutil.WithQuery(pipelinesListBase(workspace, repo), pipelinesQuery("", 50))
 	for page := 0; page < restutil.MaxFollowPages && next != ""; page++ {
-		raw, err := c.get(ctx, next)
+		raw, err := c.Get(ctx, next)
 		if err != nil {
 			return nil, err
 		}
@@ -113,7 +113,7 @@ func (c *Client) TriggerPipeline(ctx context.Context, workspace, repo, refType, 
 			"ref_name": refName,
 		},
 	}
-	return c.send(ctx, "POST", pipelinesTriggerBase(workspace, repo), body)
+	return c.Send(ctx, "POST", pipelinesTriggerBase(workspace, repo), body)
 }
 
 // NormalizePipelineUUID wraps a bare pipeline UUID in the braces Bitbucket
