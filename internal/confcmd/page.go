@@ -61,7 +61,7 @@ func newPageListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			page, err := conf.Decode[conf.PageList](raw)
@@ -92,7 +92,7 @@ func newPageViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			p, err := conf.Decode[conf.Page](raw)
@@ -127,7 +127,7 @@ func newPageChildrenCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			page, err := conf.Decode[conf.PageList](raw)
@@ -168,7 +168,7 @@ func newPageCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			p, err := conf.Decode[conf.Page](raw)
@@ -249,7 +249,7 @@ func newPageEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, updated)
 			}
 			p, err := conf.Decode[conf.Page](updated)

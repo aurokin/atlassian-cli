@@ -92,7 +92,7 @@ func newAliasListCommand(_ appinfo.Info, g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return Render(cmd, g, cfg.Aliases)
 			}
 			writeAliasList(cmd.OutOrStdout(), cfg.Aliases)

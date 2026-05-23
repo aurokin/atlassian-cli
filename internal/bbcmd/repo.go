@@ -48,7 +48,7 @@ func newRepoViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			repo, err := bitbucket.Decode[bitbucket.Repository](raw)
@@ -90,7 +90,7 @@ func newRepoListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			page, err := bitbucket.Decode[bitbucket.RepositoryPage](raw)

@@ -47,7 +47,7 @@ func newProjectListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			page, err := jira.Decode[jira.ProjectPage](raw)
@@ -76,7 +76,7 @@ func newProjectViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			p, err := jira.Decode[jira.Project](raw)

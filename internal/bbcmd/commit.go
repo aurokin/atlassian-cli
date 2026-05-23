@@ -58,7 +58,7 @@ func newCommitListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			page, err := bitbucket.Decode[bitbucket.CommitPage](raw)
@@ -103,7 +103,7 @@ func newCommitViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			commit, err := bitbucket.Decode[bitbucket.Commit](raw)

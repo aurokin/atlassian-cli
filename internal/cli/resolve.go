@@ -30,7 +30,7 @@ func newResolveCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return Render(cmd, g, r)
 			}
 			writeResourceHuman(cmd.OutOrStdout(), r)

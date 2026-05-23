@@ -48,7 +48,7 @@ func newWorklogListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			page, err := jira.Decode[jira.WorklogPage](raw)
@@ -92,7 +92,7 @@ func newWorklogAddCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			wl, err := jira.Decode[jira.Worklog](raw)

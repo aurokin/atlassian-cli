@@ -58,7 +58,7 @@ func newTagListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			page, err := bitbucket.Decode[bitbucket.TagPage](raw)
@@ -100,7 +100,7 @@ func newTagViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			tag, err := bitbucket.Decode[bitbucket.Tag](raw)
@@ -144,7 +144,7 @@ func newTagCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			tag, err := bitbucket.Decode[bitbucket.Tag](raw)

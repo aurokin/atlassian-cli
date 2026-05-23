@@ -60,7 +60,7 @@ func newPipelineListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			page, err := bitbucket.Decode[bitbucket.PipelinePage](raw)
@@ -105,7 +105,7 @@ func newPipelineViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			p, err := bitbucket.Decode[bitbucket.Pipeline](raw)
@@ -152,7 +152,7 @@ func newPipelineRunCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			p, err := bitbucket.Decode[bitbucket.Pipeline](raw)

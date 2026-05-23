@@ -48,7 +48,7 @@ func newWorkspaceViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			ws, err := bitbucket.Decode[bitbucket.Workspace](raw)

@@ -40,7 +40,7 @@ func newSearchIssuesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			page, err := jira.Decode[jira.IssuePage](raw)

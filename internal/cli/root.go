@@ -39,6 +39,14 @@ type GlobalFlags struct {
 	Trace bool
 }
 
+// WantsStructured reports whether the caller selected machine-readable output:
+// a non-empty --json field selector or a non-empty --jq filter. It is the
+// single source of the human-vs-structured decision, used by every command's
+// render branch and by the error renderer, so the two never diverge.
+func (g *GlobalFlags) WantsStructured() bool {
+	return g.JSON != "" || g.JQ != ""
+}
+
 // NewRoot builds the base root command for a binary. It registers the shared
 // global flags and the version subcommand, then returns the command together
 // with the GlobalFlags it binds. Product command packages add their own
@@ -141,7 +149,7 @@ func Run(info appinfo.Info, root *cobra.Command, g *GlobalFlags) int {
 // success path, where --jq alone also selects structured output.
 func renderError(w io.Writer, g *GlobalFlags, err error) {
 	var ae *apperr.Error
-	if (g.JSON != "" || g.JQ != "") && errors.As(err, &ae) {
+	if g.WantsStructured() && errors.As(err, &ae) {
 		enc := json.NewEncoder(w)
 		enc.SetIndent("", "  ")
 		if enc.Encode(ae) == nil {
