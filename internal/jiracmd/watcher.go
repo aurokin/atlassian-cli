@@ -91,7 +91,7 @@ func newIssueWatchersCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 // writeWatchers prints watchers as aligned account-id/display-name rows.
 func writeWatchers(w io.Writer, users []jira.User) {
 	if len(users) == 0 {
-		fmt.Fprintln(w, "No watchers.")
+		fmt.Fprintln(w, "No watchers found.")
 		return
 	}
 	tw := output.TabWriter(w)

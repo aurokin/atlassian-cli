@@ -81,8 +81,7 @@ func newIssueListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	f.StringVar(&project, "project", "", "project key (required)")
 	f.StringVar(&status, "status", "", "filter by status name")
 	f.StringVar(&assignee, "assignee", "", "filter by assignee account id, or currentUser()")
-	f.IntVar(&limit, "limit", 0, "maximum number of issues to return")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cli.AddPaginationFlags(cmd, &limit, &all, "issues")
 	return cmd
 }
 
@@ -349,7 +348,7 @@ func transitionNames(transitions []jira.Transition) string {
 // writeTransitionList prints transitions as aligned id/name rows.
 func writeTransitionList(w io.Writer, transitions []jira.Transition) {
 	if len(transitions) == 0 {
-		fmt.Fprintln(w, "No transitions available.")
+		fmt.Fprintln(w, "No transitions found.")
 		return
 	}
 	tw := output.TabWriter(w)

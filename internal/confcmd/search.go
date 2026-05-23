@@ -55,9 +55,7 @@ func newSearchCQLCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			return nil
 		},
 	}
-	f := cmd.Flags()
-	f.IntVar(&limit, "limit", 0, "maximum number of results to return")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cli.AddPaginationFlags(cmd, &limit, &all, "results")
 	return cmd
 }
 

@@ -177,10 +177,8 @@ func newSearchIssuesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 
 // addSearchFlags binds the flags shared by every search subcommand.
 func addSearchFlags(cmd *cobra.Command, sort *string, limit *int, all *bool) {
-	f := cmd.Flags()
-	f.StringVar(sort, "sort", "", "sort field (e.g. -updated_on); defaults to the Bitbucket API order")
-	f.IntVar(limit, "limit", 0, "maximum number of results per page")
-	f.BoolVar(all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cmd.Flags().StringVar(sort, "sort", "", "sort field (e.g. -updated_on); defaults to the Bitbucket API order")
+	cli.AddPaginationFlags(cmd, limit, all, "results")
 }
 
 // requireQuery trims and validates a search query argument.

@@ -84,7 +84,7 @@ func newIssueLinkTypesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comm
 // writeLinkTypes prints link types as aligned name/inward/outward rows.
 func writeLinkTypes(w io.Writer, types []jira.LinkType) {
 	if len(types) == 0 {
-		fmt.Fprintln(w, "No link types.")
+		fmt.Fprintln(w, "No link types found.")
 		return
 	}
 	tw := output.TabWriter(w)

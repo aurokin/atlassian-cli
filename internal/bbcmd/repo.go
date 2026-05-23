@@ -103,8 +103,7 @@ func newRepoListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.StringVar(&workspaceFlag, "workspace", "", "workspace slug to list repositories from")
-	f.IntVar(&limit, "limit", 0, "maximum number of repositories per page")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
+	cli.AddPaginationFlags(cmd, &limit, &all, "repositories")
 	return cmd
 }
 

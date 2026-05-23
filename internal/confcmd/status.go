@@ -46,7 +46,9 @@ func newStatusCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 // writeStatus prints the resolved authentication state as label/value lines.
 func writeStatus(w io.Writer, site, apiBase string, user conf.User) {
 	fmt.Fprintf(w, "%-10s %s\n", "status:", "authenticated")
-	fmt.Fprintf(w, "%-10s %s\n", "site:", site)
+	if site != "" {
+		fmt.Fprintf(w, "%-10s %s\n", "site:", site)
+	}
 	account := user.DisplayName
 	if user.AccountID != "" {
 		account = fmt.Sprintf("%s (%s)", user.DisplayName, user.AccountID)
