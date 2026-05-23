@@ -23,6 +23,7 @@ func loginTestSite(t *testing.T, tokenEnv string) {
 
 func TestSiteClientRequiresSiteFlag(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv(siteEnvVar, "")
 	_, err := SiteClient(jiraInfo(), &GlobalFlags{})
 	if err == nil {
 		t.Fatal("SiteClient with no --site returned no error")
@@ -30,6 +31,66 @@ func TestSiteClientRequiresSiteFlag(t *testing.T) {
 	var ae *apperr.Error
 	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
 		t.Fatalf("error = %v, want an invalid_input *apperr.Error", err)
+	}
+}
+
+func TestResolveSiteNamePrecedence(t *testing.T) {
+	cases := []struct {
+		name string
+		flag string
+		env  string
+		def  string
+		want string
+	}{
+		{"flag wins over env and default", "flag", "env", "def", "flag"},
+		{"env wins over default", "", "env", "def", "env"},
+		{"default is last resort", "", "", "def", "def"},
+		{"env whitespace is ignored", "", "   ", "def", "def"},
+		{"none set", "", "", "", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Setenv(siteEnvVar, c.env)
+			if got := resolveSiteName(c.flag, c.def); got != c.want {
+				t.Fatalf("resolveSiteName(%q, %q) with %s=%q = %q, want %q",
+					c.flag, c.def, siteEnvVar, c.env, got, c.want)
+			}
+		})
+	}
+}
+
+func TestSiteClientUsesATLSiteEnv(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("ATL_API_TOKEN", "test-token")
+	loginTestSite(t, "ATL_API_TOKEN")
+	t.Setenv(siteEnvVar, "work")
+
+	// No --site flag: the site is taken from ATL_SITE.
+	client, err := SiteClient(jiraInfo(), &GlobalFlags{})
+	if err != nil {
+		t.Fatalf("SiteClient: %v", err)
+	}
+	if client == nil {
+		t.Fatal("SiteClient returned a nil client")
+	}
+}
+
+func TestSiteClientUsesDefaultSite(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("ATL_API_TOKEN", "test-token")
+	t.Setenv(siteEnvVar, "")
+	loginTestSite(t, "ATL_API_TOKEN")
+	if _, err := execRoot(t, jiraInfo(), "auth", "default", "work"); err != nil {
+		t.Fatalf("auth default: %v", err)
+	}
+
+	// No --site flag and no ATL_SITE: the site is taken from default_site.
+	client, err := SiteClient(jiraInfo(), &GlobalFlags{})
+	if err != nil {
+		t.Fatalf("SiteClient: %v", err)
+	}
+	if client == nil {
+		t.Fatal("SiteClient returned a nil client")
 	}
 }
 

@@ -53,6 +53,10 @@ go run ./cmd/atl-jira issue view PROJ-1 --site work --jq '.fields.status.name'
 go run ./cmd/atl-bb repo view acme/widgets --site work --json
 ```
 
+To skip the repeated `--site`, set a default once with
+`atl-jira auth default work` (or export `ATL_SITE=work`); the flag still wins
+when given. Resolution order is `--site` → `ATL_SITE` → `default_site`.
+
 See [docs/command-contract.md](docs/command-contract.md) for the implemented
 command surface and known limitations, [docs/auth-runbook.md](docs/auth-runbook.md)
 for end-to-end authentication setup, and [CONTRIBUTING.md](CONTRIBUTING.md)

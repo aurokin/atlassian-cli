@@ -26,6 +26,10 @@ const (
 type Config struct {
 	Version int                    `json:"version"`
 	Sites   map[string]SiteProfile `json:"sites"`
+	// DefaultSite names the site profile networked commands target when no
+	// --site flag and no ATL_SITE environment variable are given. It is the
+	// lowest-precedence site selector (see internal/cli site resolution).
+	DefaultSite string `json:"default_site,omitempty"`
 	// Aliases maps a user-defined command name to its expansion (a shell-style
 	// argument string). It is shared by every atl-* binary: each expands aliases
 	// against this map before dispatch (see internal/cli).

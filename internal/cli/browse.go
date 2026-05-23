@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/browser"
 	"github.com/aurokin/atlassian-cli/internal/resolve"
@@ -84,10 +83,7 @@ func browseBaseURL(info appinfo.Info, g *GlobalFlags, r resolve.Resource) (strin
 		// if the input used http. Data Center URL shapes are a Phase 2 non-goal.
 		return "https://" + r.SiteHost, nil
 	}
-	if g.Site == "" {
-		return "", apperr.InvalidInput("a bare key or id needs a configured site to build its URL; pass --site")
-	}
-	profile, err := loadSiteProfile(info, g.Site)
+	_, profile, err := loadSiteProfile(info, g.Site)
 	if err != nil {
 		return "", err
 	}

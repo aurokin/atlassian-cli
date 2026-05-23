@@ -163,8 +163,73 @@ func newAuthCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 		newAuthLoginCommand(info, g),
 		newAuthStatusCommand(g),
 		newAuthLogoutCommand(info, g),
+		newAuthDefaultCommand(info, g),
 	)
 	return cmd
+}
+
+// newAuthDefaultCommand reads or sets the default_site config key, which
+// networked commands target when neither --site nor ATL_SITE is given. With no
+// argument it prints the current default; with a site name it records that
+// site (which must already be configured); with --clear it removes the default.
+func newAuthDefaultCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
+	var clear bool
+	cmd := &cobra.Command{
+		Use:   "default [site]",
+		Short: "Show or set the default site profile",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if clear && len(args) > 0 {
+				return apperr.InvalidInput("--clear cannot be combined with a site argument")
+			}
+			path, err := config.DefaultPath()
+			if err != nil {
+				return err
+			}
+			cfg, err := config.Load(path)
+			if err != nil {
+				return err
+			}
+			switch {
+			case clear:
+				cfg.DefaultSite = ""
+				if err := config.Save(path, cfg); err != nil {
+					return err
+				}
+				fmt.Fprintln(cmd.OutOrStdout(), "Cleared the default site.")
+				return nil
+			case len(args) == 1:
+				site := args[0]
+				if _, ok := cfg.Sites[site]; !ok {
+					return apperr.New("site_not_configured",
+						fmt.Sprintf("site %q is not configured; run %s auth login", site, info.Binary))
+				}
+				cfg.DefaultSite = site
+				if err := config.Save(path, cfg); err != nil {
+					return err
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Set default site to %q.\n", site)
+				return nil
+			default:
+				if g.WantsStructured() {
+					return Render(cmd, g, defaultSiteView{DefaultSite: cfg.DefaultSite})
+				}
+				if cfg.DefaultSite == "" {
+					fmt.Fprintln(cmd.OutOrStdout(), "No default site is set.")
+					return nil
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Default site: %s\n", cfg.DefaultSite)
+				return nil
+			}
+		},
+	}
+	cmd.Flags().BoolVar(&clear, "clear", false, "remove the configured default site")
+	return cmd
+}
+
+// defaultSiteView is the structured shape for `auth default` with no argument.
+type defaultSiteView struct {
+	DefaultSite string `json:"default_site"`
 }
 
 func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
@@ -705,6 +770,11 @@ func newAuthLogoutCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 				return err
 			}
 			delete(cfg.Sites, g.Site)
+			// Drop a now-dangling default rather than leave it pointing at a
+			// profile that no longer exists.
+			if cfg.DefaultSite == g.Site {
+				cfg.DefaultSite = ""
+			}
 			if err := config.Save(path, cfg); err != nil {
 				return err
 			}
