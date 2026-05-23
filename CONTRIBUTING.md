@@ -80,10 +80,17 @@ a change alters command behavior, status, or the next action.
 Tests are **hermetic and deterministic**: no network, no real credentials, no
 dependence on the developer's machine state.
 
+> The one deliberate exception is the **live integration suite** under
+> `integration/`, which drives the real binaries against a real tenant. It is
+> manual-only — gated behind the `integration` build tag *and* an
+> `ATL_RUN_INTEGRATION=1` opt-in, and skipped under CI — so it never runs as
+> part of `make check`. See [docs/integration-testing.md](docs/integration-testing.md).
+
 ### Hard rules
 
 - **No live Atlassian API calls in default tests.** Exercise HTTP commands
-  against a local `httptest.Server`.
+  against a local `httptest.Server`. (The tag-gated `integration/` suite is the
+  sole, manual-only exception — see above.)
 - **No raw tokens, passwords, OAuth tokens, cookies, or private credential
   files** in tests, fixtures, docs, or committed config. A test that needs a
   token sets an environment variable and points the site profile's
