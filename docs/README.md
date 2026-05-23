@@ -14,6 +14,7 @@ system is built and how to use it.
 - [auth-runbook.md](auth-runbook.md) — practical end-to-end authentication guide: pick a token style, supply and store the token, log in per product, verify, and troubleshoot.
 - [access-error-model.md](access-error-model.md) — permission-aware UX and the structured error envelope.
 - [integration-testing.md](integration-testing.md) — the live, opt-in integration suite that drives the real binaries against a real tenant.
+- [post-review-improvement-plan.md](post-review-improvement-plan.md) — the sequenced, PR-by-PR plan for the open recommendations from the May 2026 review. Active until its work is merged, then archived.
 
 ## History
 
