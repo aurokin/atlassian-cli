@@ -110,9 +110,21 @@ the CLI):
 2. Add the **callback URL** exactly: `http://localhost:8976/callback`.
    Atlassian matches it byte-for-byte, so it must be this value (or pass a
    different port with `--callback-port` and register that instead).
-3. Add the Jira and/or Confluence **scopes** your commands need, for example
-   Jira `read:jira-work write:jira-work read:jira-user`, Confluence
-   `read:confluence-content.all write:confluence-content search:confluence`.
+3. Add the Jira and/or Confluence **scopes** your commands need. Scopes are
+   **per-endpoint**, so grant a scope for every command you intend to run,
+   including `status` (the verify step), and enable each on the app's
+   **Permissions** page before you authorize. Useful starting sets:
+   - Jira: `read:jira-work write:jira-work read:jira-user`
+     (`read:jira-user` is what makes `status` work).
+   - Confluence: `read:confluence-content.all write:confluence-content
+     search:confluence read:confluence-user read:confluence-space.summary`
+     — `read:confluence-user` covers `status`'s current-user lookup, and the
+     `space` list command (Confluence REST **v2**) needs
+     `read:confluence-space.summary`; the classic `read:confluence-content.all`
+     alone does **not** cover those v2 reads. If a command returns
+     `unauthorized: scope does not match`, the token is missing that endpoint's
+     scope — add it to the app and re-run `auth login`.
+
    The CLI adds `offline_access` itself (that is what grants a refresh token).
 4. Copy the app's **client ID** and **client secret**.
 
