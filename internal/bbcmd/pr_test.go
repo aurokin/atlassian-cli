@@ -216,3 +216,133 @@ func TestNormalizePRState(t *testing.T) {
 		t.Fatalf("expected error for invalid state")
 	}
 }
+
+func TestPRApprove(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		_, _ = w.Write([]byte(`{"approved":true,"role":"REVIEWER"}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "pr", "approve", "7", "--repo", "acme/widgets", "--site", "work")
+	if err != nil {
+		t.Fatalf("pr approve: %v\n%s", err, out)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/repositories/acme/widgets/pullrequests/7/approve" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	if !strings.Contains(out, "approved pull request #7") {
+		t.Errorf("output missing confirmation:\n%s", out)
+	}
+}
+
+func TestPRUnapproveJSON(t *testing.T) {
+	var gotMethod string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "pr", "unapprove", "7", "--repo", "acme/widgets", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("pr unapprove --json: %v\n%s", err, out)
+	}
+	if gotMethod != http.MethodDelete {
+		t.Errorf("method = %q, want DELETE", gotMethod)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("output is not valid JSON: %v\n%s", err, out)
+	}
+	if got["id"] != float64(7) || got["action"] != "unapprove" || got["done"] != true {
+		t.Fatalf("unexpected json: %s", out)
+	}
+}
+
+func TestPRDecline(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		_, _ = w.Write([]byte(`{"id":7,"state":"DECLINED"}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "pr", "decline", "7", "--repo", "acme/widgets", "--site", "work")
+	if err != nil {
+		t.Fatalf("pr decline: %v\n%s", err, out)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/repositories/acme/widgets/pullrequests/7/decline" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	if !strings.Contains(out, "declined pull request #7") {
+		t.Errorf("output missing confirmation:\n%s", out)
+	}
+}
+
+func TestPRMergeSendsStrategy(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/repositories/acme/widgets/pullrequests/7/merge" {
+			t.Errorf("path = %q", r.URL.Path)
+		}
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &gotBody)
+		_, _ = w.Write([]byte(`{"id":7,"state":"MERGED"}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "pr", "merge", "7", "--repo", "acme/widgets", "--site", "work",
+		"--strategy", "squash", "--message", "ship it")
+	if err != nil {
+		t.Fatalf("pr merge: %v\n%s", err, out)
+	}
+	if gotBody["merge_strategy"] != "squash" || gotBody["message"] != "ship it" {
+		t.Fatalf("merge body = %+v", gotBody)
+	}
+	if !strings.Contains(out, "merged pull request #7") {
+		t.Errorf("output missing confirmation:\n%s", out)
+	}
+}
+
+func TestPRMergeRejectsInvalidStrategy(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	_, err := execBB(t, "pr", "merge", "7", "--repo", "acme/widgets", "--site", "work", "--strategy", "rebase")
+	if err == nil {
+		t.Fatal("pr merge with invalid --strategy returned no error")
+	}
+	if !strings.Contains(err.Error(), "invalid --strategy") {
+		t.Errorf("error = %v, want invalid --strategy", err)
+	}
+}
+
+func TestNormalizeMergeStrategy(t *testing.T) {
+	cases := map[string]string{
+		"":             "",
+		"squash":       "squash",
+		"merge-commit": "merge_commit",
+		"fast-forward": "fast_forward",
+		"FAST-FORWARD": "fast_forward",
+	}
+	for in, want := range cases {
+		got, err := normalizeMergeStrategy(in)
+		if err != nil {
+			t.Fatalf("normalizeMergeStrategy(%q): %v", in, err)
+		}
+		if got != want {
+			t.Errorf("normalizeMergeStrategy(%q) = %q, want %q", in, got, want)
+		}
+	}
+	if _, err := normalizeMergeStrategy("rebase"); err == nil {
+		t.Fatal("expected error for invalid strategy")
+	}
+}

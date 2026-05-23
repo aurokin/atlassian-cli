@@ -688,15 +688,29 @@ atl-bb pr view <id> [--repo <workspace>/<repo>] [--workspace <slug>]
 atl-bb pr create [--repo <workspace>/<repo>] [--workspace <slug>] \
   --title <text> --source <branch> --destination <branch> \
   [--description <text>] [--draft] [--close-source-branch]
+atl-bb pr approve <id> [--repo <workspace>/<repo>] [--workspace <slug>]
+atl-bb pr unapprove <id> [--repo <workspace>/<repo>] [--workspace <slug>]
+atl-bb pr decline <id> [--repo <workspace>/<repo>] [--workspace <slug>]
+atl-bb pr merge <id> [--repo <workspace>/<repo>] [--workspace <slug>] \
+  [--strategy merge-commit|squash|fast-forward] [--message <text>] [--close-source-branch]
 ```
 
 Pull requests are addressed by the repo target (`--repo`/`--workspace`) plus a
-numeric id for `view`. `pr list` filters by `--state` (`OPEN` default;
-`MERGED`, `DECLINED`, `SUPERSEDED`, or `ALL` to list every state — `ALL` omits
-the API `state` filter) and follows pagination with `--limit`/`--all`. `pr
-create` requires `--title`, `--source`, and `--destination`; human output
-prints `created pull request #<id>: <title>`. Pull-request comments, tasks,
-review, merge, and decline are later slices.
+numeric id for `view` and the review actions. `pr list` filters by `--state`
+(`OPEN` default; `MERGED`, `DECLINED`, `SUPERSEDED`, or `ALL` to list every
+state — `ALL` omits the API `state` filter) and follows pagination with
+`--limit`/`--all`. `pr create` requires `--title`, `--source`, and
+`--destination`; human output prints `created pull request #<id>: <title>`.
+
+`pr approve` records the authenticated user's approval and `pr unapprove`
+withdraws it (`POST`/`DELETE …/approve`); `pr decline` declines the PR and `pr
+merge` merges it. `pr merge --strategy` selects `merge-commit`, `squash`, or
+`fast-forward` (omitted leaves the repository's default), with an optional
+`--message` and `--close-source-branch`. Human output prints a one-line
+confirmation; under `--json`/`--jq`, `approve`/`decline`/`merge` emit the API's
+response object and `unapprove` (no API body) emits a synthesized
+`{"id","action","done"}` result. Pull-request comments, tasks, and the diff are
+later slices.
 
 ### `pipeline`
 
