@@ -6,14 +6,11 @@
 package bitbucket
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
@@ -24,62 +21,31 @@ import (
 // productName labels this product in shared structured error messages.
 const productName = "Bitbucket"
 
-// Client is a typed Bitbucket API client bound to one authenticated site.
+// Client is a typed Bitbucket API client bound to one authenticated site. It
+// embeds restutil.Base for the shared request plumbing, with the base's
+// RemapError hook set to remapError so a disabled-capability response is
+// upgraded to feature_disabled on every GET and send.
 type Client struct {
-	http *httpclient.Client
+	restutil.Base
 }
 
 // New wraps an authenticated httpclient.Client as a Bitbucket client.
 func New(c *httpclient.Client) *Client {
-	return &Client{http: c}
-}
-
-// APIBase returns the resolved Bitbucket API base URL the client sends
-// requests to.
-func (c *Client) APIBase() (string, error) {
-	return c.http.APIBase()
-}
-
-// get issues a GET against an API-relative path (or an absolute pagination
-// URL) and returns the raw body. A non-2xx response surfaces as a structured
-// *apperr.Error, upgraded to feature_disabled where Bitbucket signals a
-// switched-off capability.
-func (c *Client) get(ctx context.Context, path string) (json.RawMessage, error) {
-	resp, err := c.http.Do(ctx, "GET", path, nil)
-	if err != nil {
-		return nil, remapError(resp, err)
-	}
-	return json.RawMessage(resp.Body), nil
-}
-
-// send marshals payload as a JSON request body, issues method against an
-// API-relative path, and returns the raw response body. A nil payload sends no
-// body.
-func (c *Client) send(ctx context.Context, method, path string, payload any) (json.RawMessage, error) {
-	var body io.Reader
-	if payload != nil {
-		b, err := json.Marshal(payload)
-		if err != nil {
-			return nil, apperr.New("request_encode_failed",
-				"could not encode the Bitbucket API request body: "+err.Error())
-		}
-		body = bytes.NewReader(b)
-	}
-	resp, err := c.http.Do(ctx, method, path, body)
-	if err != nil {
-		return nil, remapError(resp, err)
-	}
-	return json.RawMessage(resp.Body), nil
+	return &Client{Base: restutil.Base{
+		HTTP:       c,
+		Product:    productName,
+		RemapError: remapError,
+	}}
 }
 
 // CurrentUser returns the authenticated account (GET /user).
 func (c *Client) CurrentUser(ctx context.Context) (json.RawMessage, error) {
-	return c.get(ctx, "/user")
+	return c.Get(ctx, "/user")
 }
 
 // GetRepository returns a single repository (GET /repositories/{ws}/{repo}).
 func (c *Client) GetRepository(ctx context.Context, workspace, repo string) (json.RawMessage, error) {
-	return c.get(ctx, "/repositories/"+url.PathEscape(workspace)+"/"+url.PathEscape(repo))
+	return c.Get(ctx, "/repositories/"+url.PathEscape(workspace)+"/"+url.PathEscape(repo))
 }
 
 // ListRepositories returns one page of a workspace's repositories
@@ -87,7 +53,7 @@ func (c *Client) GetRepository(ctx context.Context, workspace, repo string) (jso
 func (c *Client) ListRepositories(ctx context.Context, workspace string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery("/repositories/"+url.PathEscape(workspace), q))
+	return c.Get(ctx, restutil.WithQuery("/repositories/"+url.PathEscape(workspace), q))
 }
 
 // ListRepositoriesAll follows a workspace's repository listing to completion
@@ -107,7 +73,7 @@ func (c *Client) followValues(ctx context.Context, firstPath string) (json.RawMe
 	all := []json.RawMessage{}
 	next := firstPath
 	for page := 0; page < restutil.MaxFollowPages && next != ""; page++ {
-		raw, err := c.get(ctx, next)
+		raw, err := c.Get(ctx, next)
 		if err != nil {
 			return nil, err
 		}
@@ -208,9 +174,7 @@ func decodeError(err error) error {
 	return restutil.DecodeError(productName, err)
 }
 
-// setLimit records a positive limit as the Bitbucket pagelen parameter.
+// setLimit records a positive limit as Bitbucket's pagelen page-size parameter.
 func setLimit(q url.Values, limit int) {
-	if limit > 0 {
-		q.Set("pagelen", strconv.Itoa(limit))
-	}
+	restutil.SetLimit(q, "pagelen", limit)
 }

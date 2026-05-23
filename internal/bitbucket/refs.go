@@ -23,7 +23,7 @@ func tagsBase(workspace, repo string) string {
 func (c *Client) ListBranches(ctx context.Context, workspace, repo string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery(branchesBase(workspace, repo), q))
+	return c.Get(ctx, restutil.WithQuery(branchesBase(workspace, repo), q))
 }
 
 // ListBranchesAll follows a repository's branch listing to completion and
@@ -37,7 +37,7 @@ func (c *Client) ListBranchesAll(ctx context.Context, workspace, repo string, li
 // GetBranch returns a single branch by name
 // (GET /repositories/{ws}/{repo}/refs/branches/{name}).
 func (c *Client) GetBranch(ctx context.Context, workspace, repo, name string) (json.RawMessage, error) {
-	return c.get(ctx, branchesBase(workspace, repo)+"/"+url.PathEscape(name))
+	return c.Get(ctx, branchesBase(workspace, repo)+"/"+url.PathEscape(name))
 }
 
 // CreateBranchOptions holds the fields a branch creation accepts. Both are
@@ -55,14 +55,14 @@ func (c *Client) CreateBranch(ctx context.Context, workspace, repo string, opts 
 		"name":   opts.Name,
 		"target": map[string]string{"hash": opts.Target},
 	}
-	return c.send(ctx, "POST", branchesBase(workspace, repo), body)
+	return c.Send(ctx, "POST", branchesBase(workspace, repo), body)
 }
 
 // DeleteBranch removes a branch
 // (DELETE /repositories/{ws}/{repo}/refs/branches/{name}). Bitbucket returns no
 // content on success.
 func (c *Client) DeleteBranch(ctx context.Context, workspace, repo, name string) error {
-	_, err := c.send(ctx, "DELETE", branchesBase(workspace, repo)+"/"+url.PathEscape(name), nil)
+	_, err := c.Send(ctx, "DELETE", branchesBase(workspace, repo)+"/"+url.PathEscape(name), nil)
 	return err
 }
 
@@ -71,7 +71,7 @@ func (c *Client) DeleteBranch(ctx context.Context, workspace, repo, name string)
 func (c *Client) ListTags(ctx context.Context, workspace, repo string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery(tagsBase(workspace, repo), q))
+	return c.Get(ctx, restutil.WithQuery(tagsBase(workspace, repo), q))
 }
 
 // ListTagsAll follows a repository's tag listing to completion and returns an
@@ -85,7 +85,7 @@ func (c *Client) ListTagsAll(ctx context.Context, workspace, repo string, limit 
 // GetTag returns a single tag by name
 // (GET /repositories/{ws}/{repo}/refs/tags/{name}).
 func (c *Client) GetTag(ctx context.Context, workspace, repo, name string) (json.RawMessage, error) {
-	return c.get(ctx, tagsBase(workspace, repo)+"/"+url.PathEscape(name))
+	return c.Get(ctx, tagsBase(workspace, repo)+"/"+url.PathEscape(name))
 }
 
 // CreateTagOptions holds the fields a tag creation accepts. Name and Target are
@@ -107,13 +107,13 @@ func (c *Client) CreateTag(ctx context.Context, workspace, repo string, opts Cre
 	if opts.Message != "" {
 		body["message"] = opts.Message
 	}
-	return c.send(ctx, "POST", tagsBase(workspace, repo), body)
+	return c.Send(ctx, "POST", tagsBase(workspace, repo), body)
 }
 
 // DeleteTag removes a tag
 // (DELETE /repositories/{ws}/{repo}/refs/tags/{name}). Bitbucket returns no
 // content on success.
 func (c *Client) DeleteTag(ctx context.Context, workspace, repo, name string) error {
-	_, err := c.send(ctx, "DELETE", tagsBase(workspace, repo)+"/"+url.PathEscape(name), nil)
+	_, err := c.Send(ctx, "DELETE", tagsBase(workspace, repo)+"/"+url.PathEscape(name), nil)
 	return err
 }

@@ -9,13 +9,10 @@
 package conf
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
@@ -26,31 +23,21 @@ import (
 // productName labels this product in shared structured error messages.
 const productName = "Confluence"
 
-// Client is a typed Confluence API client bound to one authenticated site.
+// Client is a typed Confluence API client bound to one authenticated site. It
+// embeds restutil.Base for the shared request plumbing
+// (Get/Send/APIBase/SetLimit).
 type Client struct {
-	http *httpclient.Client
+	restutil.Base
 }
 
 // New wraps an authenticated httpclient.Client as a Confluence client.
 func New(c *httpclient.Client) *Client {
-	return &Client{http: c}
+	return &Client{Base: restutil.Base{HTTP: c, Product: productName}}
 }
 
-// APIBase returns the resolved Confluence v2 API base URL the client sends
-// requests to.
-func (c *Client) APIBase() (string, error) {
-	return c.http.APIBase()
-}
-
-// get issues a GET against an API-relative path or an absolute URL and returns
-// the raw body. A non-2xx response surfaces as the structured *apperr.Error
-// from httpclient.
-func (c *Client) get(ctx context.Context, pathOrURL string) (json.RawMessage, error) {
-	resp, err := c.http.Do(ctx, "GET", pathOrURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	return json.RawMessage(resp.Body), nil
+// setLimit records a positive limit as Confluence's limit page-size parameter.
+func setLimit(q url.Values, limit int) {
+	restutil.SetLimit(q, "limit", limit)
 }
 
 // v1URL builds an absolute URL for a Confluence REST v1 path. The v1 and v2
@@ -59,31 +46,11 @@ func (c *Client) get(ctx context.Context, pathOrURL string) (json.RawMessage, er
 // v2 API base. The result is an absolute URL on the same origin, which the
 // httpclient accepts.
 func (c *Client) v1URL(path string, q url.Values) (string, error) {
-	base, err := c.http.APIBase()
+	base, err := c.HTTP.APIBase()
 	if err != nil {
 		return "", err
 	}
 	return restutil.WithQuery(strings.TrimSuffix(base, "/api/v2")+"/rest/api"+path, q), nil
-}
-
-// send marshals payload as a JSON request body, issues method against an
-// API-relative path or absolute URL, and returns the raw response body. A
-// non-2xx response surfaces as the structured *apperr.Error from httpclient.
-func (c *Client) send(ctx context.Context, method, pathOrURL string, payload any) (json.RawMessage, error) {
-	var body io.Reader
-	if payload != nil {
-		b, err := json.Marshal(payload)
-		if err != nil {
-			return nil, apperr.New("request_encode_failed",
-				"could not encode the Confluence API request body: "+err.Error())
-		}
-		body = bytes.NewReader(b)
-	}
-	resp, err := c.http.Do(ctx, method, pathOrURL, body)
-	if err != nil {
-		return nil, err
-	}
-	return json.RawMessage(resp.Body), nil
 }
 
 // CurrentUser returns the authenticated account. Confluence REST v2 has no
@@ -93,19 +60,19 @@ func (c *Client) CurrentUser(ctx context.Context) (json.RawMessage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return c.get(ctx, u)
+	return c.Get(ctx, u)
 }
 
 // ListSpaces returns a page of spaces (GET /spaces).
 func (c *Client) ListSpaces(ctx context.Context, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery("/spaces", q))
+	return c.Get(ctx, restutil.WithQuery("/spaces", q))
 }
 
 // GetSpace returns a single space by id (GET /spaces/{id}).
 func (c *Client) GetSpace(ctx context.Context, id string) (json.RawMessage, error) {
-	return c.get(ctx, "/spaces/"+url.PathEscape(id))
+	return c.Get(ctx, "/spaces/"+url.PathEscape(id))
 }
 
 // FindSpaceByKey returns the spaces matching a key (GET /spaces?keys={key}).
@@ -114,7 +81,7 @@ func (c *Client) GetSpace(ctx context.Context, id string) (json.RawMessage, erro
 func (c *Client) FindSpaceByKey(ctx context.Context, key string) (json.RawMessage, error) {
 	q := url.Values{}
 	q.Set("keys", key)
-	return c.get(ctx, restutil.WithQuery("/spaces", q))
+	return c.Get(ctx, restutil.WithQuery("/spaces", q))
 }
 
 // ListPages returns a page of pages in a space (GET /pages?space-id={id}).
@@ -122,7 +89,7 @@ func (c *Client) ListPages(ctx context.Context, spaceID string, limit int) (json
 	q := url.Values{}
 	q.Set("space-id", spaceID)
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery("/pages", q))
+	return c.Get(ctx, restutil.WithQuery("/pages", q))
 }
 
 // GetPage returns a single page by id with its storage-format body
@@ -138,7 +105,7 @@ func (c *Client) GetPage(ctx context.Context, id string) (json.RawMessage, error
 func (c *Client) GetPageWithFormat(ctx context.Context, id, bodyFormat string) (json.RawMessage, error) {
 	q := url.Values{}
 	q.Set("body-format", bodyFormat)
-	return c.get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id), q))
+	return c.Get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id), q))
 }
 
 // GetChildPages returns a page of a page's direct children
@@ -146,7 +113,7 @@ func (c *Client) GetPageWithFormat(ctx context.Context, id, bodyFormat string) (
 func (c *Client) GetChildPages(ctx context.Context, id string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/children", q))
+	return c.Get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/children", q))
 }
 
 // SearchCQL runs a CQL query. CQL is a v1-only surface, so this uses the v1
@@ -159,14 +126,14 @@ func (c *Client) SearchCQL(ctx context.Context, cql string, limit int) (json.Raw
 	if err != nil {
 		return nil, err
 	}
-	return c.get(ctx, u)
+	return c.Get(ctx, u)
 }
 
 // CreatePage creates a page in a space (POST /pages) and returns the created
 // page. The body is sent verbatim under the named representation; Confluence
 // never converts it.
 func (c *Client) CreatePage(ctx context.Context, spaceID, title, bodyFormat, body string) (json.RawMessage, error) {
-	return c.send(ctx, "POST", "/pages", map[string]any{
+	return c.Send(ctx, "POST", "/pages", map[string]any{
 		"spaceId": spaceID,
 		"status":  "current",
 		"title":   title,
@@ -182,7 +149,7 @@ func (c *Client) CreatePage(ctx context.Context, spaceID, title, bodyFormat, bod
 // the complete post-edit state: status, title, body, and the next version
 // number (the current number plus one).
 func (c *Client) UpdatePage(ctx context.Context, id, status, title, bodyFormat, body string, version int) (json.RawMessage, error) {
-	return c.send(ctx, "PUT", "/pages/"+url.PathEscape(id), map[string]any{
+	return c.Send(ctx, "PUT", "/pages/"+url.PathEscape(id), map[string]any{
 		"id":     id,
 		"status": status,
 		"title":  title,
@@ -231,7 +198,7 @@ func (c *Client) followList(ctx context.Context, firstURL string) (json.RawMessa
 	reqURL := firstURL
 	done := false
 	for page := 0; page < restutil.MaxFollowPages; page++ {
-		raw, err := c.get(ctx, reqURL)
+		raw, err := c.Get(ctx, reqURL)
 		if err != nil {
 			return nil, err
 		}
@@ -304,7 +271,7 @@ func (c *Client) SearchCQLAll(ctx context.Context, cql string, limit int) (json.
 func (c *Client) ListFooterComments(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(pageID)+"/footer-comments", q))
+	return c.Get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(pageID)+"/footer-comments", q))
 }
 
 // ListFooterCommentsAll follows a page's footer-comment list to completion.
@@ -319,14 +286,14 @@ func (c *Client) ListFooterCommentsAll(ctx context.Context, pageID string, limit
 func (c *Client) GetFooterComment(ctx context.Context, id string) (json.RawMessage, error) {
 	q := url.Values{}
 	q.Set("body-format", "storage")
-	return c.get(ctx, restutil.WithQuery("/footer-comments/"+url.PathEscape(id), q))
+	return c.Get(ctx, restutil.WithQuery("/footer-comments/"+url.PathEscape(id), q))
 }
 
 // CreateFooterComment adds a footer comment to a page (POST /footer-comments)
 // and returns the created comment. The body is sent verbatim under the named
 // representation.
 func (c *Client) CreateFooterComment(ctx context.Context, pageID, bodyFormat, body string) (json.RawMessage, error) {
-	return c.send(ctx, "POST", "/footer-comments", map[string]any{
+	return c.Send(ctx, "POST", "/footer-comments", map[string]any{
 		"pageId": pageID,
 		"body": map[string]string{
 			"representation": bodyFormat,
@@ -340,7 +307,7 @@ func (c *Client) CreateFooterComment(ctx context.Context, pageID, bodyFormat, bo
 // treats the update as a full replacement, so the caller supplies the next
 // version number (the current number plus one).
 func (c *Client) UpdateFooterComment(ctx context.Context, id, bodyFormat, body string, version int) (json.RawMessage, error) {
-	return c.send(ctx, "PUT", "/footer-comments/"+url.PathEscape(id), map[string]any{
+	return c.Send(ctx, "PUT", "/footer-comments/"+url.PathEscape(id), map[string]any{
 		"version": map[string]int{"number": version},
 		"body": map[string]string{
 			"representation": bodyFormat,
@@ -351,7 +318,7 @@ func (c *Client) UpdateFooterComment(ctx context.Context, id, bodyFormat, body s
 
 // DeleteFooterComment removes a footer comment (DELETE /footer-comments/{id}).
 func (c *Client) DeleteFooterComment(ctx context.Context, id string) error {
-	_, err := c.send(ctx, "DELETE", "/footer-comments/"+url.PathEscape(id), nil)
+	_, err := c.Send(ctx, "DELETE", "/footer-comments/"+url.PathEscape(id), nil)
 	return err
 }
 
@@ -359,7 +326,7 @@ func (c *Client) DeleteFooterComment(ctx context.Context, id string) error {
 func (c *Client) ListLabels(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(pageID)+"/labels", q))
+	return c.Get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(pageID)+"/labels", q))
 }
 
 // ListLabelsAll follows a page's label list to completion.
@@ -376,7 +343,7 @@ func (c *Client) AddLabel(ctx context.Context, pageID, label string) (json.RawMe
 	if err != nil {
 		return nil, err
 	}
-	return c.send(ctx, "POST", u, []map[string]string{{"name": label}})
+	return c.Send(ctx, "POST", u, []map[string]string{{"name": label}})
 }
 
 // RemoveLabel detaches a label from a page via the v1 content-label surface.
@@ -385,7 +352,7 @@ func (c *Client) RemoveLabel(ctx context.Context, pageID, label string) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.send(ctx, "DELETE", u, nil)
+	_, err = c.Send(ctx, "DELETE", u, nil)
 	return err
 }
 
@@ -394,7 +361,7 @@ func (c *Client) RemoveLabel(ctx context.Context, pageID, label string) error {
 func (c *Client) ListAttachments(ctx context.Context, pageID string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(pageID)+"/attachments", q))
+	return c.Get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(pageID)+"/attachments", q))
 }
 
 // ListAttachmentsAll follows a page's attachment list to completion.
@@ -407,7 +374,7 @@ func (c *Client) ListAttachmentsAll(ctx context.Context, pageID string, limit in
 // GetAttachment returns a single attachment's metadata, including the
 // downloadLink that locates its binary (GET /attachments/{id}).
 func (c *Client) GetAttachment(ctx context.Context, id string) (json.RawMessage, error) {
-	return c.get(ctx, "/attachments/"+url.PathEscape(id))
+	return c.Get(ctx, "/attachments/"+url.PathEscape(id))
 }
 
 // FetchAttachmentData downloads an attachment's binary content. downloadLink
@@ -418,7 +385,7 @@ func (c *Client) FetchAttachmentData(ctx context.Context, downloadLink string) (
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.http.Do(ctx, "GET", u, nil)
+	resp, err := c.HTTP.Do(ctx, "GET", u, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -442,17 +409,10 @@ func (c *Client) downloadURL(link string) (string, error) {
 	if u.IsAbs() {
 		return link, nil
 	}
-	base, err := c.http.APIBase()
+	base, err := c.HTTP.APIBase()
 	if err != nil {
 		return "", err
 	}
 	ctxBase := strings.TrimSuffix(base, "/api/v2")
 	return strings.TrimRight(ctxBase, "/") + "/" + strings.TrimLeft(link, "/"), nil
-}
-
-// setLimit records a positive limit as the API limit parameter.
-func setLimit(q url.Values, limit int) {
-	if limit > 0 {
-		q.Set("limit", strconv.Itoa(limit))
-	}
 }

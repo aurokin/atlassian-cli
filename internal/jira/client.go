@@ -5,14 +5,11 @@
 package jira
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/url"
 	"strconv"
 
-	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/httpclient"
 	"github.com/aurokin/atlassian-cli/internal/restutil"
 )
@@ -20,72 +17,42 @@ import (
 // productName labels this product in shared structured error messages.
 const productName = "Jira"
 
-// Client is a typed Jira API client bound to one authenticated site.
+// Client is a typed Jira API client bound to one authenticated site. It embeds
+// restutil.Base for the shared request plumbing (Get/Send/APIBase/SetLimit).
 type Client struct {
-	http *httpclient.Client
+	restutil.Base
 }
 
 // New wraps an authenticated httpclient.Client as a Jira client.
 func New(c *httpclient.Client) *Client {
-	return &Client{http: c}
+	return &Client{Base: restutil.Base{HTTP: c, Product: productName}}
 }
 
-// APIBase returns the resolved Jira API base URL the client sends requests to.
-func (c *Client) APIBase() (string, error) {
-	return c.http.APIBase()
-}
-
-// get issues a GET against an API-relative path and returns the raw body. A
-// non-2xx response surfaces as the structured *apperr.Error from httpclient.
-func (c *Client) get(ctx context.Context, path string) (json.RawMessage, error) {
-	resp, err := c.http.Do(ctx, "GET", path, nil)
-	if err != nil {
-		return nil, err
-	}
-	return json.RawMessage(resp.Body), nil
-}
-
-// send marshals payload as a JSON request body, issues method against an
-// API-relative path, and returns the raw response body. A nil payload sends no
-// body. A non-2xx response surfaces as the structured *apperr.Error from
-// httpclient.
-func (c *Client) send(ctx context.Context, method, path string, payload any) (json.RawMessage, error) {
-	var body io.Reader
-	if payload != nil {
-		b, err := json.Marshal(payload)
-		if err != nil {
-			return nil, apperr.New("request_encode_failed",
-				"could not encode the Jira API request body: "+err.Error())
-		}
-		body = bytes.NewReader(b)
-	}
-	resp, err := c.http.Do(ctx, method, path, body)
-	if err != nil {
-		return nil, err
-	}
-	return json.RawMessage(resp.Body), nil
+// setLimit records a positive limit as Jira's maxResults page-size parameter.
+func setLimit(q url.Values, limit int) {
+	restutil.SetLimit(q, "maxResults", limit)
 }
 
 // Myself returns the authenticated account (GET /myself).
 func (c *Client) Myself(ctx context.Context) (json.RawMessage, error) {
-	return c.get(ctx, "/myself")
+	return c.Get(ctx, "/myself")
 }
 
 // GetProject returns a single project by id or key (GET /project/{idOrKey}).
 func (c *Client) GetProject(ctx context.Context, idOrKey string) (json.RawMessage, error) {
-	return c.get(ctx, "/project/"+url.PathEscape(idOrKey))
+	return c.Get(ctx, "/project/"+url.PathEscape(idOrKey))
 }
 
 // SearchProjects returns a page of projects (GET /project/search).
 func (c *Client) SearchProjects(ctx context.Context, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery("/project/search", q))
+	return c.Get(ctx, restutil.WithQuery("/project/search", q))
 }
 
 // GetIssue returns a single issue by id or key (GET /issue/{idOrKey}).
 func (c *Client) GetIssue(ctx context.Context, idOrKey string) (json.RawMessage, error) {
-	return c.get(ctx, "/issue/"+url.PathEscape(idOrKey))
+	return c.Get(ctx, "/issue/"+url.PathEscape(idOrKey))
 }
 
 // SearchIssues runs a JQL query (GET /search/jql).
@@ -98,7 +65,7 @@ func (c *Client) SearchIssues(ctx context.Context, jql string, limit int) (json.
 	q.Set("jql", jql)
 	q.Set("fields", "*navigable")
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery("/search/jql", q))
+	return c.Get(ctx, restutil.WithQuery("/search/jql", q))
 }
 
 // ListComments returns a page of comments on an issue
@@ -106,24 +73,24 @@ func (c *Client) SearchIssues(ctx context.Context, jql string, limit int) (json.
 func (c *Client) ListComments(ctx context.Context, issue string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(issue)+"/comment", q))
+	return c.Get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(issue)+"/comment", q))
 }
 
 // GetComment returns a single comment (GET /issue/{idOrKey}/comment/{id}).
 func (c *Client) GetComment(ctx context.Context, issue, commentID string) (json.RawMessage, error) {
-	return c.get(ctx, "/issue/"+url.PathEscape(issue)+"/comment/"+url.PathEscape(commentID))
+	return c.Get(ctx, "/issue/"+url.PathEscape(issue)+"/comment/"+url.PathEscape(commentID))
 }
 
 // CreateIssue creates an issue (POST /issue) from the given field map and
 // returns the raw creation response (id, key, self).
 func (c *Client) CreateIssue(ctx context.Context, fields map[string]any) (json.RawMessage, error) {
-	return c.send(ctx, "POST", "/issue", map[string]any{"fields": fields})
+	return c.Send(ctx, "POST", "/issue", map[string]any{"fields": fields})
 }
 
 // EditIssue updates an issue's fields (PUT /issue/{idOrKey}). Jira returns no
 // body on success.
 func (c *Client) EditIssue(ctx context.Context, idOrKey string, fields map[string]any) error {
-	_, err := c.send(ctx, "PUT", "/issue/"+url.PathEscape(idOrKey),
+	_, err := c.Send(ctx, "PUT", "/issue/"+url.PathEscape(idOrKey),
 		map[string]any{"fields": fields})
 	return err
 }
@@ -131,13 +98,13 @@ func (c *Client) EditIssue(ctx context.Context, idOrKey string, fields map[strin
 // GetTransitions returns the transitions available on an issue from its
 // current status (GET /issue/{idOrKey}/transitions).
 func (c *Client) GetTransitions(ctx context.Context, idOrKey string) (json.RawMessage, error) {
-	return c.get(ctx, "/issue/"+url.PathEscape(idOrKey)+"/transitions")
+	return c.Get(ctx, "/issue/"+url.PathEscape(idOrKey)+"/transitions")
 }
 
 // DoTransition applies a transition to an issue
 // (POST /issue/{idOrKey}/transitions). Jira returns no body on success.
 func (c *Client) DoTransition(ctx context.Context, idOrKey, transitionID string) error {
-	_, err := c.send(ctx, "POST", "/issue/"+url.PathEscape(idOrKey)+"/transitions",
+	_, err := c.Send(ctx, "POST", "/issue/"+url.PathEscape(idOrKey)+"/transitions",
 		map[string]any{"transition": map[string]string{"id": transitionID}})
 	return err
 }
@@ -145,21 +112,21 @@ func (c *Client) DoTransition(ctx context.Context, idOrKey, transitionID string)
 // CreateComment adds a comment to an issue (POST /issue/{idOrKey}/comment). The
 // body is an ADF document; the created comment is returned.
 func (c *Client) CreateComment(ctx context.Context, issue string, body json.RawMessage) (json.RawMessage, error) {
-	return c.send(ctx, "POST", "/issue/"+url.PathEscape(issue)+"/comment",
+	return c.Send(ctx, "POST", "/issue/"+url.PathEscape(issue)+"/comment",
 		map[string]any{"body": body})
 }
 
 // EditComment replaces a comment's body (PUT /issue/{idOrKey}/comment/{id}).
 // The body is an ADF document; the updated comment is returned.
 func (c *Client) EditComment(ctx context.Context, issue, commentID string, body json.RawMessage) (json.RawMessage, error) {
-	return c.send(ctx, "PUT", "/issue/"+url.PathEscape(issue)+"/comment/"+url.PathEscape(commentID),
+	return c.Send(ctx, "PUT", "/issue/"+url.PathEscape(issue)+"/comment/"+url.PathEscape(commentID),
 		map[string]any{"body": body})
 }
 
 // DeleteComment removes a comment (DELETE /issue/{idOrKey}/comment/{id}). Jira
 // returns no body on success.
 func (c *Client) DeleteComment(ctx context.Context, issue, commentID string) error {
-	_, err := c.send(ctx, "DELETE",
+	_, err := c.Send(ctx, "DELETE",
 		"/issue/"+url.PathEscape(issue)+"/comment/"+url.PathEscape(commentID), nil)
 	return err
 }
@@ -173,7 +140,7 @@ func (c *Client) AssignIssue(ctx context.Context, idOrKey string, accountID *str
 	if accountID != nil {
 		v = *accountID
 	}
-	_, err := c.send(ctx, "PUT", "/issue/"+url.PathEscape(idOrKey)+"/assignee",
+	_, err := c.Send(ctx, "PUT", "/issue/"+url.PathEscape(idOrKey)+"/assignee",
 		map[string]any{"accountId": v})
 	return err
 }
@@ -187,7 +154,7 @@ func (c *Client) AddWatcher(ctx context.Context, idOrKey, accountID string) erro
 	if accountID != "" {
 		payload = accountID
 	}
-	_, err := c.send(ctx, "POST", "/issue/"+url.PathEscape(idOrKey)+"/watchers", payload)
+	_, err := c.Send(ctx, "POST", "/issue/"+url.PathEscape(idOrKey)+"/watchers", payload)
 	return err
 }
 
@@ -198,7 +165,7 @@ func (c *Client) AddWatcher(ctx context.Context, idOrKey, accountID string) erro
 func (c *Client) RemoveWatcher(ctx context.Context, idOrKey, accountID string) error {
 	q := url.Values{}
 	q.Set("accountId", accountID)
-	_, err := c.send(ctx, "DELETE",
+	_, err := c.Send(ctx, "DELETE",
 		restutil.WithQuery("/issue/"+url.PathEscape(idOrKey)+"/watchers", q), nil)
 	return err
 }
@@ -206,14 +173,14 @@ func (c *Client) RemoveWatcher(ctx context.Context, idOrKey, accountID string) e
 // ListWatchers returns the issue's watcher list
 // (GET /issue/{idOrKey}/watchers).
 func (c *Client) ListWatchers(ctx context.Context, idOrKey string) (json.RawMessage, error) {
-	return c.get(ctx, "/issue/"+url.PathEscape(idOrKey)+"/watchers")
+	return c.Get(ctx, "/issue/"+url.PathEscape(idOrKey)+"/watchers")
 }
 
 // CreateIssueLink creates a directional link between two issues
 // (POST /issueLink). inward and outward are issue keys; linkType is the name
 // of the link type (e.g. "Blocks"). Jira returns no body on success.
 func (c *Client) CreateIssueLink(ctx context.Context, inward, outward, linkType string) error {
-	_, err := c.send(ctx, "POST", "/issueLink", map[string]any{
+	_, err := c.Send(ctx, "POST", "/issueLink", map[string]any{
 		"type":         map[string]string{"name": linkType},
 		"inwardIssue":  map[string]string{"key": inward},
 		"outwardIssue": map[string]string{"key": outward},
@@ -224,7 +191,7 @@ func (c *Client) CreateIssueLink(ctx context.Context, inward, outward, linkType 
 // ListIssueLinkTypes returns the issue link types available on the site
 // (GET /issueLinkType).
 func (c *Client) ListIssueLinkTypes(ctx context.Context) (json.RawMessage, error) {
-	return c.get(ctx, "/issueLinkType")
+	return c.Get(ctx, "/issueLinkType")
 }
 
 // ListWorklogs returns a page of an issue's worklog entries
@@ -232,7 +199,7 @@ func (c *Client) ListIssueLinkTypes(ctx context.Context) (json.RawMessage, error
 func (c *Client) ListWorklogs(ctx context.Context, idOrKey string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(idOrKey)+"/worklog", q))
+	return c.Get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(idOrKey)+"/worklog", q))
 }
 
 // AddWorklog appends a worklog entry to an issue
@@ -244,7 +211,7 @@ func (c *Client) AddWorklog(ctx context.Context, idOrKey, timeSpent string, comm
 	if commentADF != nil {
 		payload["comment"] = commentADF
 	}
-	return c.send(ctx, "POST", "/issue/"+url.PathEscape(idOrKey)+"/worklog", payload)
+	return c.Send(ctx, "POST", "/issue/"+url.PathEscape(idOrKey)+"/worklog", payload)
 }
 
 // decodeError wraps a pagination decode failure as a structured error.
@@ -307,7 +274,7 @@ func (c *Client) SearchProjectsAll(ctx context.Context, limit int) (json.RawMess
 			if cursor != "" {
 				q.Set("startAt", cursor)
 			}
-			return c.get(ctx, restutil.WithQuery("/project/search", q))
+			return c.Get(ctx, restutil.WithQuery("/project/search", q))
 		},
 		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
 			var pg struct {
@@ -344,7 +311,7 @@ func (c *Client) SearchIssuesAll(ctx context.Context, jql string, limit int) (js
 			if cursor != "" {
 				q.Set("nextPageToken", cursor)
 			}
-			return c.get(ctx, restutil.WithQuery("/search/jql", q))
+			return c.Get(ctx, restutil.WithQuery("/search/jql", q))
 		},
 		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
 			var pg struct {
@@ -373,7 +340,7 @@ func (c *Client) ListCommentsAll(ctx context.Context, issue string, limit int) (
 			if cursor != "" {
 				q.Set("startAt", cursor)
 			}
-			return c.get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(issue)+"/comment", q))
+			return c.Get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(issue)+"/comment", q))
 		},
 		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
 			var pg struct {
@@ -407,7 +374,7 @@ func (c *Client) ListWorklogsAll(ctx context.Context, idOrKey string, limit int)
 			if cursor != "" {
 				q.Set("startAt", cursor)
 			}
-			return c.get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(idOrKey)+"/worklog", q))
+			return c.Get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(idOrKey)+"/worklog", q))
 		},
 		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
 			var pg struct {
@@ -429,11 +396,4 @@ func (c *Client) ListWorklogsAll(ctx context.Context, idOrKey string, limit int)
 		return nil, err
 	}
 	return synthesize("worklogs", items)
-}
-
-// setLimit records a positive limit as the API maxResults parameter.
-func setLimit(q url.Values, limit int) {
-	if limit > 0 {
-		q.Set("maxResults", strconv.Itoa(limit))
-	}
 }

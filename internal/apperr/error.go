@@ -28,6 +28,9 @@ const (
 	// CodeRequestFailed marks a transport-level failure with no HTTP response
 	// (connection refused, DNS failure, body read error).
 	CodeRequestFailed = "request_failed"
+	// CodeRequestEncodeFailed marks a request body that could not be marshaled
+	// to JSON before the request was sent.
+	CodeRequestEncodeFailed = "request_encode_failed"
 	// CodeResponseDecodeFailed marks a response (or aggregated page set) that
 	// could not be decoded into the expected model.
 	CodeResponseDecodeFailed = "response_decode_failed"

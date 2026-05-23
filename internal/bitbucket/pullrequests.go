@@ -30,7 +30,7 @@ func pullRequestsQuery(state string, limit int) url.Values {
 // (GET /repositories/{ws}/{repo}/pullrequests). state filters by Bitbucket PR
 // state (OPEN, MERGED, DECLINED, SUPERSEDED); an empty state lists all.
 func (c *Client) ListPullRequests(ctx context.Context, workspace, repo, state string, limit int) (json.RawMessage, error) {
-	return c.get(ctx, restutil.WithQuery(prBase(workspace, repo), pullRequestsQuery(state, limit)))
+	return c.Get(ctx, restutil.WithQuery(prBase(workspace, repo), pullRequestsQuery(state, limit)))
 }
 
 // ListPullRequestsAll follows a repository's pull-request listing to
@@ -42,7 +42,7 @@ func (c *Client) ListPullRequestsAll(ctx context.Context, workspace, repo, state
 // GetPullRequest returns a single pull request by numeric id
 // (GET /repositories/{ws}/{repo}/pullrequests/{id}).
 func (c *Client) GetPullRequest(ctx context.Context, workspace, repo string, id int) (json.RawMessage, error) {
-	return c.get(ctx, prBase(workspace, repo)+"/"+strconv.Itoa(id))
+	return c.Get(ctx, prBase(workspace, repo)+"/"+strconv.Itoa(id))
 }
 
 // CreatePullRequestOptions holds the fields a pull-request creation accepts.
@@ -73,5 +73,5 @@ func (c *Client) CreatePullRequest(ctx context.Context, workspace, repo string, 
 	if opts.Draft {
 		body["draft"] = true
 	}
-	return c.send(ctx, "POST", prBase(workspace, repo), body)
+	return c.Send(ctx, "POST", prBase(workspace, repo), body)
 }

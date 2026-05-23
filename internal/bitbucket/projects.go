@@ -18,7 +18,7 @@ func projectsBase(workspace string) string {
 func (c *Client) ListProjects(ctx context.Context, workspace string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery(projectsBase(workspace), q))
+	return c.Get(ctx, restutil.WithQuery(projectsBase(workspace), q))
 }
 
 // ListProjectsAll follows a workspace's project listing to completion and
@@ -32,7 +32,7 @@ func (c *Client) ListProjectsAll(ctx context.Context, workspace string, limit in
 // GetProject returns a single project by key
 // (GET /workspaces/{ws}/projects/{key}).
 func (c *Client) GetProject(ctx context.Context, workspace, projectKey string) (json.RawMessage, error) {
-	return c.get(ctx, projectsBase(workspace)+"/"+url.PathEscape(projectKey))
+	return c.Get(ctx, projectsBase(workspace)+"/"+url.PathEscape(projectKey))
 }
 
 // CreateProjectOptions holds the fields a project creation accepts. Name is
@@ -54,5 +54,5 @@ func (c *Client) CreateProject(ctx context.Context, workspace, projectKey string
 	if opts.IsPrivate != nil {
 		body["is_private"] = *opts.IsPrivate
 	}
-	return c.send(ctx, "POST", projectsBase(workspace), body)
+	return c.Send(ctx, "POST", projectsBase(workspace), body)
 }

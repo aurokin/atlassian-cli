@@ -32,7 +32,7 @@ func commitsBase(workspace, repo, revision string) string {
 func (c *Client) ListCommits(ctx context.Context, workspace, repo, revision string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.get(ctx, restutil.WithQuery(commitsBase(workspace, repo, revision), q))
+	return c.Get(ctx, restutil.WithQuery(commitsBase(workspace, repo, revision), q))
 }
 
 // ListCommitsAll follows a repository's commit history to completion and
@@ -46,5 +46,5 @@ func (c *Client) ListCommitsAll(ctx context.Context, workspace, repo, revision s
 // GetCommit returns a single commit by revision (branch, tag, or hash)
 // (GET /repositories/{ws}/{repo}/commit/{revision}).
 func (c *Client) GetCommit(ctx context.Context, workspace, repo, commit string) (json.RawMessage, error) {
-	return c.get(ctx, repoBase(workspace, repo)+"/commit/"+url.PathEscape(commit))
+	return c.Get(ctx, repoBase(workspace, repo)+"/commit/"+url.PathEscape(commit))
 }

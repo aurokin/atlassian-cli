@@ -30,7 +30,7 @@ func issuesQuery(state string, limit int) url.Values {
 // (GET /repositories/{ws}/{repo}/issues). A repository with its issue tracker
 // disabled surfaces as a feature_disabled error.
 func (c *Client) ListIssues(ctx context.Context, workspace, repo, state string, limit int) (json.RawMessage, error) {
-	return c.get(ctx, restutil.WithQuery(issuesBase(workspace, repo), issuesQuery(state, limit)))
+	return c.Get(ctx, restutil.WithQuery(issuesBase(workspace, repo), issuesQuery(state, limit)))
 }
 
 // ListIssuesAll follows a repository's issue listing to completion and returns
@@ -42,7 +42,7 @@ func (c *Client) ListIssuesAll(ctx context.Context, workspace, repo, state strin
 // GetIssue returns a single issue by numeric id
 // (GET /repositories/{ws}/{repo}/issues/{id}).
 func (c *Client) GetIssue(ctx context.Context, workspace, repo string, id int) (json.RawMessage, error) {
-	return c.get(ctx, issuesBase(workspace, repo)+"/"+strconv.Itoa(id))
+	return c.Get(ctx, issuesBase(workspace, repo)+"/"+strconv.Itoa(id))
 }
 
 // CreateIssueOptions holds the fields an issue creation accepts. Title is
@@ -68,5 +68,5 @@ func (c *Client) CreateIssue(ctx context.Context, workspace, repo string, opts C
 	if opts.Priority != "" {
 		body["priority"] = opts.Priority
 	}
-	return c.send(ctx, "POST", issuesBase(workspace, repo), body)
+	return c.Send(ctx, "POST", issuesBase(workspace, repo), body)
 }

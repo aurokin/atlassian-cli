@@ -27,7 +27,7 @@ func searchQuery(query, sort string, limit int) url.Values {
 // SearchRepositories lists a workspace's repositories filtered by a raw
 // Bitbucket query (GET /repositories/{workspace}?q=…).
 func (c *Client) SearchRepositories(ctx context.Context, workspace, query, sort string, limit int) (json.RawMessage, error) {
-	return c.get(ctx, restutil.WithQuery("/repositories/"+url.PathEscape(workspace), searchQuery(query, sort, limit)))
+	return c.Get(ctx, restutil.WithQuery("/repositories/"+url.PathEscape(workspace), searchQuery(query, sort, limit)))
 }
 
 // SearchRepositoriesAll follows a repository search to completion and returns
@@ -39,7 +39,7 @@ func (c *Client) SearchRepositoriesAll(ctx context.Context, workspace, query, so
 // SearchPullRequests lists a repository's pull requests filtered by a raw
 // Bitbucket query (GET /repositories/{ws}/{repo}/pullrequests?q=…).
 func (c *Client) SearchPullRequests(ctx context.Context, workspace, repo, query, sort string, limit int) (json.RawMessage, error) {
-	return c.get(ctx, restutil.WithQuery(prBase(workspace, repo), searchQuery(query, sort, limit)))
+	return c.Get(ctx, restutil.WithQuery(prBase(workspace, repo), searchQuery(query, sort, limit)))
 }
 
 // SearchPullRequestsAll follows a pull-request search to completion and returns
@@ -52,7 +52,7 @@ func (c *Client) SearchPullRequestsAll(ctx context.Context, workspace, repo, que
 // (GET /repositories/{ws}/{repo}/issues?q=…). A repository with its issue
 // tracker disabled surfaces as a feature_disabled error.
 func (c *Client) SearchIssues(ctx context.Context, workspace, repo, query, sort string, limit int) (json.RawMessage, error) {
-	return c.get(ctx, restutil.WithQuery(issuesBase(workspace, repo), searchQuery(query, sort, limit)))
+	return c.Get(ctx, restutil.WithQuery(issuesBase(workspace, repo), searchQuery(query, sort, limit)))
 }
 
 // SearchIssuesAll follows an issue search to completion and returns an
