@@ -132,8 +132,20 @@ func TestBitbucketCommitList(t *testing.T) {
 func TestBitbucketPRList(t *testing.T) {
 	s := bbSession(t)
 	_, _, target := bbRepo(t)
-	// Listing pull requests in any state should succeed and shape output.
-	s.mustRun("pr", "list", "--repo", target, "--state", "ALL", "--limit", "5", "--json")
+	// Listing pull requests in any state should succeed and return a
+	// well-formed page; any entries present must carry an id and state.
+	var page struct {
+		Values []struct {
+			ID    int    `json:"id"`
+			State string `json:"state"`
+		} `json:"values"`
+	}
+	s.mustJSON(&page, "pr", "list", "--repo", target, "--state", "ALL", "--limit", "5")
+	for i, pr := range page.Values {
+		if pr.ID == 0 || pr.State == "" {
+			t.Fatalf("pr list entry %d missing id/state: %+v", i, pr)
+		}
+	}
 }
 
 // TestBitbucketBranchLifecycle creates a uniquely-named branch off the repo's
