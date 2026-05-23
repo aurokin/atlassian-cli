@@ -205,6 +205,19 @@ func (s *session) mustRun(args ...string) cmdResult {
 	return res
 }
 
+// mustWrite runs a mutating command: a scope/permission failure skips the test
+// (a tenant/app gap, not a CLI defect); any other failure is fatal. It is a
+// shared primitive used by every product's lifecycle test.
+func (s *session) mustWrite(op string, args ...string) cmdResult {
+	s.t.Helper()
+	res := s.run(args...)
+	s.skipIfScopeOrPermission(res, op)
+	if res.err != nil {
+		s.t.Fatalf("%s failed: %v\nstdout:\n%s\nstderr:\n%s", op, res.err, res.stdout, res.stderr)
+	}
+	return res
+}
+
 // mustJSON runs a command with --json and decodes stdout into v.
 func (s *session) mustJSON(v any, args ...string) {
 	s.t.Helper()

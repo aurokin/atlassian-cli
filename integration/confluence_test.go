@@ -139,11 +139,16 @@ func TestConfLabelLifecycle(t *testing.T) {
 	}
 
 	// Safety net: remove the label even if a later assertion aborts the test
-	// before the explicit removal below. The happy path removes it itself, so a
-	// "not found" here just means it is already gone — not a failure.
+	// before the explicit removal below. The happy path sets `removed` so this
+	// becomes a no-op; otherwise an already-gone label surfaces the standard
+	// not_found_or_not_visible error, which is tolerated here.
+	removed := false
 	t.Cleanup(func() {
+		if removed {
+			return
+		}
 		res := s.run("page", "label", "remove", pageID, label)
-		if res.err != nil && !strings.Contains(res.stdout+res.stderr, "No label found") {
+		if res.err != nil && !strings.Contains(res.stdout+res.stderr, "not_found") {
 			t.Logf("cleanup: failed to remove label %q from page %s (remove it manually): %v\n%s",
 				label, pageID, res.err, res.stdout+res.stderr)
 		}
@@ -158,6 +163,7 @@ func TestConfLabelLifecycle(t *testing.T) {
 	if !strings.Contains(removeRes.stdout, "removed label "+label) {
 		t.Fatalf("page label remove output unexpected: %q", removeRes.stdout)
 	}
+	removed = true
 }
 
 // TestConfPageLifecycle creates a throwaway page, edits it, comments on it, and
