@@ -260,6 +260,25 @@ func (c *Client) Do(ctx context.Context, method, pathOrURL string, body io.Reade
 // attachment download, say — pass "*/*" rather than the JSON default, since a
 // JSON Accept is wrong for a file. Behavior is otherwise identical to Do.
 func (c *Client) DoAccepting(ctx context.Context, method, pathOrURL string, body io.Reader, accept string) (*Response, error) {
+	return c.do(ctx, method, pathOrURL, body, accept, "application/json", nil)
+}
+
+// DoUpload signs and sends a request whose body carries the given Content-Type
+// (e.g. a multipart/form-data boundary) rather than the JSON default, plus the
+// X-Atlassian-Token: no-check header that Atlassian's attachment-upload
+// endpoints require to bypass their XSRF check. It is the upload counterpart to
+// Do; behavior is otherwise identical.
+func (c *Client) DoUpload(ctx context.Context, method, pathOrURL, contentType string, body io.Reader) (*Response, error) {
+	return c.do(ctx, method, pathOrURL, body, "application/json", contentType,
+		map[string]string{"X-Atlassian-Token": "no-check"})
+}
+
+// do is the shared request core behind Do/DoAccepting/DoUpload. It resolves
+// pathOrURL, sets the Accept header and (when body is non-nil) the given
+// Content-Type, applies any extra headers, signs the request, executes it, and
+// reads the body. A non-2xx status is returned as a structured *apperr.Error
+// alongside the populated Response.
+func (c *Client) do(ctx context.Context, method, pathOrURL string, body io.Reader, accept, contentType string, extra map[string]string) (*Response, error) {
 	target, err := c.target.ResolveURL(pathOrURL)
 	if err != nil {
 		return nil, err
@@ -270,7 +289,10 @@ func (c *Client) DoAccepting(ctx context.Context, method, pathOrURL string, body
 	}
 	req.Header.Set("Accept", accept)
 	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Type", contentType)
+	}
+	for k, v := range extra {
+		req.Header.Set(k, v)
 	}
 	cred, err := c.credentials(ctx)
 	if err != nil {

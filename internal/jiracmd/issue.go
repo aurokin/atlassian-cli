@@ -34,6 +34,7 @@ func newIssueCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		newIssueLinkCommand(info, g),
 		newWorklogCommand(info, g),
 		newCommentCommand(info, g),
+		newAttachmentCommand(info, g),
 	)
 	return cmd
 }

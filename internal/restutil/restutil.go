@@ -87,6 +87,18 @@ func (b *Base) Send(ctx context.Context, method, pathOrURL string, payload any) 
 	return json.RawMessage(resp.Body), nil
 }
 
+// Upload sends body with an explicit Content-Type (e.g. a multipart boundary)
+// and the X-Atlassian-Token: no-check header attachment-upload endpoints
+// require, returning the raw response body. A non-2xx response surfaces as the
+// structured *apperr.Error from httpclient, passed through RemapError when set.
+func (b *Base) Upload(ctx context.Context, method, pathOrURL, contentType string, body io.Reader) (json.RawMessage, error) {
+	resp, err := b.HTTP.DoUpload(ctx, method, pathOrURL, contentType, body)
+	if err != nil {
+		return nil, b.remap(resp, err)
+	}
+	return json.RawMessage(resp.Body), nil
+}
+
 // remap applies the optional RemapError hook to a non-nil error.
 func (b *Base) remap(resp *httpclient.Response, err error) error {
 	if b.RemapError == nil {

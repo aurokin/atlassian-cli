@@ -5,11 +5,15 @@
 package jira
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+	"mime/multipart"
 	"net/url"
 	"strconv"
 
+	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/httpclient"
 	"github.com/aurokin/atlassian-cli/internal/restutil"
 )
@@ -240,6 +244,60 @@ func (c *Client) AddWorklog(ctx context.Context, idOrKey, timeSpent string, comm
 		payload["comment"] = commentADF
 	}
 	return c.Send(ctx, "POST", "/issue/"+url.PathEscape(idOrKey)+"/worklog", payload)
+}
+
+// ListIssueAttachments returns the issue with only its attachment field
+// populated. Jira has no standalone attachment-list endpoint; an issue's
+// attachments are carried in fields.attachment, so this is GetIssue scoped to
+// that one field.
+func (c *Client) ListIssueAttachments(ctx context.Context, idOrKey string) (json.RawMessage, error) {
+	return c.GetIssue(ctx, idOrKey, "attachment", "")
+}
+
+// GetAttachment returns a single attachment's metadata, including the absolute
+// content URL that locates its binary (GET /attachment/{id}).
+func (c *Client) GetAttachment(ctx context.Context, id string) (json.RawMessage, error) {
+	return c.Get(ctx, "/attachment/"+url.PathEscape(id))
+}
+
+// FetchAttachmentData downloads an attachment's binary content from the
+// absolute content URL on its metadata. The same-origin check still applies, so
+// a content URL pointing off the configured site is rejected at request time.
+func (c *Client) FetchAttachmentData(ctx context.Context, contentURL string) ([]byte, error) {
+	if contentURL == "" {
+		return nil, apperr.InvalidInput("attachment has no content URL")
+	}
+	// An attachment is binary, so accept any content type rather than the JSON
+	// default a normal API GET sends.
+	resp, err := c.HTTP.DoAccepting(ctx, "GET", contentURL, nil, "*/*")
+	if err != nil {
+		return nil, err
+	}
+	return resp.Body, nil
+}
+
+// AddAttachment uploads a file to an issue (POST /issue/{idOrKey}/attachments)
+// as multipart/form-data under the "file" part. filename is the name recorded
+// on the attachment; r supplies its bytes. The response is the JSON array of
+// created attachment records.
+func (c *Client) AddAttachment(ctx context.Context, idOrKey, filename string, r io.Reader) (json.RawMessage, error) {
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	fw, err := mw.CreateFormFile("file", filename)
+	if err != nil {
+		return nil, apperr.New(apperr.CodeRequestEncodeFailed,
+			"could not build the attachment upload body: "+err.Error())
+	}
+	if _, err := io.Copy(fw, r); err != nil {
+		return nil, apperr.New(apperr.CodeRequestEncodeFailed,
+			"could not read the attachment file: "+err.Error())
+	}
+	if err := mw.Close(); err != nil {
+		return nil, apperr.New(apperr.CodeRequestEncodeFailed,
+			"could not finalize the attachment upload body: "+err.Error())
+	}
+	path := "/issue/" + url.PathEscape(idOrKey) + "/attachments"
+	return c.Upload(ctx, "POST", path, mw.FormDataContentType(), &buf)
 }
 
 // decodeError wraps a pagination decode failure as a structured error.

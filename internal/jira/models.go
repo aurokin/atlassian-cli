@@ -36,14 +36,28 @@ type ProjectPage struct {
 
 // IssueFields is the subset of an issue's fields that human output renders.
 type IssueFields struct {
-	Summary   string      `json:"summary"`
-	Status    *NamedField `json:"status"`
-	IssueType *NamedField `json:"issuetype"`
-	Priority  *NamedField `json:"priority"`
-	Assignee  *User       `json:"assignee"`
-	Reporter  *User       `json:"reporter"`
-	Created   string      `json:"created"`
-	Updated   string      `json:"updated"`
+	Summary    string       `json:"summary"`
+	Status     *NamedField  `json:"status"`
+	IssueType  *NamedField  `json:"issuetype"`
+	Priority   *NamedField  `json:"priority"`
+	Assignee   *User        `json:"assignee"`
+	Reporter   *User        `json:"reporter"`
+	Created    string       `json:"created"`
+	Updated    string       `json:"updated"`
+	Attachment []Attachment `json:"attachment"`
+}
+
+// Attachment is the subset of a Jira issue attachment that human output renders
+// and that locates the binary. Content is the absolute URL of the attachment's
+// bytes; it is fetched by FetchAttachmentData.
+type Attachment struct {
+	ID       string `json:"id"`
+	Filename string `json:"filename"`
+	MimeType string `json:"mimeType"`
+	Size     int64  `json:"size"`
+	Created  string `json:"created"`
+	Author   *User  `json:"author"`
+	Content  string `json:"content"`
 }
 
 // Issue is the subset of a Jira issue that human output renders.
