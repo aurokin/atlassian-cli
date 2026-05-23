@@ -37,6 +37,7 @@ The full set the CLI emits:
 | `http_error` | a non-2xx status no more specific category claimed | any other 4xx/5xx |
 | `timeout` | request exceeded the deadline (retryable) | context deadline or client timeout, including one that fires mid-body-read |
 | `request_failed` | non-timeout transport failure with no usable HTTP response | connection refused, DNS failure, non-deadline body-read error |
+| `request_encode_failed` | the request body could not be marshaled to JSON before sending | client-side payload encoding |
 | `invalid_input` | malformed or missing command input (no request made) | argument/flag validation |
 | `untrusted_url` | absolute URL whose origin is neither the site nor the API gateway | `api` escape hatch guard |
 | `response_decode_failed` | a response or aggregated page set could not be decoded | client decode / `--all` aggregation |
