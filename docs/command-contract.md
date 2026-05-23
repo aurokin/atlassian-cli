@@ -155,7 +155,10 @@ automatically so a refresh token is granted). The flow:
 
 The resulting bundle (`client_secret`, access token, refresh token, expiry) is
 stored as a single secret in the keychain (or the `0600` fallback); `config.json`
-records only `client_id`, `scopes`, `cloud_id`, and `token_ref`. The access
+records only `client_id`, `scopes`, `cloud_id`, and `token_ref`. On macOS the
+bundle exceeds the keychain CLI's per-item size limit (the access token is a
+multi-kilobyte JWT), so it is stored in the `0600` `credentials.json` fallback
+and `auth login` prints an accurate notice. The access
 token is refreshed automatically at request time. Because it needs a browser,
 `oauth-3lo` login fails under `--no-prompt`; use an API-token style for CI. See
 [auth-runbook.md](auth-runbook.md) for an end-to-end walkthrough.

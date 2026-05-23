@@ -134,10 +134,16 @@ tenant `cloud_id` from the sites your authorization covers. If more than one
 authorized site matches `--url`, pass `--cloud-id <id>` to disambiguate.
 
 The token bundle (client secret, access token, refresh token, expiry) is stored
-as one secret in the keychain (or the `0600` fallback). `config.json` records
-only `client_id`, `scopes`, `cloud_id`, and the `token_ref`. From then on,
-commands refresh the access token transparently; you only re-run `auth login`
-if the refresh token is revoked or expires.
+as one secret. `config.json` records only `client_id`, `scopes`, `cloud_id`,
+and the `token_ref`. From then on, commands refresh the access token
+transparently; you only re-run `auth login` if the refresh token is revoked or
+expires.
+
+> **macOS note:** the bundle is larger than the macOS keychain CLI's per-item
+> size limit (the access token is a multi-kilobyte JWT), so on macOS it is
+> stored in the `0600` `credentials.json` beside `config.json` rather than the
+> keychain. `auth login` says so. The file is still user-only (`0600`); keep it
+> off shared machines and out of version control.
 
 ### Server / Data Center — `data-center-pat`
 
