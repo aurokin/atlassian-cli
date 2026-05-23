@@ -89,3 +89,66 @@ func TestTriggerPipelineDefaultsRefType(t *testing.T) {
 		t.Fatalf("expected error for empty ref name")
 	}
 }
+
+func TestStopPipeline(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	if err := newTestClient(srv).StopPipeline(context.Background(), "acme", "widgets", "abc-123"); err != nil {
+		t.Fatalf("StopPipeline: %v", err)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/repositories/acme/widgets/pipelines/{abc-123}/stopPipeline" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+}
+
+func TestListPipelineSteps(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_, _ = w.Write([]byte(`{"values":[{"uuid":"{s1}","name":"Build","state":{"name":"COMPLETED","result":{"name":"SUCCESSFUL"}}}]}`))
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).ListPipelineSteps(context.Background(), "acme", "widgets", "{p1}", 0)
+	if err != nil {
+		t.Fatalf("ListPipelineSteps: %v", err)
+	}
+	if gotPath != "/repositories/acme/widgets/pipelines/{p1}/steps/" {
+		t.Errorf("path = %q", gotPath)
+	}
+	page, err := Decode[PipelineStepPage](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(page.Values) != 1 || page.Values[0].UUID != "{s1}" || page.Values[0].Name != "Build" {
+		t.Fatalf("values = %+v", page.Values)
+	}
+}
+
+func TestGetPipelineStepLog(t *testing.T) {
+	var gotPath, gotAccept string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath, gotAccept = r.URL.Path, r.Header.Get("Accept")
+		_, _ = w.Write([]byte("+ go test ./...\nok\n"))
+	}))
+	defer srv.Close()
+
+	data, err := newTestClient(srv).GetPipelineStepLog(context.Background(), "acme", "widgets", "p1", "s1")
+	if err != nil {
+		t.Fatalf("GetPipelineStepLog: %v", err)
+	}
+	if gotPath != "/repositories/acme/widgets/pipelines/{p1}/steps/{s1}/log" {
+		t.Errorf("path = %q", gotPath)
+	}
+	if gotAccept != "*/*" {
+		t.Errorf("Accept = %q, want */*", gotAccept)
+	}
+	if string(data) != "+ go test ./...\nok\n" {
+		t.Errorf("log = %q", data)
+	}
+}

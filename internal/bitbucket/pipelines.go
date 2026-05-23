@@ -116,6 +116,62 @@ func (c *Client) TriggerPipeline(ctx context.Context, workspace, repo, refType, 
 	return c.Send(ctx, "POST", pipelinesTriggerBase(workspace, repo), body)
 }
 
+// pipelineUUIDBase returns the path of a single pipeline run by UUID, the base
+// for its sub-resources (steps, stop). uuid must already be brace-normalized.
+func pipelineUUIDBase(workspace, repo, uuid string) string {
+	return pipelinesListBase(workspace, repo) + url.PathEscape(uuid)
+}
+
+// StopPipeline stops an in-progress pipeline run
+// (POST .../pipelines/{uuid}/stopPipeline). The API returns no body.
+func (c *Client) StopPipeline(ctx context.Context, workspace, repo, uuid string) error {
+	norm := NormalizePipelineUUID(uuid)
+	if norm == "" {
+		return apperr.InvalidInput("a pipeline UUID is required")
+	}
+	_, err := c.Send(ctx, "POST", pipelineUUIDBase(workspace, repo, norm)+"/stopPipeline", nil)
+	return err
+}
+
+// ListPipelineSteps returns one page of a pipeline run's steps
+// (GET .../pipelines/{uuid}/steps/). uuid is normalized to the brace-wrapped
+// form Bitbucket expects.
+func (c *Client) ListPipelineSteps(ctx context.Context, workspace, repo, uuid string, limit int) (json.RawMessage, error) {
+	norm := NormalizePipelineUUID(uuid)
+	if norm == "" {
+		return nil, apperr.InvalidInput("a pipeline UUID is required")
+	}
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.Get(ctx, restutil.WithQuery(pipelineUUIDBase(workspace, repo, norm)+"/steps/", q))
+}
+
+// ListPipelineStepsAll follows a pipeline's step listing to completion and
+// returns an aggregated {"values": [...]} body.
+func (c *Client) ListPipelineStepsAll(ctx context.Context, workspace, repo, uuid string, limit int) (json.RawMessage, error) {
+	norm := NormalizePipelineUUID(uuid)
+	if norm == "" {
+		return nil, apperr.InvalidInput("a pipeline UUID is required")
+	}
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.followValues(ctx, restutil.WithQuery(pipelineUUIDBase(workspace, repo, norm)+"/steps/", q))
+}
+
+// GetPipelineStepLog returns the raw log output of a pipeline step
+// (GET .../pipelines/{uuid}/steps/{stepUUID}/log). Both UUIDs are normalized to
+// the brace-wrapped form. A step that has produced no log yet yields an empty
+// body or a not_found from the API.
+func (c *Client) GetPipelineStepLog(ctx context.Context, workspace, repo, uuid, stepUUID string) ([]byte, error) {
+	norm := NormalizePipelineUUID(uuid)
+	stepNorm := NormalizePipelineUUID(stepUUID)
+	if norm == "" || stepNorm == "" {
+		return nil, apperr.InvalidInput("a pipeline UUID and step UUID are required")
+	}
+	return c.GetAccepting(ctx,
+		pipelineUUIDBase(workspace, repo, norm)+"/steps/"+url.PathEscape(stepNorm)+"/log", "*/*")
+}
+
 // NormalizePipelineUUID wraps a bare pipeline UUID in the braces Bitbucket
 // expects, leaving an already-wrapped or empty value unchanged.
 func NormalizePipelineUUID(value string) string {

@@ -224,6 +224,20 @@ type PipelinePage struct {
 	Next   string     `json:"next,omitempty"`
 }
 
+// PipelineStep is one step of a pipeline run, reduced to the fields human
+// output renders.
+type PipelineStep struct {
+	UUID  string         `json:"uuid"`
+	Name  string         `json:"name,omitempty"`
+	State *PipelineState `json:"state,omitempty"`
+}
+
+// PipelineStepPage is one page of a pipeline's step listing.
+type PipelineStepPage struct {
+	Values []PipelineStep `json:"values"`
+	Next   string         `json:"next,omitempty"`
+}
+
 // IssueContent is an issue's body, reduced to its raw markup.
 type IssueContent struct {
 	Raw string `json:"raw,omitempty"`

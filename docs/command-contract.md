@@ -726,6 +726,9 @@ comment. Inline (file/line) comments and tasks are later slices.
 atl-bb pipeline list [--repo <workspace>/<repo>] [--workspace <slug>] [--status <name>] [--limit N] [--all]
 atl-bb pipeline view <number-or-uuid> [--repo <workspace>/<repo>] [--workspace <slug>]
 atl-bb pipeline run [--repo <workspace>/<repo>] [--workspace <slug>] --ref <branch-or-tag> [--ref-type branch|tag]
+atl-bb pipeline stop <number-or-uuid> [--repo <workspace>/<repo>] [--workspace <slug>]
+atl-bb pipeline steps <number-or-uuid> [--repo <workspace>/<repo>] [--workspace <slug>] [--limit N] [--all]
+atl-bb pipeline log <number-or-uuid> <step-uuid> [--repo <workspace>/<repo>] [--workspace <slug>]
 ```
 
 `pipeline list` returns runs newest-first (`GET …/pipelines/`), filtered by
@@ -734,8 +737,13 @@ atl-bb pipeline run [--repo <workspace>/<repo>] [--workspace <slug>] --ref <bran
 numeric **build number** (found by paging newest-first) or a pipeline **UUID**
 (brace-wrapping is added automatically). `pipeline run` triggers a run against
 a ref (`--ref`, with `--ref-type` defaulting to `branch`) and prints `triggered
-pipeline #<n> on <ref-type> <ref>`. Steps, logs, stop, schedules, runners,
-caches, and variables are later slices.
+pipeline #<n> on <ref-type> <ref>`. `pipeline stop` halts an in-progress run
+(`POST …/pipelines/{uuid}/stopPipeline`) and prints `stopped pipeline <uuid>`.
+`pipeline steps` lists a run's steps with their state/result, and `pipeline
+log` writes a step's raw log output to stdout (`GET
+…/steps/{step-uuid}/log`); both accept a build number or UUID for the run. Step
+references for `pipeline log` are the step UUIDs shown by `pipeline steps`.
+Schedules, runners, caches, and variables are later slices.
 
 ### `issue`
 
