@@ -18,7 +18,64 @@ const (
 	// from not_found_or_not_visible so an agent can tell "turn the feature on"
 	// from "the resource is missing or hidden".
 	CodeFeatureDisabled = "feature_disabled"
+	// CodeGone marks a 410: the endpoint existed but has been removed, usually
+	// because the CLI is calling a withdrawn API version.
+	CodeGone = "gone"
+	// CodeTimeout marks a transport-level deadline: the request did not complete
+	// in time (context deadline or client timeout). Distinct from request_failed
+	// so a caller can single out the retryable case.
+	CodeTimeout = "timeout"
+	// CodeRequestFailed marks a transport-level failure with no HTTP response
+	// (connection refused, DNS failure, body read error).
+	CodeRequestFailed = "request_failed"
+	// CodeResponseDecodeFailed marks a response (or aggregated page set) that
+	// could not be decoded into the expected model.
+	CodeResponseDecodeFailed = "response_decode_failed"
+	// CodeUntrustedURL marks an absolute request URL whose origin is neither the
+	// configured site nor the Atlassian API gateway for the target.
+	CodeUntrustedURL = "untrusted_url"
+	// CodeHTTPError marks a non-2xx response that no more specific category
+	// claimed (the catch-all for unexpected statuses).
+	CodeHTTPError = "http_error"
+	// CodeResultTruncated marks an --all request that hit the page-follow cap
+	// while the API still had more pages.
+	CodeResultTruncated = "result_truncated"
 )
+
+// Process exit codes. Distinct codes let scripts and agents branch on the
+// failure category without parsing output. Categories without a dedicated code
+// fall through to exitGeneric.
+const (
+	exitGeneric      = 1
+	exitUnauthorized = 4
+	exitForbidden    = 5
+	exitNotFound     = 6
+	exitRateLimited  = 7
+	exitInvalidInput = 8
+	exitTimeout      = 9
+)
+
+// ExitCode maps the error's category to a stable process exit code. Categories
+// without a dedicated code return exitGeneric (1), matching the historical
+// "any error exits 1" behavior for everything not explicitly classified.
+func (e *Error) ExitCode() int {
+	switch e.Code {
+	case CodeUnauthorized:
+		return exitUnauthorized
+	case CodeForbidden:
+		return exitForbidden
+	case CodeNotFoundOrNotVisible:
+		return exitNotFound
+	case CodeRateLimited:
+		return exitRateLimited
+	case CodeInvalidInput:
+		return exitInvalidInput
+	case CodeTimeout:
+		return exitTimeout
+	default:
+		return exitGeneric
+	}
+}
 
 // Error is a structured CLI error. It is safe to render directly as JSON and
 // implements the error interface for human display.

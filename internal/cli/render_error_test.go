@@ -3,11 +3,27 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
 )
+
+// TestExitCode verifies the process exit code derived from an error: a
+// structured apperr.Error maps its category, a plain error and nil-wrapped
+// non-apperr error both fall through to 1.
+func TestExitCode(t *testing.T) {
+	if got := exitCode(apperr.Forbidden("denied")); got != 5 {
+		t.Errorf("exitCode(forbidden) = %d, want 5", got)
+	}
+	if got := exitCode(apperr.InvalidInput("bad")); got != 8 {
+		t.Errorf("exitCode(invalid_input) = %d, want 8", got)
+	}
+	if got := exitCode(errors.New("plain")); got != 1 {
+		t.Errorf("exitCode(plain) = %d, want 1", got)
+	}
+}
 
 func TestWantsStructured(t *testing.T) {
 	cases := []struct {

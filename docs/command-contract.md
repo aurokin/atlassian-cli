@@ -836,9 +836,13 @@ Errors are structured values (`internal/apperr.Error`) whose JSON form follows
 [access-error-model.md](access-error-model.md): the machine-readable code
 serializes under the `error` key, alongside `message` and optional
 `status`, `product`, `site`, `token_style`, `api_base_url`, `required_scope`,
-`required_permission`, and `next`. HTTP `401`, `403`, `404`, and `429`
+`required_permission`, and `next`. HTTP `401`, `403`, `404`, `410`, and `429`
 responses are mapped to `unauthorized`, `forbidden`, `not_found_or_not_visible`,
-and `rate_limited`.
+`gone`, and `rate_limited`; a request that exceeds its deadline maps to the
+retryable `timeout` category. The full code catalog and the per-category
+process **exit codes** (e.g. `4` unauthorized, `5` forbidden, `6` not-found,
+`7` rate-limited, `8` invalid-input, `9` timeout, `1` otherwise) live in
+[access-error-model.md](access-error-model.md).
 
 When `--json` is set and the error carries a structured `apperr.Error`, the
 full JSON envelope is written to stderr; otherwise errors are written as a

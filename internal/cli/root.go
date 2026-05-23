@@ -95,7 +95,7 @@ func Render(cmd *cobra.Command, g *GlobalFlags, v any) error {
 func Execute(root *cobra.Command, g *GlobalFlags) int {
 	if err := root.Execute(); err != nil {
 		renderError(root.ErrOrStderr(), g, err)
-		return 1
+		return exitCode(err)
 	}
 	return 0
 }
@@ -136,9 +136,20 @@ func Run(info appinfo.Info, root *cobra.Command, g *GlobalFlags) int {
 			return code
 		}
 		renderError(root.ErrOrStderr(), g, runErr)
-		return 1
+		return exitCode(runErr)
 	}
 	renderError(root.ErrOrStderr(), g, execErr)
+	return exitCode(execErr)
+}
+
+// exitCode returns the process exit code for err: a structured *apperr.Error
+// maps its category to a stable code (see apperr.Error.ExitCode), and anything
+// else exits 1.
+func exitCode(err error) int {
+	var ae *apperr.Error
+	if errors.As(err, &ae) {
+		return ae.ExitCode()
+	}
 	return 1
 }
 
