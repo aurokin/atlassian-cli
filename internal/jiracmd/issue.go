@@ -58,6 +58,14 @@ func newIssueListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// @me and currentUser() map to the JQL currentUser() function in
+			// buildIssueListJQL; any other non-empty value (e.g. an email) is
+			// resolved to an account id here.
+			if assignee != meAlias && assignee != "currentUser()" {
+				if assignee, err = resolveAssignee(cmd.Context(), jc, assignee); err != nil {
+					return err
+				}
+			}
 			search := jc.SearchIssues
 			if all {
 				search = jc.SearchIssuesAll
@@ -75,7 +83,7 @@ func newIssueListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&project, "project", "", "project key (required)")
 	f.StringVar(&status, "status", "", "filter by status name")
-	f.StringVar(&assignee, "assignee", "", "filter by assignee account id, or currentUser()")
+	f.StringVar(&assignee, "assignee", "", "filter by assignee account id, email, @me, or currentUser()")
 	cli.AddPaginationFlags(cmd, &limit, &all, "issues")
 	return cmd
 }
@@ -119,17 +127,23 @@ func newIssueCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if project == "" || issueType == "" || summary == "" {
 				return apperr.InvalidInput("issue create requires --project, --type, and --summary")
 			}
-			fields := map[string]any{
-				"project":   map[string]string{"key": project},
-				"issuetype": map[string]string{"name": issueType},
-			}
-			if err := applyIssueFields(fields, summary, description, assignee, fieldFlags); err != nil {
+			extra, err := parseFieldFlags(fieldFlags)
+			if err != nil {
 				return err
 			}
 			jc, err := jiraClient(info, g)
 			if err != nil {
 				return err
 			}
+			assignee, err := resolveAssignee(cmd.Context(), jc, assignee)
+			if err != nil {
+				return err
+			}
+			fields := map[string]any{
+				"project":   map[string]string{"key": project},
+				"issuetype": map[string]string{"name": issueType},
+			}
+			applyIssueFields(fields, summary, description, assignee, extra)
 			raw, err := jc.CreateIssue(cmd.Context(), fields)
 			if err != nil {
 				return err
@@ -145,7 +159,7 @@ func newIssueCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 	f.StringVar(&issueType, "type", "", "issue type name, e.g. Bug or Task (required)")
 	f.StringVar(&summary, "summary", "", "issue summary (required)")
 	f.StringVar(&description, "description", "", "issue description; plain text is wrapped as ADF")
-	f.StringVar(&assignee, "assignee", "", "assignee account id")
+	f.StringVar(&assignee, "assignee", "", "assignee account id, email, or @me")
 	f.StringArrayVar(&fieldFlags, "field", nil,
 		"set any field as name=value (repeatable; value parsed as JSON when valid)")
 	return cmd
@@ -161,11 +175,11 @@ func newIssueEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		Short: "Edit a Jira issue",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fields := map[string]any{}
-			if err := applyIssueFields(fields, summary, description, assignee, fieldFlags); err != nil {
+			extra, err := parseFieldFlags(fieldFlags)
+			if err != nil {
 				return err
 			}
-			if len(fields) == 0 {
+			if summary == "" && description == "" && assignee == "" && len(extra) == 0 {
 				return apperr.InvalidInput(
 					"issue edit requires at least one change; pass --summary, --description, --assignee, or --field")
 			}
@@ -173,6 +187,12 @@ func newIssueEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			assignee, err := resolveAssignee(cmd.Context(), jc, assignee)
+			if err != nil {
+				return err
+			}
+			fields := map[string]any{}
+			applyIssueFields(fields, summary, description, assignee, extra)
 			if err := jc.EditIssue(cmd.Context(), args[0], fields); err != nil {
 				return err
 			}
@@ -186,7 +206,7 @@ func newIssueEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&summary, "summary", "", "new summary")
 	f.StringVar(&description, "description", "", "new description; plain text is wrapped as ADF")
-	f.StringVar(&assignee, "assignee", "", "new assignee account id")
+	f.StringVar(&assignee, "assignee", "", "new assignee account id, email, or @me")
 	f.StringArrayVar(&fieldFlags, "field", nil,
 		"set any field as name=value (repeatable; value parsed as JSON when valid)")
 	return cmd
@@ -200,8 +220,9 @@ type editResult struct {
 }
 
 // applyIssueFields adds the typed common-field flags to fields when set, then
-// overlays the repeatable --field escape entries (which can override them).
-func applyIssueFields(fields map[string]any, summary, description, assignee string, fieldFlags []string) error {
+// overlays the already-parsed --field escape entries (which can override them).
+// The assignee, if any, must already be resolved to an account id.
+func applyIssueFields(fields map[string]any, summary, description, assignee string, extra map[string]any) {
 	if summary != "" {
 		fields["summary"] = summary
 	}
@@ -211,14 +232,9 @@ func applyIssueFields(fields map[string]any, summary, description, assignee stri
 	if assignee != "" {
 		fields["assignee"] = map[string]string{"accountId": assignee}
 	}
-	extra, err := parseFieldFlags(fieldFlags)
-	if err != nil {
-		return err
-	}
 	for k, v := range extra {
 		fields[k] = v
 	}
-	return nil
 }
 
 // parseFieldFlags turns repeatable --field name=value entries into a field
@@ -344,13 +360,14 @@ func writeTransitionList(w io.Writer, transitions []jira.Transition) {
 
 // buildIssueListJQL turns the issue-list filter flags into a JQL query. The
 // project clause is always present; status and assignee are added when set.
-// The literal currentUser() is passed through unquoted as a JQL function.
+// Both the @me alias and the literal currentUser() resolve to the JQL
+// currentUser() function, passed through unquoted.
 func buildIssueListJQL(project, status, assignee string) string {
 	clauses := []string{"project = " + jqlQuote(project)}
 	if status != "" {
 		clauses = append(clauses, "status = "+jqlQuote(status))
 	}
-	if assignee == "currentUser()" {
+	if assignee == meAlias || assignee == "currentUser()" {
 		clauses = append(clauses, "assignee = currentUser()")
 	} else if assignee != "" {
 		clauses = append(clauses, "assignee = "+jqlQuote(assignee))

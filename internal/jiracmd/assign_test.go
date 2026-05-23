@@ -41,6 +41,116 @@ func TestIssueAssign(t *testing.T) {
 	}
 }
 
+func TestIssueAssignAtMe(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/myself":
+			_, _ = w.Write([]byte(`{"accountId":"me-123","displayName":"Me"}`))
+		case "/issue/PROJ-1/assignee":
+			_ = json.NewDecoder(r.Body).Decode(&gotBody)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("unexpected path %q", r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "assign", "PROJ-1", "@me", "--site", "work")
+	if err != nil {
+		t.Fatalf("issue assign @me: %v\n%s", err, out)
+	}
+	if gotBody["accountId"] != "me-123" {
+		t.Errorf("assign sent accountId %v, want me-123", gotBody["accountId"])
+	}
+	if !strings.Contains(out, "assigned PROJ-1 to me-123") {
+		t.Errorf("assign output missing resolved id:\n%s", out)
+	}
+}
+
+func TestIssueAssignByEmail(t *testing.T) {
+	var (
+		gotQuery string
+		gotBody  map[string]any
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/user/search":
+			gotQuery = r.URL.Query().Get("query")
+			_, _ = w.Write([]byte(`[{"accountId":"ada-1","emailAddress":"ada@example.com"}]`))
+		case "/issue/PROJ-1/assignee":
+			_ = json.NewDecoder(r.Body).Decode(&gotBody)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("unexpected path %q", r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "assign", "PROJ-1", "ada@example.com", "--site", "work")
+	if err != nil {
+		t.Fatalf("issue assign by email: %v\n%s", err, out)
+	}
+	if gotQuery != "ada@example.com" {
+		t.Errorf("user search query = %q, want ada@example.com", gotQuery)
+	}
+	if gotBody["accountId"] != "ada-1" {
+		t.Errorf("assign sent accountId %v, want ada-1", gotBody["accountId"])
+	}
+}
+
+func TestIssueAssignByEmailAmbiguous(t *testing.T) {
+	assigned := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/user/search":
+			_, _ = w.Write([]byte(`[{"accountId":"a1"},{"accountId":"a2"}]`))
+		case "/issue/PROJ-1/assignee":
+			assigned = true
+			w.WriteHeader(http.StatusNoContent)
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "assign", "PROJ-1", "dup@example.com", "--site", "work")
+	if err == nil {
+		t.Fatalf("expected error for ambiguous match, got none:\n%s", out)
+	}
+	if !strings.Contains(err.Error(), "matched 2 Jira users") {
+		t.Errorf("error = %v, want ambiguity message", err)
+	}
+	if assigned {
+		t.Error("assignee endpoint was called despite ambiguous resolution")
+	}
+}
+
+func TestIssueAssignByEmailNoMatch(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/user/search" {
+			_, _ = w.Write([]byte(`[]`))
+			return
+		}
+		t.Errorf("unexpected path %q", r.URL.Path)
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "assign", "PROJ-1", "ghost@example.com", "--site", "work")
+	if err == nil {
+		t.Fatalf("expected error for no match, got none:\n%s", out)
+	}
+	if !strings.Contains(err.Error(), "no Jira user matched") {
+		t.Errorf("error = %v, want no-match message", err)
+	}
+}
+
 func TestIssueAssignUnassign(t *testing.T) {
 	var rawBody []byte
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

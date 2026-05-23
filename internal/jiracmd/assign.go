@@ -11,7 +11,7 @@ import (
 
 func newIssueAssignCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	return &cobra.Command{
-		Use:   "assign <issue> <account-id|->",
+		Use:   "assign <issue> <account-id|email|@me|->",
 		Short: "Assign an issue, or pass - to unassign",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -21,7 +21,10 @@ func newIssueAssignCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			}
 			var accountID *string
 			if args[1] != "-" {
-				v := args[1]
+				v, err := resolveAccountID(cmd.Context(), jc, args[1])
+				if err != nil {
+					return err
+				}
 				accountID = &v
 			}
 			if err := jc.AssignIssue(cmd.Context(), args[0], accountID); err != nil {

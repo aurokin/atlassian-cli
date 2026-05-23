@@ -60,6 +60,36 @@ func TestClientMyself(t *testing.T) {
 	}
 }
 
+func TestClientSearchUsers(t *testing.T) {
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("method = %q, want GET", r.Method)
+		}
+		if r.URL.Path != "/user/search" {
+			t.Errorf("path = %q, want /user/search", r.URL.Path)
+		}
+		gotQuery = r.URL.Query().Get("query")
+		_, _ = w.Write([]byte(`[{"accountId":"a1","displayName":"Ada","emailAddress":"ada@example.com"}]`))
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).SearchUsers(context.Background(), "ada@example.com")
+	if err != nil {
+		t.Fatalf("SearchUsers: %v", err)
+	}
+	if gotQuery != "ada@example.com" {
+		t.Errorf("query = %q, want ada@example.com", gotQuery)
+	}
+	users, err := Decode[[]User](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(users) != 1 || users[0].AccountID != "a1" {
+		t.Fatalf("users = %+v", users)
+	}
+}
+
 func TestClientGetProject(t *testing.T) {
 	srv := serveJSON(t, "/project/PROJ",
 		`{"id":"100","key":"PROJ","name":"Project X","projectTypeKey":"software"}`)
