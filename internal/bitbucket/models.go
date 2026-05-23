@@ -153,6 +153,27 @@ type PullRequestPage struct {
 	Next   string        `json:"next,omitempty"`
 }
 
+// CommentContent is a comment's body, reduced to its raw markup.
+type CommentContent struct {
+	Raw string `json:"raw,omitempty"`
+}
+
+// PullRequestComment is the subset of a pull-request comment that human output
+// renders. Deleted comments carry a true Deleted flag and an empty content.
+type PullRequestComment struct {
+	ID        int             `json:"id"`
+	Content   *CommentContent `json:"content,omitempty"`
+	User      *Account        `json:"user,omitempty"`
+	CreatedOn string          `json:"created_on,omitempty"`
+	Deleted   bool            `json:"deleted,omitempty"`
+}
+
+// PullRequestCommentPage is one page of a pull-request comment listing.
+type PullRequestCommentPage struct {
+	Values []PullRequestComment `json:"values"`
+	Next   string               `json:"next,omitempty"`
+}
+
 // PipelineResult is the outcome of a finished pipeline state.
 type PipelineResult struct {
 	Name string `json:"name,omitempty"`

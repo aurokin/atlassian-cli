@@ -211,3 +211,69 @@ func TestMergePullRequestOmitsEmptyBody(t *testing.T) {
 		t.Errorf("body = %q, want empty", gotBody)
 	}
 }
+
+func TestGetPullRequestDiff(t *testing.T) {
+	var gotPath, gotAccept string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath, gotAccept = r.URL.Path, r.Header.Get("Accept")
+		_, _ = w.Write([]byte("diff --git a/f b/f\n+added\n"))
+	}))
+	defer srv.Close()
+
+	data, err := newTestClient(srv).GetPullRequestDiff(context.Background(), "acme", "widgets", 7)
+	if err != nil {
+		t.Fatalf("GetPullRequestDiff: %v", err)
+	}
+	if gotPath != "/repositories/acme/widgets/pullrequests/7/diff" {
+		t.Errorf("path = %q", gotPath)
+	}
+	if gotAccept != "*/*" {
+		t.Errorf("Accept = %q, want */*", gotAccept)
+	}
+	if string(data) != "diff --git a/f b/f\n+added\n" {
+		t.Errorf("diff = %q", data)
+	}
+}
+
+func TestListPullRequestComments(t *testing.T) {
+	srv := serveJSON(t, "/repositories/acme/widgets/pullrequests/7/comments",
+		`{"values":[{"id":1,"content":{"raw":"nice"},"user":{"display_name":"Ada"}}]}`)
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).ListPullRequestComments(context.Background(), "acme", "widgets", 7, 0)
+	if err != nil {
+		t.Fatalf("ListPullRequestComments: %v", err)
+	}
+	page, err := Decode[PullRequestCommentPage](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(page.Values) != 1 || page.Values[0].ID != 1 || page.Values[0].Content.Raw != "nice" {
+		t.Fatalf("values = %+v", page.Values)
+	}
+}
+
+func TestAddPullRequestCommentBody(t *testing.T) {
+	var (
+		gotMethod, gotPath string
+		gotBody            map[string]any
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &gotBody)
+		_, _ = w.Write([]byte(`{"id":5,"content":{"raw":"hi"}}`))
+	}))
+	defer srv.Close()
+
+	if _, err := newTestClient(srv).AddPullRequestComment(context.Background(), "acme", "widgets", 7, "hi"); err != nil {
+		t.Fatalf("AddPullRequestComment: %v", err)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/repositories/acme/widgets/pullrequests/7/comments" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	content, _ := gotBody["content"].(map[string]any)
+	if content["raw"] != "hi" {
+		t.Fatalf("body = %+v", gotBody)
+	}
+}

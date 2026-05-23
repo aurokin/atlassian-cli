@@ -693,6 +693,9 @@ atl-bb pr unapprove <id> [--repo <workspace>/<repo>] [--workspace <slug>]
 atl-bb pr decline <id> [--repo <workspace>/<repo>] [--workspace <slug>]
 atl-bb pr merge <id> [--repo <workspace>/<repo>] [--workspace <slug>] \
   [--strategy merge-commit|squash|fast-forward] [--message <text>] [--close-source-branch]
+atl-bb pr diff <id> [--repo <workspace>/<repo>] [--workspace <slug>]
+atl-bb pr comments list <id> [--repo <workspace>/<repo>] [--workspace <slug>] [--limit N] [--all]
+atl-bb pr comments add <id> [--repo <workspace>/<repo>] [--workspace <slug>] --body <text>
 ```
 
 Pull requests are addressed by the repo target (`--repo`/`--workspace`) plus a
@@ -709,8 +712,13 @@ merge` merges it. `pr merge --strategy` selects `merge-commit`, `squash`, or
 `--message` and `--close-source-branch`. Human output prints a one-line
 confirmation; under `--json`/`--jq`, `approve`/`decline`/`merge` emit the API's
 response object and `unapprove` (no API body) emits a synthesized
-`{"id","action","done"}` result. Pull-request comments, tasks, and the diff are
-later slices.
+`{"id","action","done"}` result.
+
+`pr diff` writes the pull request's unified diff to stdout verbatim — the diff
+is raw text, so `--json`/`--jq` do not apply. `pr comments list` lists the
+pull request's comments (paged with `--limit`/`--all`), rendering each
+comment's raw body; `pr comments add --body <text>` posts a new top-level
+comment. Inline (file/line) comments and tasks are later slices.
 
 ### `pipeline`
 

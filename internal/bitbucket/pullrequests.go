@@ -101,6 +101,36 @@ func (c *Client) DeclinePullRequest(ctx context.Context, workspace, repo string,
 	return c.Send(ctx, "POST", prAction(workspace, repo, id, "decline"), nil)
 }
 
+// GetPullRequestDiff returns the unified diff of a pull request as raw text
+// (GET .../pullrequests/{id}/diff). The endpoint returns text/plain, not JSON.
+func (c *Client) GetPullRequestDiff(ctx context.Context, workspace, repo string, id int) ([]byte, error) {
+	return c.GetAccepting(ctx, prAction(workspace, repo, id, "diff"), "*/*")
+}
+
+// ListPullRequestComments returns one page of a pull request's comments
+// (GET .../pullrequests/{id}/comments).
+func (c *Client) ListPullRequestComments(ctx context.Context, workspace, repo string, id, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.Get(ctx, restutil.WithQuery(prAction(workspace, repo, id, "comments"), q))
+}
+
+// ListPullRequestCommentsAll follows a pull request's comment listing to
+// completion and returns an aggregated {"values": [...]} body.
+func (c *Client) ListPullRequestCommentsAll(ctx context.Context, workspace, repo string, id, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.followValues(ctx, restutil.WithQuery(prAction(workspace, repo, id, "comments"), q))
+}
+
+// AddPullRequestComment posts a top-level comment on a pull request
+// (POST .../pullrequests/{id}/comments) and returns the created comment. body
+// is sent as the comment's raw markup.
+func (c *Client) AddPullRequestComment(ctx context.Context, workspace, repo string, id int, body string) (json.RawMessage, error) {
+	payload := map[string]any{"content": map[string]string{"raw": body}}
+	return c.Send(ctx, "POST", prAction(workspace, repo, id, "comments"), payload)
+}
+
 // MergePullRequestOptions holds the optional fields a merge accepts. An empty
 // Strategy lets Bitbucket apply the repository's default merge strategy.
 type MergePullRequestOptions struct {
