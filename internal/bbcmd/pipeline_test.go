@@ -170,3 +170,100 @@ func TestPipelineRunRequiresRef(t *testing.T) {
 		t.Fatalf("expected ref-required error, got %v", err)
 	}
 }
+
+func TestPipelineStopByUUID(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "pipeline", "stop", "{abc-123}", "--repo", "acme/widgets", "--site", "work")
+	if err != nil {
+		t.Fatalf("pipeline stop: %v\n%s", err, out)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/repositories/acme/widgets/pipelines/{abc-123}/stopPipeline" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	if !strings.Contains(out, "stopped pipeline {abc-123}") {
+		t.Errorf("output missing confirmation:\n%s", out)
+	}
+}
+
+func TestPipelineStopByBuildNumberResolvesUUID(t *testing.T) {
+	var stopPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/repositories/acme/widgets/pipelines/" && r.Method == http.MethodGet:
+			_, _ = w.Write([]byte(`{"values":[{"build_number":42,"uuid":"{resolved}"}]}`))
+		case strings.HasSuffix(r.URL.Path, "/stopPipeline"):
+			stopPath = r.URL.Path
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "pipeline", "stop", "42", "--repo", "acme/widgets", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("pipeline stop 42: %v\n%s", err, out)
+	}
+	if stopPath != "/repositories/acme/widgets/pipelines/{resolved}/stopPipeline" {
+		t.Errorf("stop path = %q, want resolved uuid", stopPath)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("output is not valid JSON: %v\n%s", err, out)
+	}
+	if got["uuid"] != "{resolved}" || got["stopped"] != true {
+		t.Fatalf("unexpected json: %s", out)
+	}
+}
+
+func TestPipelineStepsList(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/repositories/acme/widgets/pipelines/{p1}/steps/" {
+			t.Errorf("path = %q", r.URL.Path)
+		}
+		_, _ = w.Write([]byte(`{"values":[{"uuid":"{s1}","name":"Build","state":{"name":"COMPLETED","result":{"name":"SUCCESSFUL"}}}]}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "pipeline", "steps", "{p1}", "--repo", "acme/widgets", "--site", "work")
+	if err != nil {
+		t.Fatalf("pipeline steps: %v\n%s", err, out)
+	}
+	for _, want := range []string{"{s1}", "Build", "SUCCESSFUL"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestPipelineLogWritesRawLog(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/repositories/acme/widgets/pipelines/{p1}/steps/{s1}/log" {
+			t.Errorf("path = %q", r.URL.Path)
+		}
+		_, _ = w.Write([]byte("+ make test\nPASS\n"))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "pipeline", "log", "{p1}", "{s1}", "--repo", "acme/widgets", "--site", "work")
+	if err != nil {
+		t.Fatalf("pipeline log: %v\n%s", err, out)
+	}
+	if out != "+ make test\nPASS\n" {
+		t.Errorf("log output = %q", out)
+	}
+}
