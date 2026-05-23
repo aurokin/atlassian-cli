@@ -46,7 +46,7 @@ Important: Atlassian says integrations generally cannot distinguish scoped from 
   `cloud_id` from accessible-resources, and stores a token bundle in the
   keychain. The access token is refreshed at request time using the refresh
   token. It uses a real Atlassian app flow and token refresh, never copied
-  browser/session tokens. See [oauth-3lo-plan.md](oauth-3lo-plan.md) for the
+  browser/session tokens. See [oauth-3lo-plan.md](archive/oauth-3lo-plan.md) for the
   design and [auth-runbook.md](auth-runbook.md) for usage.
 
 ## Config sketch

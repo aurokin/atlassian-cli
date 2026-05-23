@@ -216,11 +216,11 @@ printf '%s' "$YOUR_API_TOKEN" | atl-bb auth login \
   --token-stdin
 ```
 
-> **App passwords are deprecated.** Bitbucket stopped issuing new app passwords
+> **App passwords are removed.** Bitbucket stopped issuing new app passwords
 > (Sept 9, 2025) and removes existing ones for good (July 28, 2026, after
-> brownouts begin June 9, 2026). Use an API token with scopes as above. A
-> legacy app password still works the same way until then, but with your
-> Bitbucket username instead of your email.
+> brownouts begin June 9, 2026). Use an API token with scopes as above
+> (Basic auth with your Atlassian account email as the username) — that is the
+> only supported credential for `atl-bb`.
 
 ## Step 5 — verify
 

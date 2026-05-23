@@ -1,3 +1,5 @@
+> **Historical / archived.** This document is a completed planning or design artifact, kept for project history. It is **not** maintained and may not reflect the current code. For the implemented behavior see [`docs/command-contract.md`](../command-contract.md) and [`docs/shared-architecture.md`](../shared-architecture.md).
+
 # Phase 1 Foundation Implementation Plan
 
 > **For Hermes:** Use `subagent-driven-development` skill to implement this plan task-by-task after the user approves execution.

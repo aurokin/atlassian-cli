@@ -40,8 +40,7 @@ fallback file).
 
 The phased build history (Phases 1–9 for the shared foundation and the
 Jira/Confluence MVPs and depth, then B0–B3c for the Bitbucket rewrite) is
-recorded in [docs/post-mvp-roadmap.md](docs/post-mvp-roadmap.md) and the
-phase plans under `docs/`.
+recorded in the archived phase plans under [docs/archive/](docs/archive/).
 
 ```bash
 go test ./...
@@ -82,25 +81,21 @@ The per-command Markdown reference is generated on demand (not committed) with
 > only if your environment can fetch it (`GOPRIVATE` set plus repo access);
 > from a local clone the commands above always work.
 
-Start here:
+Start here — the living docs:
 
-1. [docs/README.md](docs/README.md)
-2. [docs/command-contract.md](docs/command-contract.md)
-3. [docs/auth-design.md](docs/auth-design.md)
-4. [docs/access-error-model.md](docs/access-error-model.md)
-5. [docs/shared-architecture.md](docs/shared-architecture.md)
-6. [docs/implementation-plan.md](docs/implementation-plan.md)
-7. [docs/phase-1-foundation-plan.md](docs/phase-1-foundation-plan.md)
-8. [docs/phase-2-resolve-browse-plan.md](docs/phase-2-resolve-browse-plan.md)
-9. [docs/phase-3-jira-mvp-plan.md](docs/phase-3-jira-mvp-plan.md)
-10. [docs/phase-4-confluence-mvp-plan.md](docs/phase-4-confluence-mvp-plan.md)
-11. [docs/post-mvp-roadmap.md](docs/post-mvp-roadmap.md)
-12. [docs/bb-inventory.md](docs/bb-inventory.md), [docs/bb-rewrite-plan.md](docs/bb-rewrite-plan.md), [docs/bb-compatibility-plan.md](docs/bb-compatibility-plan.md) — the Bitbucket (`atl-bb`) rewrite
-13. [docs/continuation-handoff.md](docs/continuation-handoff.md)
+1. [docs/README.md](docs/README.md) — documentation index
+2. [docs/command-contract.md](docs/command-contract.md) — the implemented command surface
+3. [docs/auth-design.md](docs/auth-design.md) / [docs/auth-runbook.md](docs/auth-runbook.md) — auth model and setup
+4. [docs/access-error-model.md](docs/access-error-model.md) — structured errors and exit codes
+5. [docs/shared-architecture.md](docs/shared-architecture.md) — how the three CLIs share a foundation
+6. [docs/integration-testing.md](docs/integration-testing.md) — the live integration suite
+
+The completed phase plans, MVP specs, and the Bitbucket-rewrite arc are kept as
+historical records under [docs/archive/](docs/archive/).
 
 ## Guardrails
 
 - Keep Jira, Confluence, and Bitbucket as separate CLIs from the user's perspective.
 - Do not over-abstract; promote shared shapes only once implementation has proven the seam (as was done for `internal/restutil` and the shared `alias`/`extension` commands).
-- Keep `docs/continuation-handoff.md` current when plans, status, or next actions change.
+- Keep [docs/command-contract.md](docs/command-contract.md) current whenever a change alters command behavior.
 - Never store real tokens, passwords, OAuth refresh tokens, cookies, or private credential files in this repo.

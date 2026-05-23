@@ -1,39 +1,30 @@
 # Documentation
 
-> Point-in-time design package derived from the combined Jira/Confluence spec committed in `bitbucket_cli` on 2026-05-14. This docs directory is already scoped to the `atlassian-cli` project, so docs live directly under `docs/`.
+Documentation index for `atlassian-cli` — three separate CLIs (`atl-jira`,
+`atl-conf`, `atl-bb`) sharing a common foundation where useful but keeping
+distinct product vocabularies. The implemented behavior lives in
+[command-contract.md](command-contract.md); the docs below explain how the
+system is built and how to use it.
 
-## Goal
+## Living docs
 
-Three separate CLIs — `atl-jira`, `atl-conf`, and `atl-bb` — with shared foundations where useful but separate product vocabularies where necessary. All three are now implemented (the docs below capture both the original Jira/Confluence design and the later Bitbucket rewrite); this directory is the design package and history behind the shipped command surface in [command-contract.md](command-contract.md).
-
-## Design docs
-
-- [auth-design.md](auth-design.md) — Cloud classic/scoped tokens, Data Center PAT, OAuth later.
+- [command-contract.md](command-contract.md) — the implemented command surface, config schema, and known limitations. The canonical reference.
+- [shared-architecture.md](shared-architecture.md) — the shared packages, raw `api` escape hatch, output rendering, config, and pagination.
+- [auth-design.md](auth-design.md) — the auth model: cloud-classic / cloud-scoped tokens, Data Center PAT, and OAuth 3LO.
 - [auth-runbook.md](auth-runbook.md) — practical end-to-end authentication guide: pick a token style, supply and store the token, log in per product, verify, and troubleshoot.
-- [oauth-3lo-plan.md](oauth-3lo-plan.md) — design/implementation plan for the `oauth-3lo` token style: interactive bring-your-own-app browser flow, loopback callback, keychain-stored token bundle, and request-time refresh.
-- [access-error-model.md](access-error-model.md) — permission-aware UX and structured recovery.
-- [shared-architecture.md](shared-architecture.md) — shared packages, raw API, output, config, pagination.
-- [jira-mvp.md](jira-mvp.md) — first Jira command surface.
-- [confluence-mvp.md](confluence-mvp.md) — first Confluence command surface.
-- [implementation-plan.md](implementation-plan.md) — phased build plan.
-- [phase-1-foundation-plan.md](phase-1-foundation-plan.md) — implementation plan for the shared Go/Cobra foundation (Phase 1, complete).
-- [phase-2-resolve-browse-plan.md](phase-2-resolve-browse-plan.md) — implementation plan for URL resolution and the `resolve`/`browse` commands (Phase 2, complete).
-- [phase-3-jira-mvp-plan.md](phase-3-jira-mvp-plan.md) — implementation plan for the Jira MVP commands: `project`, `issue`, `search`, `status` (Phase 3, complete).
-- [phase-4-confluence-mvp-plan.md](phase-4-confluence-mvp-plan.md) — implementation plan for the Confluence MVP commands: `space`, `page` (read plus create/edit), `search cql`, `status` (Phase 4, complete).
-- [post-mvp-roadmap.md](post-mvp-roadmap.md) — sequenced plan for Phases 5–8: output & pagination polish, secure token storage, Confluence content depth, deeper Jira coverage.
-- [phase-5-output-pagination-plan.md](phase-5-output-pagination-plan.md) — implementation plan for Phase 5: `--jq` filtering (5A) and the `--all` follow-all-pages flag (5B).
-- [phase-6-secure-token-storage-plan.md](phase-6-secure-token-storage-plan.md) — implementation plan for Phase 6: secure token storage (OS keychain via go-keyring, with a `0600`-file fallback).
-- [phase-7-confluence-content-plan.md](phase-7-confluence-content-plan.md) — implementation plan for Phase 7: Confluence content depth — `page comment`, `page label`, and `attachment` commands.
-- [phase-8-jira-coverage-plan.md](phase-8-jira-coverage-plan.md) — implementation plan for Phase 8: deeper Jira `issue` coverage — `assign`, `watch`/`unwatch`/`watchers`, `link` (+ link `types`), and `worklog` (list/add).
-- [shared-foundation-scorecard.md](shared-foundation-scorecard.md) — Phase 9 review scoring the Jira/Confluence duplication for extraction, extended in Phase B1 with the legacy `bb`-vs-Atlassian comparison (reuse/adapt/keep/net-new).
-- [phase-9-shared-foundation-plan.md](phase-9-shared-foundation-plan.md) — implementation plan for Phase 9: extract the proven shared helpers (`internal/restutil`, `output.TabWriter`); the Bitbucket migration is deferred to its own phase.
-- [command-contract.md](command-contract.md) — implemented command behavior, config schema, and known limitations.
-- [continuation-handoff.md](continuation-handoff.md) — point-in-time handoff for continuing this work in the app or a fresh agent session.
-- [bitbucket-migration-roadmap.md](bitbucket-migration-roadmap.md) — long-term plan for possibly bringing legacy `bb` into the shared `atl-*` Atlassian CLI ecosystem as `atl-bb`.
-- [bb-inventory.md](bb-inventory.md) — Phase B0 inventory of the legacy `bb` Bitbucket CLI (command tree, config, auth, output, `api`, resolve/browse, recovery, tests, docs pipeline) and the migration-relevant deltas vs. the Atlassian foundation.
-- [bb-rewrite-plan.md](bb-rewrite-plan.md) — Phase B1.5 new-standards modernization plan for `atl-bb`: target package layout over the shared foundation, product/auth model, the `apperr` recovery mapping, docs-gen strategy, required test coverage, and the B3+ sequence.
-- [bb-compatibility-plan.md](bb-compatibility-plan.md) — Phase B2 plan for shipping `atl-bb` as a clean break (no `bb` alias/shim) while preserving stored credentials and machine contracts: one-time config/token import, JSON-field guarantees and documented contract changes, the `atl-bb` skill, and the live-test boundary.
+- [access-error-model.md](access-error-model.md) — permission-aware UX and the structured error envelope.
+- [integration-testing.md](integration-testing.md) — the live, opt-in integration suite that drives the real binaries against a real tenant.
+
+## History
+
+The completed phase plans, per-product MVP specs, the OAuth 3LO design, and the
+Bitbucket (`atl-bb`) import/rewrite arc are kept as frozen historical records
+under [archive/](archive/). They are not maintained; consult the living docs
+above for current behavior.
 
 ## Naming
 
-`atl-jira`, `atl-conf`, and `atl-bb` are the binary names. The `atl-` prefix avoids collisions with common packages and makes these feel like one CLI family. Avoid bare `jira`, bare `confluence`, `jj`, `cc`, and `conf` because of collisions or ambiguity.
+`atl-jira`, `atl-conf`, and `atl-bb` are the binary names. The `atl-` prefix
+avoids collisions with common packages and makes these feel like one CLI family.
+Avoid bare `jira`, bare `confluence`, `jj`, `cc`, and `conf` because of
+collisions or ambiguity.

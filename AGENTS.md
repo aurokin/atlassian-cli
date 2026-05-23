@@ -7,17 +7,15 @@ Agent instructions for this provisional Atlassian CLI workspace.
 1. `README.md`
 2. `docs/README.md`
 3. `docs/command-contract.md` for currently implemented command behavior
-4. `docs/auth-design.md`
+4. `docs/auth-design.md` and `docs/auth-runbook.md`
 5. `docs/access-error-model.md`
 6. `docs/shared-architecture.md`
-7. `docs/implementation-plan.md`
-8. `docs/phase-1-foundation-plan.md` before starting Go implementation
-9. `docs/continuation-handoff.md` when resuming from the app or a fresh session
-10. `CONTRIBUTING.md` for the development loop, PR workflow, and test-harness conventions
-11. Product docs before product-specific work:
-   - `docs/jira-mvp.md`
-   - `docs/confluence-mvp.md`
-   - `docs/bb-inventory.md`, `docs/bb-rewrite-plan.md`, `docs/bb-compatibility-plan.md` (the `atl-bb` rewrite)
+7. `docs/integration-testing.md` before touching the live suite
+8. `CONTRIBUTING.md` for the development loop, PR workflow, and test-harness conventions
+
+Completed phase plans, MVP specs, and the `atl-bb` rewrite arc are historical
+records under `docs/archive/` — consult them for context on *why* something was
+built, not for current behavior.
 
 ## Product posture
 
@@ -28,7 +26,7 @@ Agent instructions for this provisional Atlassian CLI workspace.
 - Unsupported or ambiguous behavior should be documented and surfaced clearly.
 - Users have different access levels. Design for good behavior under low-access, scoped-token, service-account, contributor, and admin contexts.
 - All three CLIs (`atl-jira`, `atl-conf`, `atl-bb`) are implemented; new work deepens an existing surface or shares a proven seam rather than bootstrapping. New code goes through the shared foundation in `internal/cli`.
-- Update `docs/continuation-handoff.md` whenever the next action, repo status, or implementation surface changes.
+- Update `docs/command-contract.md` whenever a change alters the command surface or behavior.
 
 ## Secrets
 

@@ -1,3 +1,5 @@
+> **Historical / archived.** This document is a completed planning or design artifact, kept for project history. It is **not** maintained and may not reflect the current code. For the implemented behavior see [`docs/command-contract.md`](../command-contract.md) and [`docs/shared-architecture.md`](../shared-architecture.md).
+
 # Phase 7 — Confluence Content Depth: Implementation Plan
 
 > Detailed task breakdown for Phase 7 of `docs/post-mvp-roadmap.md`. Phases 1–6
