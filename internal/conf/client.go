@@ -194,42 +194,36 @@ func nextPageURL(current, next string) (string, error) {
 // request path. Items are kept verbatim, so every field each page returned is
 // preserved. Following stops at restutil.MaxFollowPages.
 func (c *Client) followList(ctx context.Context, firstURL string) (json.RawMessage, error) {
-	all := []json.RawMessage{}
-	reqURL := firstURL
-	done := false
-	for page := 0; page < restutil.MaxFollowPages; page++ {
-		raw, err := c.Get(ctx, reqURL)
-		if err != nil {
-			return nil, err
-		}
-		var pg struct {
-			Results []json.RawMessage `json:"results"`
-			Links   struct {
-				Next string `json:"next"`
-			} `json:"_links"`
-		}
-		if err := json.Unmarshal(raw, &pg); err != nil {
-			return nil, decodeError(err)
-		}
-		all = append(all, pg.Results...)
-		if pg.Links.Next == "" {
-			done = true
-			break
-		}
-		if reqURL, err = nextPageURL(reqURL, pg.Links.Next); err != nil {
-			return nil, err
-		}
-	}
-	// Exiting the loop without seeing the last page means the cap was hit and
-	// the aggregate is incomplete.
-	if !done {
-		return nil, restutil.TruncatedError()
-	}
-	out, err := json.Marshal(map[string][]json.RawMessage{"results": all})
+	items, err := restutil.FollowAll(ctx, firstURL,
+		func(ctx context.Context, cursor string) (json.RawMessage, error) {
+			return c.Get(ctx, cursor)
+		},
+		func(raw json.RawMessage, cursor string) ([]json.RawMessage, string, error) {
+			var pg struct {
+				Results []json.RawMessage `json:"results"`
+				Links   struct {
+					Next string `json:"next"`
+				} `json:"_links"`
+			}
+			if err := json.Unmarshal(raw, &pg); err != nil {
+				return nil, "", decodeError(err)
+			}
+			if pg.Links.Next == "" {
+				return pg.Results, "", nil
+			}
+			// _links.next is a query-only reference; thread it onto the URL
+			// that produced this page.
+			next, err := nextPageURL(cursor, pg.Links.Next)
+			if err != nil {
+				return nil, "", err
+			}
+			return pg.Results, next, nil
+		},
+	)
 	if err != nil {
-		return nil, decodeError(err)
+		return nil, err
 	}
-	return out, nil
+	return restutil.Aggregate(productName, "results", items)
 }
 
 // ListSpacesAll follows GET /spaces to completion.
