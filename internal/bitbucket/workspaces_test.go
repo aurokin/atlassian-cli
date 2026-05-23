@@ -9,31 +9,6 @@ import (
 	"testing"
 )
 
-func TestListWorkspacesRoleQuery(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/workspaces" {
-			t.Errorf("path = %q", r.URL.Path)
-		}
-		if got := r.URL.Query().Get("role"); got != "member" {
-			t.Errorf("role = %q, want member", got)
-		}
-		_, _ = w.Write([]byte(`{"values":[{"slug":"acme"}]}`))
-	}))
-	defer srv.Close()
-
-	raw, err := newTestClient(srv).ListWorkspaces(context.Background(), 0)
-	if err != nil {
-		t.Fatalf("ListWorkspaces: %v", err)
-	}
-	page, err := Decode[WorkspacePage](raw)
-	if err != nil {
-		t.Fatalf("Decode: %v", err)
-	}
-	if len(page.Values) != 1 || page.Values[0].Slug != "acme" {
-		t.Fatalf("values = %+v", page.Values)
-	}
-}
-
 func TestGetWorkspace(t *testing.T) {
 	srv := serveJSON(t, "/workspaces/acme", `{"slug":"acme","name":"Acme"}`)
 	defer srv.Close()

@@ -629,14 +629,17 @@ state changes, and taxonomy (milestones/components/versions) are later slices.
 ### `workspace`
 
 ```
-atl-bb workspace list [--limit N] [--all]
 atl-bb workspace view [<workspace>] [--workspace <slug>]
 ```
 
-`workspace list` lists the workspaces the authenticated account is a member of
-(`GET /workspaces?role=member`). `workspace view` shows one workspace by slug
-(positional or `--workspace`). Members, permissions, and repo-permissions are
-later slices.
+`workspace view` shows one workspace by slug (positional or `--workspace`).
+
+There is no `workspace list`: Bitbucket removed the cross-workspace
+enumeration endpoint (`GET /2.0/workspaces`) on 2026-04-14
+([changelog CHANGE-3022](https://developer.atlassian.com/cloud/bitbucket/changelog)),
+and there is no API-token replacement for listing the workspaces an account
+belongs to, so workspaces are addressed by slug. Members, permissions, and
+repo-permissions are later slices.
 
 ### `project`
 

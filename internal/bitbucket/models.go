@@ -103,12 +103,6 @@ type Workspace struct {
 	CreatedOn string `json:"created_on,omitempty"`
 }
 
-// WorkspacePage is one page of a workspace listing.
-type WorkspacePage struct {
-	Values []Workspace `json:"values"`
-	Next   string      `json:"next,omitempty"`
-}
-
 // Repository is the subset of a Bitbucket repository that human output
 // renders.
 type Repository struct {

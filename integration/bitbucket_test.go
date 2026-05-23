@@ -67,11 +67,10 @@ func TestBitbucketStatus(t *testing.T) {
 // supported way to read workspace data.
 //
 // NOTE: there is deliberately no TestBitbucketWorkspaceList. Bitbucket removed
-// the cross-workspace user-enumeration endpoints (GET /2.0/workspaces) on
-// 2026-04-14 (changelog CHANGE-3022); `atl-bb workspace list` calls that gone
-// endpoint and now returns HTTP 410. That is a real CLI bug tracked separately
-// — the command needs to either surface a clear error or be retired — but it is
-// not something an integration test against live Bitbucket can make pass.
+// the cross-workspace user-enumeration endpoint (GET /2.0/workspaces) on
+// 2026-04-14 (changelog CHANGE-3022), and there is no API-token replacement for
+// listing the workspaces an account belongs to, so the `atl-bb workspace list`
+// command was removed; workspaces are addressed by slug via `workspace view`.
 func TestBitbucketWorkspaceView(t *testing.T) {
 	s := bbSession(t)
 	ws := bbWorkspace(t)

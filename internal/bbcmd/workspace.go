@@ -9,59 +9,23 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/bitbucket"
 	"github.com/aurokin/atlassian-cli/internal/cli"
-	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // newWorkspaceCommand builds the "workspace" command group.
+//
+// There is intentionally no "list" subcommand: Bitbucket removed the
+// cross-workspace enumeration endpoint (GET /2.0/workspaces) on 2026-04-14
+// (changelog CHANGE-3022), and there is no API-token replacement for listing
+// the workspaces an account belongs to. Workspaces are addressed by slug.
 func newWorkspaceCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "workspace",
 		Aliases: []string{"workspaces", "ws"},
-		Short:   "List and view Bitbucket workspaces",
+		Short:   "View Bitbucket workspaces",
 	}
 	cmd.AddCommand(
-		newWorkspaceListCommand(info, g),
 		newWorkspaceViewCommand(info, g),
 	)
-	return cmd
-}
-
-func newWorkspaceListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
-	var (
-		limit int
-		all   bool
-	)
-	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "List the workspaces the account is a member of",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			bc, err := bbClient(info, g)
-			if err != nil {
-				return err
-			}
-			list := bc.ListWorkspaces
-			if all {
-				list = bc.ListWorkspacesAll
-			}
-			raw, err := list(cmd.Context(), limit)
-			if err != nil {
-				return err
-			}
-			if g.JSON != "" || g.JQ != "" {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := bitbucket.Decode[bitbucket.WorkspacePage](raw)
-			if err != nil {
-				return err
-			}
-			writeWorkspaceList(cmd.OutOrStdout(), page.Values)
-			return nil
-		},
-	}
-	f := cmd.Flags()
-	f.IntVar(&limit, "limit", 0, "maximum number of workspaces per page")
-	f.BoolVar(&all, "all", false, "follow pagination and return every page (--limit sets the page size)")
 	return cmd
 }
 
@@ -97,19 +61,6 @@ func newWorkspaceViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 	}
 	cmd.Flags().StringVar(&workspaceFlag, "workspace", "", "workspace slug to view")
 	return cmd
-}
-
-// writeWorkspaceList prints workspaces as aligned slug/name rows.
-func writeWorkspaceList(w io.Writer, workspaces []bitbucket.Workspace) {
-	if len(workspaces) == 0 {
-		fmt.Fprintln(w, "No workspaces found.")
-		return
-	}
-	tw := output.TabWriter(w)
-	for _, ws := range workspaces {
-		fmt.Fprintf(tw, "%s\t%s\n", ws.Slug, ws.Name)
-	}
-	_ = tw.Flush()
 }
 
 // writeWorkspace prints a single workspace as aligned label/value lines.
