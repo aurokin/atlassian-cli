@@ -156,15 +156,11 @@ func writeProjectList(w io.Writer, projects []bitbucket.Project) {
 
 // writeProject prints a single project as aligned label/value lines.
 func writeProject(w io.Writer, p bitbucket.Project) {
-	fmt.Fprintf(w, "%-12s %s\n", "key:", p.Key)
-	if p.Name != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "name:", p.Name)
-	}
-	fmt.Fprintf(w, "%-12s %s\n", "visibility:", visibilityLabel(p.IsPrivate))
-	if p.Description != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "description:", p.Description)
-	}
-	if p.UUID != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "uuid:", p.UUID)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Add("key", p.Key)
+	lw.AddIf("name", p.Name)
+	lw.Add("visibility", visibilityLabel(p.IsPrivate))
+	lw.AddIf("description", p.Description)
+	lw.AddIf("uuid", p.UUID)
+	_ = lw.Flush()
 }

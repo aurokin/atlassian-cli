@@ -192,10 +192,10 @@ func writeBranchList(w io.Writer, branches []bitbucket.Branch) {
 
 // writeBranch prints a single branch as aligned label/value lines.
 func writeBranch(w io.Writer, b bitbucket.Branch) {
-	fmt.Fprintf(w, "%-8s %s\n", "name:", b.Name)
-	if hash := branchTipHash(b); hash != "" {
-		fmt.Fprintf(w, "%-8s %s\n", "target:", hash)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Add("name", b.Name)
+	lw.AddIf("target", branchTipHash(b))
+	_ = lw.Flush()
 }
 
 // branchTipHash returns the short hash of a branch's tip commit, or "" when the

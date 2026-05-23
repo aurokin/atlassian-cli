@@ -1,7 +1,6 @@
 package bbcmd
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
@@ -9,6 +8,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/bitbucket"
 	"github.com/aurokin/atlassian-cli/internal/cli"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // newWorkspaceCommand builds the "workspace" command group.
@@ -57,17 +57,13 @@ func newWorkspaceViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 
 // writeWorkspace prints a single workspace as aligned label/value lines.
 func writeWorkspace(w io.Writer, ws bitbucket.Workspace) {
-	fmt.Fprintf(w, "%-12s %s\n", "slug:", ws.Slug)
-	if ws.Name != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "name:", ws.Name)
-	}
-	fmt.Fprintf(w, "%-12s %s\n", "visibility:", visibilityLabel(ws.IsPrivate))
-	if ws.UUID != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "uuid:", ws.UUID)
-	}
-	if ws.CreatedOn != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "created:", ws.CreatedOn)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Add("slug", ws.Slug)
+	lw.AddIf("name", ws.Name)
+	lw.Add("visibility", visibilityLabel(ws.IsPrivate))
+	lw.AddIf("uuid", ws.UUID)
+	lw.AddIf("created", ws.CreatedOn)
+	_ = lw.Flush()
 }
 
 // visibilityLabel renders a private flag as "private"/"public".

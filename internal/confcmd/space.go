@@ -114,12 +114,10 @@ func writeSpaceList(w io.Writer, spaces []conf.Space) {
 
 // writeSpace prints a single space as aligned label/value lines.
 func writeSpace(w io.Writer, s conf.Space) {
-	fmt.Fprintf(w, "%-6s %s\n", "key:", s.Key)
-	fmt.Fprintf(w, "%-6s %s\n", "name:", s.Name)
-	if s.Type != "" {
-		fmt.Fprintf(w, "%-6s %s\n", "type:", s.Type)
-	}
-	if s.ID != "" {
-		fmt.Fprintf(w, "%-6s %s\n", "id:", s.ID)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Add("key", s.Key)
+	lw.Add("name", s.Name)
+	lw.AddIf("type", s.Type)
+	lw.AddIf("id", s.ID)
+	_ = lw.Flush()
 }

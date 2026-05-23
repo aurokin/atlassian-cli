@@ -193,16 +193,14 @@ func writeTagList(w io.Writer, tags []bitbucket.Tag) {
 
 // writeTag prints a single tag as aligned label/value lines.
 func writeTag(w io.Writer, t bitbucket.Tag) {
-	fmt.Fprintf(w, "%-9s %s\n", "name:", t.Name)
-	if hash := tagTargetHash(t); hash != "" {
-		fmt.Fprintf(w, "%-9s %s\n", "target:", hash)
-	}
-	if t.Date != "" {
-		fmt.Fprintf(w, "%-9s %s\n", "date:", t.Date)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Add("name", t.Name)
+	lw.AddIf("target", tagTargetHash(t))
+	lw.AddIf("date", t.Date)
 	if t.Message != "" {
-		fmt.Fprintf(w, "%-9s %s\n", "message:", strings.TrimSpace(t.Message))
+		lw.Add("message", strings.TrimSpace(t.Message))
 	}
+	_ = lw.Flush()
 }
 
 // tagTargetHash returns the short hash of a tag's target commit, or "" when the

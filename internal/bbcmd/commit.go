@@ -120,16 +120,12 @@ func writeCommitList(w io.Writer, commits []bitbucket.Commit) {
 
 // writeCommit prints a single commit as aligned label/value lines.
 func writeCommit(w io.Writer, c bitbucket.Commit) {
-	fmt.Fprintf(w, "%-10s %s\n", "hash:", c.Hash)
-	if author := commitAuthorLabel(c.Author); author != "" {
-		fmt.Fprintf(w, "%-10s %s\n", "author:", author)
-	}
-	if c.Date != "" {
-		fmt.Fprintf(w, "%-10s %s\n", "date:", c.Date)
-	}
-	if summary := commitSummary(c); summary != "" {
-		fmt.Fprintf(w, "%-10s %s\n", "message:", summary)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Add("hash", c.Hash)
+	lw.AddIf("author", commitAuthorLabel(c.Author))
+	lw.AddIf("date", c.Date)
+	lw.AddIf("message", commitSummary(c))
+	_ = lw.Flush()
 }
 
 // shortHash truncates a commit hash to the conventional 12-character prefix.

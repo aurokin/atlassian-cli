@@ -390,27 +390,25 @@ func writeIssueList(w io.Writer, issues []jira.Issue) {
 // writeIssue prints a single issue as aligned label/value lines.
 func writeIssue(w io.Writer, iss jira.Issue) {
 	f := iss.Fields
-	fmt.Fprintf(w, "%-9s %s\n", "key:", iss.Key)
-	fmt.Fprintf(w, "%-9s %s\n", "summary:", f.Summary)
+	lw := output.NewLabelWriter(w)
+	lw.Add("key", iss.Key)
+	lw.Add("summary", f.Summary)
 	if f.Status != nil {
-		fmt.Fprintf(w, "%-9s %s\n", "status:", f.Status.Name)
+		lw.Add("status", f.Status.Name)
 	}
 	if f.IssueType != nil {
-		fmt.Fprintf(w, "%-9s %s\n", "type:", f.IssueType.Name)
+		lw.Add("type", f.IssueType.Name)
 	}
 	if f.Priority != nil {
-		fmt.Fprintf(w, "%-9s %s\n", "priority:", f.Priority.Name)
+		lw.Add("priority", f.Priority.Name)
 	}
 	if f.Assignee != nil && f.Assignee.DisplayName != "" {
-		fmt.Fprintf(w, "%-9s %s\n", "assignee:", f.Assignee.DisplayName)
+		lw.Add("assignee", f.Assignee.DisplayName)
 	}
 	if f.Reporter != nil && f.Reporter.DisplayName != "" {
-		fmt.Fprintf(w, "%-9s %s\n", "reporter:", f.Reporter.DisplayName)
+		lw.Add("reporter", f.Reporter.DisplayName)
 	}
-	if f.Created != "" {
-		fmt.Fprintf(w, "%-9s %s\n", "created:", f.Created)
-	}
-	if f.Updated != "" {
-		fmt.Fprintf(w, "%-9s %s\n", "updated:", f.Updated)
-	}
+	lw.AddIf("created", f.Created)
+	lw.AddIf("updated", f.Updated)
+	_ = lw.Flush()
 }

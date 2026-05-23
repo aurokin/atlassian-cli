@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // StatusContact is an optional trailing label/value line in the human status
@@ -55,23 +57,19 @@ func RunStatus(cmd *cobra.Command, g *GlobalFlags, a StatusAdapter) error {
 	// APIBase error and simply omit the line if it is empty.
 	apiBase, _ := a.APIBase()
 	w := cmd.OutOrStdout()
-	fmt.Fprintf(w, "%-10s %s\n", "status:", "authenticated")
-	if g.Site != "" {
-		fmt.Fprintf(w, "%-10s %s\n", "site:", g.Site)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Add("status", "authenticated")
+	lw.AddIf("site", g.Site)
 	account := acct.DisplayName
 	if acct.AccountID != "" {
 		account = fmt.Sprintf("%s (%s)", acct.DisplayName, acct.AccountID)
 	}
-	if account != "" {
-		fmt.Fprintf(w, "%-10s %s\n", "account:", account)
-	}
+	lw.AddIf("account", account)
 	if acct.Contact.Value != "" {
-		fmt.Fprintf(w, "%-10s %s\n", acct.Contact.Label+":", acct.Contact.Value)
+		lw.Add(acct.Contact.Label, acct.Contact.Value)
 	}
-	if apiBase != "" {
-		fmt.Fprintf(w, "%-10s %s\n", "api base:", apiBase)
-	}
+	lw.AddIf("api base", apiBase)
+	_ = lw.Flush()
 	return nil
 }
 

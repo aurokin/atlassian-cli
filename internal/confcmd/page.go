@@ -302,15 +302,13 @@ func writePageList(w io.Writer, pages []conf.Page) {
 
 // writePage prints a single page as aligned label/value lines.
 func writePage(w io.Writer, p conf.Page) {
-	fmt.Fprintf(w, "%-9s %s\n", "id:", p.ID)
-	fmt.Fprintf(w, "%-9s %s\n", "title:", p.Title)
-	if p.Status != "" {
-		fmt.Fprintf(w, "%-9s %s\n", "status:", p.Status)
-	}
-	if p.SpaceID != "" {
-		fmt.Fprintf(w, "%-9s %s\n", "space-id:", p.SpaceID)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Add("id", p.ID)
+	lw.Add("title", p.Title)
+	lw.AddIf("status", p.Status)
+	lw.AddIf("space-id", p.SpaceID)
 	if p.Version.Number > 0 {
-		fmt.Fprintf(w, "%-9s %d\n", "version:", p.Version.Number)
+		lw.Addf("version", "%d", p.Version.Number)
 	}
+	_ = lw.Flush()
 }

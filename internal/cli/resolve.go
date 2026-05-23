@@ -1,12 +1,12 @@
 package cli
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/spf13/cobra"
 
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
+	"github.com/aurokin/atlassian-cli/internal/output"
 	"github.com/aurokin/atlassian-cli/internal/resolve"
 )
 
@@ -42,17 +42,11 @@ func newResolveCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 // writeResourceHuman prints a resolved Resource as aligned label/value lines,
 // skipping the fields that are empty for this resource kind.
 func writeResourceHuman(w io.Writer, r resolve.Resource) {
-	fmt.Fprintf(w, "kind:  %s\n", r.Kind)
-	if r.Key != "" {
-		fmt.Fprintf(w, "key:   %s\n", r.Key)
-	}
-	if r.ID != "" {
-		fmt.Fprintf(w, "id:    %s\n", r.ID)
-	}
-	if r.Title != "" {
-		fmt.Fprintf(w, "title: %s\n", r.Title)
-	}
-	if r.SiteHost != "" {
-		fmt.Fprintf(w, "site:  %s\n", r.SiteHost)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Add("kind", string(r.Kind))
+	lw.AddIf("key", r.Key)
+	lw.AddIf("id", r.ID)
+	lw.AddIf("title", r.Title)
+	lw.AddIf("site", r.SiteHost)
+	_ = lw.Flush()
 }
