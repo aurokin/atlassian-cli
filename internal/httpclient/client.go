@@ -4,7 +4,6 @@ package httpclient
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -254,6 +253,13 @@ func (c *Client) APIBase() (string, error) {
 // A non-2xx status is returned as a structured *apperr.Error alongside the
 // populated Response.
 func (c *Client) Do(ctx context.Context, method, pathOrURL string, body io.Reader) (*Response, error) {
+	return c.DoAccepting(ctx, method, pathOrURL, body, "application/json")
+}
+
+// DoAccepting is Do with an explicit Accept header. Binary payloads — an
+// attachment download, say — pass "*/*" rather than the JSON default, since a
+// JSON Accept is wrong for a file. Behavior is otherwise identical to Do.
+func (c *Client) DoAccepting(ctx context.Context, method, pathOrURL string, body io.Reader, accept string) (*Response, error) {
 	target, err := c.target.ResolveURL(pathOrURL)
 	if err != nil {
 		return nil, err
@@ -262,7 +268,7 @@ func (c *Client) Do(ctx context.Context, method, pathOrURL string, body io.Reade
 	if err != nil {
 		return nil, apperr.InvalidInput(fmt.Sprintf("build request: %v", err))
 	}
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", accept)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -366,7 +372,7 @@ func isTimeout(err error) bool {
 // classify maps a non-2xx Response to a structured *apperr.Error, enriched
 // with target context.
 func (c *Client) classify(resp *Response) *apperr.Error {
-	msg := extractMessage(resp.Body)
+	msg := apperr.MessageFromBody(resp.Body)
 	var e *apperr.Error
 	switch resp.Status {
 	case http.StatusUnauthorized:
@@ -398,36 +404,6 @@ func (c *Client) classify(resp *Response) *apperr.Error {
 		e.APIBaseURL = base
 	}
 	return e
-}
-
-// extractMessage makes a best-effort attempt to pull a human message out of a
-// Jira-, Confluence-, or Bitbucket-shaped error body. Jira/Confluence put the
-// text at top level (message / errorMessages); Bitbucket nests it under an
-// "error" object ({"error":{"message":...,"detail":...}}).
-func extractMessage(body []byte) string {
-	var shaped struct {
-		Message       string   `json:"message"`
-		ErrorMessages []string `json:"errorMessages"`
-		Error         struct {
-			Message string `json:"message"`
-			Detail  string `json:"detail"`
-		} `json:"error"`
-	}
-	if json.Unmarshal(body, &shaped) == nil {
-		if shaped.Message != "" {
-			return shaped.Message
-		}
-		if len(shaped.ErrorMessages) > 0 {
-			return strings.Join(shaped.ErrorMessages, "; ")
-		}
-		if shaped.Error.Message != "" {
-			return shaped.Error.Message
-		}
-		if shaped.Error.Detail != "" {
-			return shaped.Error.Detail
-		}
-	}
-	return ""
 }
 
 func orDefault(s, fallback string) string {

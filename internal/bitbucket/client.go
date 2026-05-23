@@ -134,32 +134,14 @@ func featureDisabledSignal(status int, body []byte) bool {
 		strings.Contains(msg, "has no wiki")
 }
 
-// errorMessage pulls the human message out of a Bitbucket error body
-// ({"error":{"message"|"detail"}} or a top-level "message"), falling back to
-// the trimmed raw body.
+// errorMessage pulls the human message out of a Bitbucket error body via the
+// shared apperr parser, falling back to the trimmed raw body when no message
+// field is populated.
 func errorMessage(body []byte) string {
-	trimmed := strings.TrimSpace(string(body))
-	if trimmed == "" {
-		return ""
+	if m := apperr.MessageFromBody(body); m != "" {
+		return m
 	}
-	var shaped struct {
-		Message string `json:"message"`
-		Error   struct {
-			Message string `json:"message"`
-			Detail  string `json:"detail"`
-		} `json:"error"`
-	}
-	if json.Unmarshal(body, &shaped) == nil {
-		switch {
-		case shaped.Error.Message != "":
-			return shaped.Error.Message
-		case shaped.Error.Detail != "":
-			return shaped.Error.Detail
-		case shaped.Message != "":
-			return shaped.Message
-		}
-	}
-	return trimmed
+	return strings.TrimSpace(string(body))
 }
 
 // decodeError wraps a pagination-aggregation or decode failure as a structured

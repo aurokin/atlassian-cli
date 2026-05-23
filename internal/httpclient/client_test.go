@@ -213,6 +213,48 @@ func TestDoSuccessReturnsBody(t *testing.T) {
 	}
 }
 
+func TestDoSetsDefaultJSONAccept(t *testing.T) {
+	var gotAccept string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAccept = r.Header.Get("Accept")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	client := New(
+		Target{Product: ProductJira, TokenStyle: auth.StyleDataCenterPAT, BaseURL: srv.URL},
+		auth.Credential{Style: auth.StyleDataCenterPAT, Token: "pat"},
+		srv.Client(),
+	)
+	if _, err := client.Do(context.Background(), http.MethodGet, "/x", nil); err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	if gotAccept != "application/json" {
+		t.Fatalf("Accept = %q, want application/json", gotAccept)
+	}
+}
+
+func TestDoAcceptingSetsCustomAccept(t *testing.T) {
+	var gotAccept string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAccept = r.Header.Get("Accept")
+		_, _ = w.Write([]byte(`binary`))
+	}))
+	defer srv.Close()
+
+	client := New(
+		Target{Product: ProductJira, TokenStyle: auth.StyleDataCenterPAT, BaseURL: srv.URL},
+		auth.Credential{Style: auth.StyleDataCenterPAT, Token: "pat"},
+		srv.Client(),
+	)
+	if _, err := client.DoAccepting(context.Background(), http.MethodGet, "/blob", nil, "*/*"); err != nil {
+		t.Fatalf("DoAccepting: %v", err)
+	}
+	if gotAccept != "*/*" {
+		t.Fatalf("Accept = %q, want */*", gotAccept)
+	}
+}
+
 func TestDoCallsCredentialProviderPerRequest(t *testing.T) {
 	var gotAuth string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
