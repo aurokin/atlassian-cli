@@ -112,6 +112,30 @@ func TestExitCode(t *testing.T) {
 	}
 }
 
+func TestMessageFromBody(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{"jira message", `{"message":"boom"}`, "boom"},
+		{"jira errorMessages", `{"errorMessages":["a","b"]}`, "a; b"},
+		{"bitbucket nested message", `{"error":{"message":"nope"}}`, "nope"},
+		{"bitbucket nested detail", `{"error":{"detail":"why"}}`, "why"},
+		{"top-level wins over nested", `{"message":"top","error":{"message":"nested"}}`, "top"},
+		{"no message field", `{"type":"error"}`, ""},
+		{"not json", `<html>500</html>`, ""},
+		{"empty", ``, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := MessageFromBody([]byte(c.body)); got != c.want {
+				t.Errorf("MessageFromBody(%q) = %q, want %q", c.body, got, c.want)
+			}
+		})
+	}
+}
+
 func TestErrorSatisfiesErrorInterface(t *testing.T) {
 	var err error = Forbidden("denied")
 	if err.Error() == "" {

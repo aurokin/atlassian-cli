@@ -2,7 +2,11 @@
 // shared across atl-* commands. Its JSON shape follows docs/access-error-model.md.
 package apperr
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+	"strings"
+)
 
 // Stable machine-readable error codes. The code values match the recovery
 // cases in docs/access-error-model.md.
@@ -110,6 +114,37 @@ func (e *Error) Error() string {
 // New builds an Error with the given code and message.
 func New(code, message string) *Error {
 	return &Error{Code: code, Message: message}
+}
+
+// MessageFromBody makes a best-effort attempt to pull a human-readable message
+// out of an Atlassian error body, covering both shapes the products use:
+// Jira/Confluence put the text at the top level (message / errorMessages),
+// Bitbucket nests it under an "error" object ({"error":{"message","detail"}}).
+// It returns "" when no message field is populated; callers supply their own
+// fallback (a default string, or the raw body).
+func MessageFromBody(body []byte) string {
+	var shaped struct {
+		Message       string   `json:"message"`
+		ErrorMessages []string `json:"errorMessages"`
+		Error         struct {
+			Message string `json:"message"`
+			Detail  string `json:"detail"`
+		} `json:"error"`
+	}
+	if json.Unmarshal(body, &shaped) != nil {
+		return ""
+	}
+	switch {
+	case shaped.Message != "":
+		return shaped.Message
+	case len(shaped.ErrorMessages) > 0:
+		return strings.Join(shaped.ErrorMessages, "; ")
+	case shaped.Error.Message != "":
+		return shaped.Error.Message
+	case shaped.Error.Detail != "":
+		return shaped.Error.Detail
+	}
+	return ""
 }
 
 // Unauthorized builds a 401 error: a bad, expired, or mismatched token.

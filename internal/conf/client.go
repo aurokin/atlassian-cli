@@ -379,7 +379,9 @@ func (c *Client) FetchAttachmentData(ctx context.Context, downloadLink string) (
 	if err != nil {
 		return nil, err
 	}
-	resp, err := c.HTTP.Do(ctx, "GET", u, nil)
+	// An attachment is binary, so accept any content type rather than the
+	// JSON default a normal API GET sends.
+	resp, err := c.HTTP.DoAccepting(ctx, "GET", u, nil, "*/*")
 	if err != nil {
 		return nil, err
 	}
