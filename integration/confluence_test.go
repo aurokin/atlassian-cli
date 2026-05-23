@@ -188,8 +188,13 @@ func TestConfPageLifecycle(t *testing.T) {
 			t.Logf("cleanup: page was created but its id could not be parsed; delete it manually.\ncreate output:\n%s", createRes.stdout)
 			return
 		}
+		// The v2 page delete is a soft-delete (moves to trash) and can return a
+		// spurious 500 even when it succeeds, so retry once before giving up.
 		res := s.run("api", "/pages/"+pageID, "--method", "DELETE")
 		if res.err != nil {
+			res = s.run("api", "/pages/"+pageID, "--method", "DELETE")
+		}
+		if res.err != nil && !strings.Contains(res.stdout+res.stderr, "not_found") {
 			t.Logf("cleanup: failed to delete page %s (delete it manually): %v\n%s", pageID, res.err, res.stdout+res.stderr)
 			return
 		}
@@ -221,7 +226,8 @@ func TestConfPageLifecycle(t *testing.T) {
 	}
 
 	// Comment lifecycle: create → delete (scope-permitting).
-	commentRes := s.run("page", "comment", "create", pageID, "--body", "integration comment "+stamp, "--json")
+	commentRes := s.run("page", "comment", "create", pageID,
+		"--body", "<p>integration comment "+stamp+"</p>", "--body-format", "storage", "--json")
 	s.skipIfScopeOrPermission(commentRes, "page comment create")
 	if commentRes.err != nil {
 		t.Fatalf("page comment create failed: %v\nstdout:\n%s\nstderr:\n%s", commentRes.err, commentRes.stdout, commentRes.stderr)
