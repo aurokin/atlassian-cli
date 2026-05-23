@@ -56,15 +56,10 @@ func newDeploymentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comm
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := bitbucket.Decode[bitbucket.DeploymentPage](raw)
-			if err != nil {
-				return err
-			}
-			writeDeploymentList(cmd.OutOrStdout(), page.Values)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.DeploymentPage],
+				func(w io.Writer, page bitbucket.DeploymentPage) {
+					writeDeploymentList(w, page.Values)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -97,15 +92,7 @@ func newDeploymentViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comm
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			d, err := bitbucket.Decode[bitbucket.Deployment](raw)
-			if err != nil {
-				return err
-			}
-			writeDeployment(cmd.OutOrStdout(), d)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Deployment], writeDeployment)
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -154,15 +141,10 @@ func newEnvironmentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := bitbucket.Decode[bitbucket.EnvironmentPage](raw)
-			if err != nil {
-				return err
-			}
-			writeEnvironmentList(cmd.OutOrStdout(), page.Values)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.EnvironmentPage],
+				func(w io.Writer, page bitbucket.EnvironmentPage) {
+					writeEnvironmentList(w, page.Values)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -195,15 +177,7 @@ func newEnvironmentViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			env, err := bitbucket.Decode[bitbucket.Environment](raw)
-			if err != nil {
-				return err
-			}
-			writeEnvironment(cmd.OutOrStdout(), env)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Environment], writeEnvironment)
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)

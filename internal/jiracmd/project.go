@@ -47,15 +47,10 @@ func newProjectListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := jira.Decode[jira.ProjectPage](raw)
-			if err != nil {
-				return err
-			}
-			writeProjectList(cmd.OutOrStdout(), page.Values)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.ProjectPage],
+				func(w io.Writer, page jira.ProjectPage) {
+					writeProjectList(w, page.Values)
+				})
 		},
 	}
 	cli.AddPaginationFlags(cmd, &limit, &all, "projects")
@@ -76,15 +71,7 @@ func newProjectViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			p, err := jira.Decode[jira.Project](raw)
-			if err != nil {
-				return err
-			}
-			writeProject(cmd.OutOrStdout(), p)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.Project], writeProject)
 		},
 	}
 }

@@ -49,15 +49,10 @@ func newAttachmentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comm
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			al, err := conf.Decode[conf.AttachmentList](raw)
-			if err != nil {
-				return err
-			}
-			writeAttachmentList(cmd.OutOrStdout(), al.Results)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.AttachmentList],
+				func(w io.Writer, al conf.AttachmentList) {
+					writeAttachmentList(w, al.Results)
+				})
 		},
 	}
 	cli.AddPaginationFlags(cmd, &limit, &all, "attachments")

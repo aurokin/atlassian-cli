@@ -50,15 +50,10 @@ func newCommentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := jira.Decode[jira.CommentPage](raw)
-			if err != nil {
-				return err
-			}
-			writeCommentList(cmd.OutOrStdout(), page.Comments)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.CommentPage],
+				func(w io.Writer, page jira.CommentPage) {
+					writeCommentList(w, page.Comments)
+				})
 		},
 	}
 	cli.AddPaginationFlags(cmd, &limit, &all, "comments")
@@ -79,15 +74,7 @@ func newCommentViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			c, err := jira.Decode[jira.Comment](raw)
-			if err != nil {
-				return err
-			}
-			writeComment(cmd.OutOrStdout(), c)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.Comment], writeComment)
 		},
 	}
 }
@@ -110,15 +97,10 @@ func newCommentCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			c, err := jira.Decode[jira.Comment](raw)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "created comment %s on %s\n", c.ID, args[0])
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.Comment],
+				func(w io.Writer, c jira.Comment) {
+					fmt.Fprintf(w, "created comment %s on %s\n", c.ID, args[0])
+				})
 		},
 	}
 	cmd.Flags().StringVar(&body, "body", "", "comment body; plain text is wrapped as ADF (required)")

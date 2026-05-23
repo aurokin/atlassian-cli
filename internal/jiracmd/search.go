@@ -1,6 +1,8 @@
 package jiracmd
 
 import (
+	"io"
+
 	"github.com/spf13/cobra"
 
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
@@ -40,15 +42,10 @@ func newSearchIssuesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := jira.Decode[jira.IssuePage](raw)
-			if err != nil {
-				return err
-			}
-			writeIssueList(cmd.OutOrStdout(), page.Issues)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.IssuePage],
+				func(w io.Writer, page jira.IssuePage) {
+					writeIssueList(w, page.Issues)
+				})
 		},
 	}
 	cli.AddPaginationFlags(cmd, &limit, &all, "issues")

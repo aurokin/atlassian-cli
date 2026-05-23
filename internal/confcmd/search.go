@@ -44,15 +44,10 @@ func newSearchCQLCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			results, err := conf.Decode[conf.SearchResults](raw)
-			if err != nil {
-				return err
-			}
-			writeSearchResults(cmd.OutOrStdout(), results.Results)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.SearchResults],
+				func(w io.Writer, results conf.SearchResults) {
+					writeSearchResults(w, results.Results)
+				})
 		},
 	}
 	cli.AddPaginationFlags(cmd, &limit, &all, "results")
