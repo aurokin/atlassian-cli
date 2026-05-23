@@ -128,6 +128,20 @@ type WorklogPage struct {
 	Worklogs []Worklog `json:"worklogs"`
 }
 
+// Field is one entry from GET /field: the global catalog of issue fields, used
+// to discover the field ids (and custom-field ids) and types that create/edit
+// and --fields accept. Schema.Type is the field's value type (e.g. "string",
+// "user", "array").
+type Field struct {
+	ID     string `json:"id"`
+	Key    string `json:"key"`
+	Name   string `json:"name"`
+	Custom bool   `json:"custom"`
+	Schema struct {
+		Type string `json:"type"`
+	} `json:"schema"`
+}
+
 // Decode unmarshals a raw Jira response body into a model value, wrapping a
 // decode failure as a structured error.
 func Decode[T any](raw json.RawMessage) (T, error) {

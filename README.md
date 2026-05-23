@@ -21,8 +21,8 @@ exact command behavior and known limitations.
 
 - **`atl-jira`** — `project`, `issue` (view/list, create/edit/transition,
   `assign`/`watch`/`unwatch`/`watchers`, `link` + `link types`,
-  `worklog` list/add, `comment` create/edit/delete), `search issues` (JQL),
-  and `status`.
+  `worklog` list/add, `comment` create/edit/delete), `field list`,
+  `search issues` (JQL), and `status`.
 - **`atl-conf`** — `space`, `page` (read plus create/edit), `page comment`,
   `page label`, `attachment` (list/download), `search cql`, and `status`. It
   is a mixed-version client (REST v2, with documented v1 fallbacks for CQL

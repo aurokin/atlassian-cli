@@ -207,6 +207,13 @@ func (c *Client) ListIssueLinkTypes(ctx context.Context) (json.RawMessage, error
 	return c.Get(ctx, "/issueLinkType")
 }
 
+// ListFields returns the global catalog of issue fields (GET /field), the
+// source for discovering field ids/types accepted by create/edit and the
+// issue-view --fields selector. The response is a JSON array.
+func (c *Client) ListFields(ctx context.Context) (json.RawMessage, error) {
+	return c.Get(ctx, "/field")
+}
+
 // ListWorklogs returns a page of an issue's worklog entries
 // (GET /issue/{idOrKey}/worklog).
 func (c *Client) ListWorklogs(ctx context.Context, idOrKey string, limit int) (json.RawMessage, error) {
