@@ -3,6 +3,7 @@ package jiracmd
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -30,12 +31,17 @@ func newWorklogListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 	var (
 		limit int
 		all   bool
+		since string
 	)
 	cmd := &cobra.Command{
 		Use:   "list <issue>",
 		Short: "List worklog entries on an issue",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			startedAfter, err := parseSince(since)
+			if err != nil {
+				return err
+			}
 			jc, err := jiraClient(info, g)
 			if err != nil {
 				return err
@@ -44,7 +50,7 @@ func newWorklogListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if all {
 				list = jc.ListWorklogsAll
 			}
-			raw, err := list(cmd.Context(), args[0], limit)
+			raw, err := list(cmd.Context(), args[0], startedAfter, limit)
 			if err != nil {
 				return err
 			}
@@ -54,8 +60,28 @@ func newWorklogListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 				})
 		},
 	}
+	cmd.Flags().StringVar(&since, "since", "",
+		"only worklogs started on/after this time (date YYYY-MM-DD or RFC3339)")
 	cli.AddPaginationFlags(cmd, &limit, &all, "worklogs")
 	return cmd
+}
+
+// parseSince converts the --since flag to a Unix epoch-millisecond value for
+// the worklog API's startedAfter parameter. It accepts a date (YYYY-MM-DD,
+// interpreted as midnight UTC) or a full RFC3339 timestamp. An empty value
+// yields 0 (unset).
+func parseSince(since string) (int64, error) {
+	if since == "" {
+		return 0, nil
+	}
+	if t, err := time.Parse(time.RFC3339, since); err == nil {
+		return t.UnixMilli(), nil
+	}
+	if t, err := time.Parse("2006-01-02", since); err == nil {
+		return t.UnixMilli(), nil
+	}
+	return 0, apperr.InvalidInput(
+		fmt.Sprintf("invalid --since %q; expected a date (YYYY-MM-DD) or RFC3339 timestamp", since))
 }
 
 func newWorklogAddCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
@@ -101,20 +127,35 @@ func newWorklogAddCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 	return cmd
 }
 
-// writeWorklogList prints worklog entries as aligned
-// id/author/time-spent/started rows.
+// writeWorklogList prints each worklog as a label/value block followed by its
+// rendered comment, separated by blank lines.
 func writeWorklogList(w io.Writer, worklogs []jira.Worklog) {
 	if len(worklogs) == 0 {
 		fmt.Fprintln(w, "No worklogs found.")
 		return
 	}
-	tw := output.TabWriter(w)
-	for _, wl := range worklogs {
-		author := ""
-		if wl.Author != nil {
-			author = wl.Author.DisplayName
+	for i, wl := range worklogs {
+		if i > 0 {
+			fmt.Fprintln(w)
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", wl.ID, author, wl.TimeSpent, wl.Started)
+		writeWorklog(w, wl)
 	}
-	_ = tw.Flush()
+}
+
+// writeWorklog prints a single worklog as label/value lines followed by its
+// plain-text comment, if any.
+func writeWorklog(w io.Writer, wl jira.Worklog) {
+	author := "-"
+	if wl.Author != nil && wl.Author.DisplayName != "" {
+		author = wl.Author.DisplayName
+	}
+	lw := output.NewLabelWriter(w)
+	lw.Add("id", wl.ID)
+	lw.Add("author", author)
+	lw.Add("time spent", wl.TimeSpent)
+	lw.AddIf("started", wl.Started)
+	_ = lw.Flush()
+	if text := jira.TextOf(wl.Comment); text != "" {
+		fmt.Fprintf(w, "\n%s\n", text)
+	}
 }

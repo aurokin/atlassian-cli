@@ -261,7 +261,7 @@ func TestClientListComments(t *testing.T) {
 		`{"comments":[{"id":"10","author":{"displayName":"Test User"}}],"total":1}`)
 	defer srv.Close()
 
-	raw, err := newTestClient(srv).ListComments(context.Background(), "PROJ-1", 0)
+	raw, err := newTestClient(srv).ListComments(context.Background(), "PROJ-1", "", 0)
 	if err != nil {
 		t.Fatalf("ListComments: %v", err)
 	}
@@ -271,6 +271,21 @@ func TestClientListComments(t *testing.T) {
 	}
 	if len(page.Comments) != 1 || page.Comments[0].ID != "10" {
 		t.Fatalf("comments = %+v", page.Comments)
+	}
+}
+
+func TestClientListCommentsPassesOrderBy(t *testing.T) {
+	var gotOrderBy string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotOrderBy = r.URL.Query().Get("orderBy")
+		_, _ = w.Write([]byte(`{"comments":[]}`))
+	}))
+	defer srv.Close()
+	if _, err := newTestClient(srv).ListComments(context.Background(), "PROJ-1", "-created", 0); err != nil {
+		t.Fatalf("ListComments: %v", err)
+	}
+	if gotOrderBy != "-created" {
+		t.Errorf("orderBy = %q, want -created", gotOrderBy)
 	}
 }
 
@@ -545,7 +560,7 @@ func TestClientListCommentsAllFollowsOffsetPages(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	raw, err := newTestClient(srv).ListCommentsAll(context.Background(), "P-1", 2)
+	raw, err := newTestClient(srv).ListCommentsAll(context.Background(), "P-1", "", 2)
 	if err != nil {
 		t.Fatalf("ListCommentsAll: %v", err)
 	}

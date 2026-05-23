@@ -26,10 +26,20 @@ func newIssueWatchCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			if err := jc.AddWatcher(cmd.Context(), args[0], ""); err != nil {
 				return err
 			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, watchResult{Issue: args[0], Watching: true})
+			}
 			fmt.Fprintf(cmd.OutOrStdout(), "watching %s\n", args[0])
 			return nil
 		},
 	}
+}
+
+// watchResult is the synthesized outcome of a watch/unwatch, whose API call
+// returns no body, so --json has a stable object to render.
+type watchResult struct {
+	Issue    string `json:"issue"`
+	Watching bool   `json:"watching"`
 }
 
 func newIssueUnwatchCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
@@ -54,6 +64,9 @@ func newIssueUnwatchCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			}
 			if err := jc.RemoveWatcher(cmd.Context(), args[0], me.AccountID); err != nil {
 				return err
+			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, watchResult{Issue: args[0], Watching: false})
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "no longer watching %s\n", args[0])
 			return nil

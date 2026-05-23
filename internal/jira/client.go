@@ -94,11 +94,23 @@ func (c *Client) SearchIssues(ctx context.Context, jql string, limit int) (json.
 }
 
 // ListComments returns a page of comments on an issue
-// (GET /issue/{idOrKey}/comment).
-func (c *Client) ListComments(ctx context.Context, issue string, limit int) (json.RawMessage, error) {
+// (GET /issue/{idOrKey}/comment). orderBy, when non-empty, is the API's
+// orderBy parameter ("created" oldest-first, "-created" newest-first).
+func (c *Client) ListComments(ctx context.Context, issue, orderBy string, limit int) (json.RawMessage, error) {
+	return c.Get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(issue)+"/comment",
+		commentQuery(orderBy, limit)))
+}
+
+// commentQuery builds the shared comment-list query string: page size plus the
+// optional orderBy. It is used by both the single-page and *All followers so
+// the parameter shape stays identical.
+func commentQuery(orderBy string, limit int) url.Values {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.Get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(issue)+"/comment", q))
+	if orderBy != "" {
+		q.Set("orderBy", orderBy)
+	}
+	return q
 }
 
 // GetComment returns a single comment (GET /issue/{idOrKey}/comment/{id}).
@@ -227,11 +239,24 @@ func (c *Client) ListFields(ctx context.Context) (json.RawMessage, error) {
 }
 
 // ListWorklogs returns a page of an issue's worklog entries
-// (GET /issue/{idOrKey}/worklog).
-func (c *Client) ListWorklogs(ctx context.Context, idOrKey string, limit int) (json.RawMessage, error) {
+// (GET /issue/{idOrKey}/worklog). startedAfter, when positive, is the API's
+// startedAfter filter (Unix epoch milliseconds): only worklogs started at or
+// after that instant are returned.
+func (c *Client) ListWorklogs(ctx context.Context, idOrKey string, startedAfter int64, limit int) (json.RawMessage, error) {
+	return c.Get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(idOrKey)+"/worklog",
+		worklogQuery(startedAfter, limit)))
+}
+
+// worklogQuery builds the shared worklog-list query string: page size plus the
+// optional startedAfter filter. It is used by both the single-page and *All
+// followers so the parameter shape stays identical.
+func worklogQuery(startedAfter int64, limit int) url.Values {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.Get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(idOrKey)+"/worklog", q))
+	if startedAfter > 0 {
+		q.Set("startedAfter", strconv.FormatInt(startedAfter, 10))
+	}
+	return q
 }
 
 // AddWorklog appends a worklog entry to an issue
@@ -393,11 +418,11 @@ func (c *Client) SearchIssuesAll(ctx context.Context, jql string, limit int) (js
 
 // ListCommentsAll follows an issue's comment list to completion and returns an
 // aggregated {"comments": [...]} body. The endpoint is offset paginated.
-func (c *Client) ListCommentsAll(ctx context.Context, issue string, limit int) (json.RawMessage, error) {
+// orderBy is threaded onto every page request (see ListComments).
+func (c *Client) ListCommentsAll(ctx context.Context, issue, orderBy string, limit int) (json.RawMessage, error) {
 	items, err := restutil.FollowAll(ctx, "",
 		func(ctx context.Context, cursor string) (json.RawMessage, error) {
-			q := url.Values{}
-			setLimit(q, limit)
+			q := commentQuery(orderBy, limit)
 			if cursor != "" {
 				q.Set("startAt", cursor)
 			}
@@ -422,11 +447,11 @@ func (c *Client) ListCommentsAll(ctx context.Context, issue string, limit int) (
 
 // ListWorklogsAll follows an issue's worklog list to completion and returns
 // an aggregated {"worklogs": [...]} body. The endpoint is offset paginated.
-func (c *Client) ListWorklogsAll(ctx context.Context, idOrKey string, limit int) (json.RawMessage, error) {
+// startedAfter is threaded onto every page request (see ListWorklogs).
+func (c *Client) ListWorklogsAll(ctx context.Context, idOrKey string, startedAfter int64, limit int) (json.RawMessage, error) {
 	items, err := restutil.FollowAll(ctx, "",
 		func(ctx context.Context, cursor string) (json.RawMessage, error) {
-			q := url.Values{}
-			setLimit(q, limit)
+			q := worklogQuery(startedAfter, limit)
 			if cursor != "" {
 				q.Set("startAt", cursor)
 			}

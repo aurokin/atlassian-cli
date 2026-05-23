@@ -43,6 +43,45 @@ func TestCommentListHumanOutput(t *testing.T) {
 	}
 }
 
+func TestCommentListOrderFlag(t *testing.T) {
+	cases := []struct{ flag, wantOrderBy string }{
+		{"asc", "created"},
+		{"desc", "-created"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.flag, func(t *testing.T) {
+			var gotOrderBy string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotOrderBy = r.URL.Query().Get("orderBy")
+				_, _ = w.Write([]byte(`{"comments":[],"total":0}`))
+			}))
+			defer srv.Close()
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+			loginJiraSite(t, srv.URL)
+
+			out, err := execJira(t, "issue", "comment", "list", "PROJ-1", "--order", tc.flag, "--site", "work")
+			if err != nil {
+				t.Fatalf("comment list --order %s: %v\n%s", tc.flag, err, out)
+			}
+			if gotOrderBy != tc.wantOrderBy {
+				t.Errorf("orderBy = %q, want %q", gotOrderBy, tc.wantOrderBy)
+			}
+		})
+	}
+}
+
+func TestCommentListRejectsInvalidOrder(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	_, err := execJira(t, "issue", "comment", "list", "PROJ-1", "--order", "sideways", "--site", "work")
+	if err == nil {
+		t.Fatal("comment list with invalid --order returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+		t.Fatalf("error = %v, want an invalid_input *apperr.Error", err)
+	}
+}
+
 func TestCommentListEmpty(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"comments":[],"total":0}`))

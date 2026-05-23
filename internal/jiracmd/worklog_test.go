@@ -35,6 +35,57 @@ func TestWorklogListHumanOutput(t *testing.T) {
 	}
 }
 
+func TestWorklogListRendersComment(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"worklogs":[{"id":"10000","author":{"displayName":"Alice"},` +
+			`"timeSpent":"1h","comment":{"type":"doc","version":1,"content":[{"type":"paragraph",` +
+			`"content":[{"type":"text","text":"fixed the flaky test"}]}]}}]}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "worklog", "list", "PROJ-1", "--site", "work")
+	if err != nil {
+		t.Fatalf("worklog list: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "fixed the flaky test") {
+		t.Errorf("worklog list did not render the comment:\n%s", out)
+	}
+}
+
+func TestWorklogListSinceFlag(t *testing.T) {
+	var gotStartedAfter string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotStartedAfter = r.URL.Query().Get("startedAfter")
+		_, _ = w.Write([]byte(`{"worklogs":[]}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "worklog", "list", "PROJ-1", "--since", "2023-11-14", "--site", "work")
+	if err != nil {
+		t.Fatalf("worklog list --since: %v\n%s", err, out)
+	}
+	// 2023-11-14T00:00:00Z = 1699920000000 ms.
+	if gotStartedAfter != "1699920000000" {
+		t.Errorf("startedAfter = %q, want 1699920000000", gotStartedAfter)
+	}
+}
+
+func TestWorklogListRejectsInvalidSince(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	_, err := execJira(t, "issue", "worklog", "list", "PROJ-1", "--since", "last-tuesday", "--site", "work")
+	if err == nil {
+		t.Fatal("worklog list with invalid --since returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+		t.Fatalf("error = %v, want an invalid_input *apperr.Error", err)
+	}
+}
+
 func TestWorklogListJSON(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"worklogs":[{"id":"10000"}]}`))
