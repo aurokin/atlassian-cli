@@ -57,6 +57,13 @@ type SaveResult struct {
 	// KeyringErr explains why the keychain was unusable; set only when
 	// FellBack is true, for the caller to surface as a warning.
 	KeyringErr error
+	// TooLargeForKeyring is true when the fallback happened specifically
+	// because the keychain rejected the value as too large rather than because
+	// no keychain was available. Notably, OAuth 3LO token bundles (which carry
+	// a large access-token JWT) exceed the macOS keychain CLI's size limit, so
+	// they always land in the 0600 file there; the caller uses this to print an
+	// accurate warning instead of the misleading "no keychain available".
+	TooLargeForKeyring bool
 }
 
 // Save stores token for site, preferring the OS keychain and falling back to a
@@ -74,7 +81,12 @@ func Save(credPath, site, token string) (SaveResult, error) {
 	if err := fs.Set(site, token); err != nil {
 		return SaveResult{}, err
 	}
-	return SaveResult{Backend: fs.Name(), FellBack: true, KeyringErr: keyringErr}, nil
+	return SaveResult{
+		Backend:            fs.Name(),
+		FellBack:           true,
+		KeyringErr:         keyringErr,
+		TooLargeForKeyring: errors.Is(keyringErr, keyring.ErrSetDataTooBig),
+	}, nil
 }
 
 // ForRef returns the Store backing a recorded token_ref. credPath locates the

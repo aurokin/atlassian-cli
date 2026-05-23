@@ -279,12 +279,7 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 					return err
 				}
 				profile.TokenRef = res.Backend
-				if res.FellBack {
-					fmt.Fprintf(cmd.ErrOrStderr(),
-						"Warning: no OS keychain is available (%v); stored the token in %s "+
-							"with 0600 permissions instead. It is not keychain-protected.\n",
-						res.KeyringErr, credPath)
-				}
+				warnIfTokenNotProtected(cmd.ErrOrStderr(), res, credPath)
 			}
 			target := httpclient.Target{
 				Product:    string(info.Product),
@@ -316,6 +311,27 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 	f.StringSliceVar(&scopes, "scopes", nil, "OAuth scopes to request (oauth-3lo; offline_access is added automatically)")
 	f.IntVar(&callbackPort, "callback-port", defaultCallbackPort, "loopback port for the OAuth redirect (oauth-3lo; must match the registered callback)")
 	return cmd
+}
+
+// warnIfTokenNotProtected prints an accurate warning when a stored credential
+// fell back to the 0600 file instead of the OS keychain. It distinguishes a
+// keychain that was unavailable from one that rejected the value as too large
+// (which is the normal case for oauth-3lo bundles on macOS, where the keychain
+// CLI caps the secret size), so the message is never misleading.
+func warnIfTokenNotProtected(w io.Writer, res secrets.SaveResult, credPath string) {
+	if !res.FellBack {
+		return
+	}
+	if res.TooLargeForKeyring {
+		fmt.Fprintf(w,
+			"Warning: the OS keychain rejected the credential as too large; stored it in %s "+
+				"with 0600 permissions instead. It is not keychain-protected.\n", credPath)
+		return
+	}
+	fmt.Fprintf(w,
+		"Warning: no OS keychain is available (%v); stored the credential in %s "+
+			"with 0600 permissions instead. It is not keychain-protected.\n",
+		res.KeyringErr, credPath)
 }
 
 // persistProfile saves profile under the active --site, cleaning up a now-
@@ -473,12 +489,7 @@ func runOAuthLogin(cmd *cobra.Command, g *GlobalFlags, p oauthLoginParams) error
 	if err != nil {
 		return err
 	}
-	if saved.FellBack {
-		fmt.Fprintf(cmd.ErrOrStderr(),
-			"Warning: no OS keychain is available (%v); stored the OAuth tokens in %s "+
-				"with 0600 permissions instead. They are not keychain-protected.\n",
-			saved.KeyringErr, credPath)
-	}
+	warnIfTokenNotProtected(cmd.ErrOrStderr(), saved, credPath)
 
 	profile := config.SiteProfile{
 		Product:    string(p.info.Product),

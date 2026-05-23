@@ -155,6 +155,37 @@ func TestAuthStatusDoesNotExposeTokenValue(t *testing.T) {
 	}
 }
 
+func TestWarnIfTokenNotProtected(t *testing.T) {
+	const credPath = "/cfg/credentials.json"
+
+	// No fallback (keychain succeeded) → no warning at all.
+	var buf bytes.Buffer
+	warnIfTokenNotProtected(&buf, secrets.SaveResult{Backend: secrets.BackendKeyring}, credPath)
+	if buf.Len() != 0 {
+		t.Errorf("keychain success should print nothing, got %q", buf.String())
+	}
+
+	// Rejected as too large → accurate message, NOT the misleading "no keychain".
+	buf.Reset()
+	warnIfTokenNotProtected(&buf, secrets.SaveResult{
+		Backend: secrets.BackendFile, FellBack: true, TooLargeForKeyring: true,
+		KeyringErr: errors.New("data passed to Set was too big"),
+	}, credPath)
+	if got := buf.String(); !strings.Contains(got, "too large") || strings.Contains(got, "no OS keychain") {
+		t.Errorf("too-large warning wrong: %q", got)
+	}
+
+	// Keychain genuinely unavailable → the original message.
+	buf.Reset()
+	warnIfTokenNotProtected(&buf, secrets.SaveResult{
+		Backend: secrets.BackendFile, FellBack: true,
+		KeyringErr: errors.New("no keyring backend"),
+	}, credPath)
+	if got := buf.String(); !strings.Contains(got, "no OS keychain is available") {
+		t.Errorf("unavailable warning wrong: %q", got)
+	}
+}
+
 func TestAuthLogoutRemovesOnlyRequestedSite(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
