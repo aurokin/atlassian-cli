@@ -44,7 +44,7 @@ func parsePositiveInt(s string) (int, error) {
 
 // AddCommands registers the Bitbucket product commands on the atl-bb root.
 func AddCommands(root *cobra.Command, info appinfo.Info, g *cli.GlobalFlags) {
-	root.AddCommand(
+	cli.AddProductCommands(root,
 		newRepoCommand(info, g),
 		newPRCommand(info, g),
 		newPipelineCommand(info, g),

@@ -375,7 +375,18 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 	f.BoolVar(&clientSecretStdin, "client-secret-stdin", false, "read the OAuth client secret from stdin (oauth-3lo)")
 	f.StringSliceVar(&scopes, "scopes", nil, "OAuth scopes to request (oauth-3lo; offline_access is added automatically)")
 	f.IntVar(&callbackPort, "callback-port", defaultCallbackPort, "loopback port for the OAuth redirect (oauth-3lo; must match the registered callback)")
+	_ = cmd.RegisterFlagCompletionFunc("token-style", FixedCompletion(tokenStyleNames()...))
 	return cmd
+}
+
+// tokenStyleNames returns the accepted --token-style values as strings, for
+// shell completion.
+func tokenStyleNames() []string {
+	names := make([]string, len(auth.AllStyles))
+	for i, s := range auth.AllStyles {
+		names[i] = string(s)
+	}
+	return names
 }
 
 // warnIfTokenNotProtected prints an accurate warning when a stored credential
