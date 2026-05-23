@@ -205,20 +205,35 @@ type Response struct {
 	Body   []byte
 }
 
+// CredentialProvider yields the credential to sign a request with, resolved at
+// request time. Static styles return a fixed credential; oauth-3lo returns a
+// freshly refreshed access token (see internal/cli). It receives the request's
+// context so a refresh can be cancelled or time out with the request.
+type CredentialProvider func(ctx context.Context) (auth.Credential, error)
+
 // Client executes signed requests against one Target.
 type Client struct {
-	target Target
-	cred   auth.Credential
-	http   *http.Client
-	trace  io.Writer // when non-nil, request/response diagnostics are written here
+	target      Target
+	credentials CredentialProvider
+	http        *http.Client
+	trace       io.Writer // when non-nil, request/response diagnostics are written here
 }
 
-// New builds a Client. If hc is nil a client with a default timeout is used.
+// New builds a Client that signs every request with a fixed credential. If hc
+// is nil a client with a default timeout is used.
 func New(target Target, cred auth.Credential, hc *http.Client) *Client {
+	return NewWithProvider(target, func(context.Context) (auth.Credential, error) { return cred, nil }, hc)
+}
+
+// NewWithProvider builds a Client that resolves its credential per request via
+// provider. This is the seam oauth-3lo uses to refresh an expired access token
+// lazily on the request path (which already carries a context), so neither the
+// Client API nor any call site needs a refresh-aware signature.
+func NewWithProvider(target Target, provider CredentialProvider, hc *http.Client) *Client {
 	if hc == nil {
 		hc = &http.Client{Timeout: defaultTimeout}
 	}
-	return &Client{target: target, cred: cred, http: hc}
+	return &Client{target: target, credentials: provider, http: hc}
 }
 
 // EnableTrace turns on verbose request tracing, writing one line per request
@@ -249,7 +264,11 @@ func (c *Client) Do(ctx context.Context, method, pathOrURL string, body io.Reade
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	if err := c.cred.Sign(req); err != nil {
+	cred, err := c.credentials(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := cred.Sign(req); err != nil {
 		return nil, err
 	}
 

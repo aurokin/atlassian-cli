@@ -35,16 +35,6 @@ func SiteClient(info appinfo.Info, g *GlobalFlags) (*httpclient.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	token, err := resolveToken(profile.TokenRef, g.Site)
-	if err != nil {
-		return nil, err
-	}
-	cred := auth.Credential{
-		Style:    style,
-		Username: profile.Username,
-		Token:    token,
-		CloudID:  profile.CloudID,
-	}
 	target := httpclient.Target{
 		Product:    string(info.Product),
 		TokenStyle: style,
@@ -52,7 +42,29 @@ func SiteClient(info appinfo.Info, g *GlobalFlags) (*httpclient.Client, error) {
 		BaseURL:    profile.BaseURL,
 		CloudID:    profile.CloudID,
 	}
-	client := httpclient.New(target, cred, nil)
+
+	var client *httpclient.Client
+	if style == auth.StyleOAuth3LO {
+		// oauth-3lo resolves and refreshes its access token per request, so it
+		// is wired through a credential provider rather than a fixed token.
+		provider, err := oauthCredentialProvider(g.Site, profile)
+		if err != nil {
+			return nil, err
+		}
+		client = httpclient.NewWithProvider(target, provider, nil)
+	} else {
+		token, err := resolveToken(profile.TokenRef, g.Site)
+		if err != nil {
+			return nil, err
+		}
+		cred := auth.Credential{
+			Style:    style,
+			Username: profile.Username,
+			Token:    token,
+			CloudID:  profile.CloudID,
+		}
+		client = httpclient.New(target, cred, nil)
+	}
 	if g.Trace {
 		client.EnableTrace(traceOut)
 	}
