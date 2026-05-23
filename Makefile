@@ -15,7 +15,7 @@ LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DA
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build install compile test integration vet fmt fmt-check lint check docs clean
+.PHONY: help build install compile compile-integration test integration vet fmt fmt-check lint check docs clean
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -36,6 +36,14 @@ install: ## go install all three binaries into $GOBIN with version metadata
 
 compile: ## Verify every package compiles
 	go build ./...
+
+# The integration suite is guarded by `//go:build integration`, so `go build`
+# and the default `go test ./...` never type-check it (a build of a test-only
+# package is a no-op). `go vet` with the tag does compile the test files, so
+# this target catches breakage — a renamed helper, a changed signature — that
+# would otherwise only surface when someone runs the live suite by hand.
+compile-integration: ## Type-check the integration suite under its build tag (no run)
+	go vet -tags=integration ./integration/...
 
 test: ## Run the full hermetic test suite (no network)
 	go test ./...
@@ -62,7 +70,7 @@ fmt-check: ## Fail if any Go source needs formatting
 
 lint: fmt-check vet ## Formatting check + go vet
 
-check: fmt-check compile vet test ## Full pre-merge gate: fmt-check, compile, vet, test
+check: fmt-check compile compile-integration vet test ## Full pre-merge gate: fmt-check, compile, compile-integration, vet, test
 
 docs: ## Regenerate the Markdown command reference under docs/cli (not committed)
 	go run ./cmd/gen-docs --product all --out $(DOCS_DIR)

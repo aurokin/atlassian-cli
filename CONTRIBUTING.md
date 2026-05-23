@@ -37,7 +37,7 @@ go test ./...
 
 `gofmt -l` lists files that need formatting; it should print nothing. Use
 `gofmt -w` (or `make fmt`) to fix. The shortcut for the whole gate is
-`make check` (fmt-check + compile + vet + test); see `make help` for all
+`make check` (fmt-check + compile + compile-integration + vet + test); see `make help` for all
 targets.
 
 ## Pull-request workflow
@@ -83,8 +83,11 @@ dependence on the developer's machine state.
 > The one deliberate exception is the **live integration suite** under
 > `integration/`, which drives the real binaries against a real tenant. It is
 > manual-only — gated behind the `integration` build tag *and* an
-> `ATL_RUN_INTEGRATION=1` opt-in, and skipped under CI — so it never runs as
-> part of `make check`. See [docs/integration-testing.md](docs/integration-testing.md).
+> `ATL_RUN_INTEGRATION=1` opt-in, and skipped under CI — so it never *runs* as
+> part of `make check`. It is, however, *compile-checked*: `make check` runs
+> `make compile-integration` (`go vet -tags=integration ./integration/...`),
+> so a broken integration test fails CI even though the live suite stays
+> opt-in. See [docs/integration-testing.md](docs/integration-testing.md).
 
 ### Hard rules
 
