@@ -15,7 +15,7 @@ LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DA
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build install compile test vet fmt fmt-check lint check docs clean
+.PHONY: help build install compile test integration vet fmt fmt-check lint check docs clean
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -37,17 +37,25 @@ install: ## go install all three binaries into $GOBIN with version metadata
 compile: ## Verify every package compiles
 	go build ./...
 
-test: ## Run the full test suite
+test: ## Run the full hermetic test suite (no network)
 	go test ./...
+
+# Live, manual-only end-to-end tests against a real Atlassian tenant. Excluded
+# from `test`/`check` by the `integration` build tag and the ATL_RUN_INTEGRATION
+# gate. See docs/integration-testing.md for the required environment variables.
+#   ATL_RUN_INTEGRATION=1 ATL_IT_USE_STORED_PROFILES=1 ATL_IT_JIRA_SITE=work \
+#     ATL_IT_JIRA_PROJECT=KEY make integration
+integration: ## Run the live integration suite (requires ATL_RUN_INTEGRATION=1 + credentials)
+	go test -tags=integration -count=1 -v ./integration/...
 
 vet: ## Run go vet
 	go vet ./...
 
 fmt: ## Format all Go sources in place
-	gofmt -w internal/ cmd/
+	gofmt -w internal/ cmd/ integration/
 
 fmt-check: ## Fail if any Go source needs formatting
-	@unformatted=$$(gofmt -l internal/ cmd/); \
+	@unformatted=$$(gofmt -l internal/ cmd/ integration/); \
 	if [ -n "$$unformatted" ]; then \
 		echo "gofmt needed on:"; echo "$$unformatted"; exit 1; \
 	fi
