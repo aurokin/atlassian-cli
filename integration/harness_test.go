@@ -65,15 +65,22 @@ type product struct {
 	binary string
 	// envPrefix is the per-product environment-variable infix, e.g. "JIRA".
 	envPrefix string
-	// tokenStyle is the static token style used in env-credential mode.
+	// tokenStyle is the default token style used in env-credential mode.
 	tokenStyle string
 	// needsUsername is true when the static token style requires --username.
 	needsUsername bool
+	// supportsScoped is true for products that can route a scoped API token
+	// through the api.atlassian.com gateway via the cloud-scoped style. When the
+	// matching ATL_IT_<P>_CLOUD_ID is set, env-credential mode logs in with
+	// cloud-scoped instead of tokenStyle. (Atlassian scoped API tokens for Jira
+	// and Confluence MUST use the gateway; they do not authenticate against the
+	// site URL. Bitbucket scoped tokens use plain cloud-classic Basic auth.)
+	supportsScoped bool
 }
 
 var (
-	jiraProduct = product{binary: "atl-jira", envPrefix: "JIRA", tokenStyle: "cloud-classic", needsUsername: true}
-	confProduct = product{binary: "atl-conf", envPrefix: "CONF", tokenStyle: "cloud-classic", needsUsername: true}
+	jiraProduct = product{binary: "atl-jira", envPrefix: "JIRA", tokenStyle: "cloud-classic", needsUsername: true, supportsScoped: true}
+	confProduct = product{binary: "atl-conf", envPrefix: "CONF", tokenStyle: "cloud-classic", needsUsername: true, supportsScoped: true}
 	bbProduct   = product{binary: "atl-bb", envPrefix: "BB", tokenStyle: "cloud-classic", needsUsername: true}
 )
 
@@ -130,15 +137,27 @@ func newSession(t *testing.T, p product) *session {
 	tokenVar := "ATL_IT_" + p.envPrefix + "_TOKEN"
 	const site = "integration"
 
+	// A scoped API token routes through the api.atlassian.com gateway, which
+	// the CLI selects via the cloud-scoped style plus a cloud_id. Fall back to
+	// the default style (cloud-classic) for legacy unscoped tokens.
+	style := p.tokenStyle
+	cloudID := p.env("CLOUD_ID")
+	if p.supportsScoped && cloudID != "" {
+		style = "cloud-scoped"
+	}
+
 	args := []string{
 		"auth", "login",
 		"--site", site,
 		"--url", baseURL,
-		"--token-style", p.tokenStyle,
+		"--token-style", style,
 		"--token-env", tokenVar,
 	}
 	if p.needsUsername {
 		args = append(args, "--username", username)
+	}
+	if style == "cloud-scoped" {
+		args = append(args, "--cloud-id", cloudID)
 	}
 
 	s := &session{t: t, binaryPath: bin, configHome: configHome, site: site}

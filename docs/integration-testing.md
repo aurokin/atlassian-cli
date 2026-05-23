@@ -82,8 +82,16 @@ its required variables are present, so you can run just one product.
 |---|---|---|
 | `ATL_IT_<P>_SITE` | stored | Name of the configured site profile to target. |
 | `ATL_IT_<P>_BASE_URL` | env | Site URL (Bitbucket defaults to `https://api.bitbucket.org/2.0`). |
-| `ATL_IT_<P>_EMAIL` / `ATL_IT_<P>_USERNAME` | env | Account email (Jira/Confluence) or username (Bitbucket). |
-| `ATL_IT_<P>_TOKEN` | env | API token / app password. Never stored to disk. |
+| `ATL_IT_<P>_EMAIL` / `ATL_IT_<P>_USERNAME` | env | Your **Atlassian account email** (used as the Basic-auth username for all three products, including Bitbucket scoped API tokens). |
+| `ATL_IT_<P>_TOKEN` | env | API token. Never stored to disk. |
+| `ATL_IT_JIRA_CLOUD_ID` / `ATL_IT_CONF_CLOUD_ID` | env | **Required for a scoped API token.** When set, the suite logs Jira/Confluence in with `cloud-scoped` (the `api.atlassian.com/ex/{product}/{cloudId}` gateway) instead of `cloud-classic`. Leave unset only for a legacy unscoped token that authenticates against the site URL directly. |
+
+> **API tokens with scopes.** Atlassian is replacing both Jira/Confluence
+> classic tokens and Bitbucket app passwords with scoped API tokens. A scoped
+> token for Jira/Confluence **must** go through the gateway, so set
+> `ATL_IT_JIRA_CLOUD_ID`/`ATL_IT_CONF_CLOUD_ID` to exercise that path. Bitbucket
+> scoped tokens use plain Basic auth against `api.bitbucket.org` — no cloud id.
+> In every case the Basic-auth username is your Atlassian account email.
 
 Fixtures (used in both modes):
 
