@@ -127,6 +127,10 @@ func newIssueCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if project == "" || issueType == "" || summary == "" {
 				return apperr.InvalidInput("issue create requires --project, --type, and --summary")
 			}
+			extra, err := parseFieldFlags(fieldFlags)
+			if err != nil {
+				return err
+			}
 			jc, err := jiraClient(info, g)
 			if err != nil {
 				return err
@@ -139,9 +143,7 @@ func newIssueCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 				"project":   map[string]string{"key": project},
 				"issuetype": map[string]string{"name": issueType},
 			}
-			if err := applyIssueFields(fields, summary, description, assignee, fieldFlags); err != nil {
-				return err
-			}
+			applyIssueFields(fields, summary, description, assignee, extra)
 			raw, err := jc.CreateIssue(cmd.Context(), fields)
 			if err != nil {
 				return err
@@ -173,6 +175,14 @@ func newIssueEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		Short: "Edit a Jira issue",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			extra, err := parseFieldFlags(fieldFlags)
+			if err != nil {
+				return err
+			}
+			if summary == "" && description == "" && assignee == "" && len(extra) == 0 {
+				return apperr.InvalidInput(
+					"issue edit requires at least one change; pass --summary, --description, --assignee, or --field")
+			}
 			jc, err := jiraClient(info, g)
 			if err != nil {
 				return err
@@ -182,13 +192,7 @@ func newIssueEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 				return err
 			}
 			fields := map[string]any{}
-			if err := applyIssueFields(fields, summary, description, assignee, fieldFlags); err != nil {
-				return err
-			}
-			if len(fields) == 0 {
-				return apperr.InvalidInput(
-					"issue edit requires at least one change; pass --summary, --description, --assignee, or --field")
-			}
+			applyIssueFields(fields, summary, description, assignee, extra)
 			if err := jc.EditIssue(cmd.Context(), args[0], fields); err != nil {
 				return err
 			}
@@ -216,8 +220,9 @@ type editResult struct {
 }
 
 // applyIssueFields adds the typed common-field flags to fields when set, then
-// overlays the repeatable --field escape entries (which can override them).
-func applyIssueFields(fields map[string]any, summary, description, assignee string, fieldFlags []string) error {
+// overlays the already-parsed --field escape entries (which can override them).
+// The assignee, if any, must already be resolved to an account id.
+func applyIssueFields(fields map[string]any, summary, description, assignee string, extra map[string]any) {
 	if summary != "" {
 		fields["summary"] = summary
 	}
@@ -227,14 +232,9 @@ func applyIssueFields(fields map[string]any, summary, description, assignee stri
 	if assignee != "" {
 		fields["assignee"] = map[string]string{"accountId": assignee}
 	}
-	extra, err := parseFieldFlags(fieldFlags)
-	if err != nil {
-		return err
-	}
 	for k, v := range extra {
 		fields[k] = v
 	}
-	return nil
 }
 
 // parseFieldFlags turns repeatable --field name=value entries into a field
