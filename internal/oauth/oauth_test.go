@@ -266,6 +266,51 @@ func TestGeneratePKCEProducesValidS256(t *testing.T) {
 	}
 }
 
+func TestBundleMarshalParseRoundTrip(t *testing.T) {
+	exp := time.Date(2026, 5, 22, 13, 0, 0, 0, time.UTC)
+	in := TokenBundle{
+		ClientSecret: "secret-xyz",
+		AccessToken:  "acc-1",
+		RefreshToken: "ref-1",
+		Expiry:       exp,
+	}
+	s, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	out, err := ParseBundle(s)
+	if err != nil {
+		t.Fatalf("ParseBundle: %v", err)
+	}
+	if out.ClientSecret != in.ClientSecret || out.AccessToken != in.AccessToken ||
+		out.RefreshToken != in.RefreshToken || !out.Expiry.Equal(in.Expiry) {
+		t.Fatalf("round-trip mismatch: %+v vs %+v", out, in)
+	}
+}
+
+func TestParseBundleRejectsInvalidJSON(t *testing.T) {
+	if _, err := ParseBundle("not json"); err == nil {
+		t.Fatal("ParseBundle of invalid JSON returned no error")
+	}
+}
+
+func TestBundleExpired(t *testing.T) {
+	now := time.Date(2026, 5, 22, 12, 0, 0, 0, time.UTC)
+	if !(TokenBundle{}).Expired(now) {
+		t.Error("zero-expiry bundle should be treated as expired")
+	}
+	if !(TokenBundle{Expiry: now.Add(-time.Second)}).Expired(now) {
+		t.Error("past-expiry bundle should be expired")
+	}
+	if (TokenBundle{Expiry: now.Add(time.Hour)}).Expired(now) {
+		t.Error("future-expiry bundle should not be expired")
+	}
+	// Exactly at expiry counts as expired.
+	if !(TokenBundle{Expiry: now}).Expired(now) {
+		t.Error("bundle expiring exactly now should be expired")
+	}
+}
+
 func TestGenerateStateIsRandom(t *testing.T) {
 	a, err := GenerateState()
 	if err != nil {

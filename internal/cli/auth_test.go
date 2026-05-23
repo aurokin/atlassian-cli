@@ -7,12 +7,15 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/zalando/go-keyring"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
+	"github.com/aurokin/atlassian-cli/internal/auth"
 	"github.com/aurokin/atlassian-cli/internal/config"
+	"github.com/aurokin/atlassian-cli/internal/oauth"
 	"github.com/aurokin/atlassian-cli/internal/secrets"
 )
 
@@ -395,6 +398,111 @@ func TestAuthStatusReportsStoredKeyringCredential(t *testing.T) {
 	}
 	if !strings.Contains(out, "OS keychain") {
 		t.Errorf("status output missing keychain availability:\n%s", out)
+	}
+}
+
+// seedOAuthProfile writes an oauth-3lo site profile to config and stores a
+// token bundle for it in the (mocked) keychain, standing in for the not-yet-
+// built oauth-3lo login flow (slice 4).
+func seedOAuthProfile(t *testing.T, dir, site string, bundle oauth.TokenBundle) {
+	t.Helper()
+	value, err := bundle.Marshal()
+	if err != nil {
+		t.Fatalf("marshal bundle: %v", err)
+	}
+	credPath, err := config.CredentialsPath()
+	if err != nil {
+		t.Fatalf("cred path: %v", err)
+	}
+	if _, err := secrets.Save(credPath, site, value); err != nil {
+		t.Fatalf("store bundle: %v", err)
+	}
+	cfg := config.New()
+	cfg.Sites[site] = config.SiteProfile{
+		Product:    "jira",
+		Deployment: "cloud",
+		BaseURL:    "https://example.atlassian.net",
+		CloudID:    "cloud-123",
+		TokenStyle: string(auth.StyleOAuth3LO),
+		AuthType:   auth.StyleOAuth3LO.AuthType(),
+		TokenRef:   secrets.BackendKeyring,
+		ClientID:   "client-abc",
+		Scopes:     []string{"read:jira-work", "offline_access"},
+	}
+	if err := config.Save(configPath(t, dir), cfg); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
+}
+
+func TestAuthStatusReportsOAuthExpiry(t *testing.T) {
+	keyring.MockInit()
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	const accessTok = "oauth-access-secret"
+	const refreshTok = "oauth-refresh-secret"
+	const clientSecret = "oauth-client-secret"
+	future := time.Now().Add(2 * time.Hour)
+	seedOAuthProfile(t, dir, "work", oauth.TokenBundle{
+		ClientSecret: clientSecret,
+		AccessToken:  accessTok,
+		RefreshToken: refreshTok,
+		Expiry:       future,
+	})
+
+	out, err := execRoot(t, jiraInfo(), "auth", "status", "--site", "work", "--json=*")
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	for _, secret := range []string{accessTok, refreshTok, clientSecret} {
+		if strings.Contains(out, secret) {
+			t.Fatalf("status leaked a secret value:\n%s", out)
+		}
+	}
+	if !strings.Contains(out, "valid until") {
+		t.Errorf("status missing access-token expiry:\n%s", out)
+	}
+}
+
+func TestAuthStatusReportsExpiredOAuthToken(t *testing.T) {
+	keyring.MockInit()
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	seedOAuthProfile(t, dir, "work", oauth.TokenBundle{
+		AccessToken:  "a",
+		RefreshToken: "r",
+		Expiry:       time.Now().Add(-time.Hour),
+	})
+	out, err := execRoot(t, jiraInfo(), "auth", "status", "--site", "work", "--json=*")
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if !strings.Contains(out, "expired at") {
+		t.Errorf("status should report the token as expired:\n%s", out)
+	}
+}
+
+func TestAuthLogoutRemovesOAuthBundle(t *testing.T) {
+	keyring.MockInit()
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	seedOAuthProfile(t, dir, "work", oauth.TokenBundle{AccessToken: "a", RefreshToken: "r", Expiry: time.Now().Add(time.Hour)})
+	if _, err := execRoot(t, jiraInfo(), "auth", "logout", "--site", "work"); err != nil {
+		t.Fatalf("logout: %v", err)
+	}
+	// The stored bundle must be gone from the keychain.
+	credPath, err := config.CredentialsPath()
+	if err != nil {
+		t.Fatalf("cred path: %v", err)
+	}
+	store, err := secrets.ForRef(secrets.BackendKeyring, credPath)
+	if err != nil {
+		t.Fatalf("store: %v", err)
+	}
+	if _, err := store.Get("work"); err == nil {
+		t.Error("logout did not remove the stored OAuth bundle")
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/auth"
 	"github.com/aurokin/atlassian-cli/internal/config"
 	"github.com/aurokin/atlassian-cli/internal/httpclient"
+	"github.com/aurokin/atlassian-cli/internal/oauth"
 	"github.com/aurokin/atlassian-cli/internal/secrets"
 )
 
@@ -59,13 +61,16 @@ func toView(name string, p config.SiteProfile) siteView {
 		TokenStyle:  p.TokenStyle,
 		AuthType:    p.AuthType,
 		TokenRef:    p.TokenRef,
-		TokenStatus: tokenStatus(name, p.TokenRef),
+		TokenStatus: tokenStatus(name, p),
 	}
 }
 
 // tokenStatus describes whether the token a profile points at is currently
-// resolvable for the named site. It never includes the token value.
-func tokenStatus(site, ref string) string {
+// resolvable for the named site. It never includes the token value; for an
+// oauth-3lo profile it additionally reports the access-token expiry (a
+// timestamp, never the token itself).
+func tokenStatus(site string, p config.SiteProfile) string {
+	ref := p.TokenRef
 	if ref == "" {
 		return "no token reference configured"
 	}
@@ -83,21 +88,45 @@ func tokenStatus(site, ref string) string {
 	if err != nil {
 		return fmt.Sprintf("unrecognized token reference %q", ref)
 	}
-	if _, err := store.Get(site); err != nil {
+	value, err := store.Get(site)
+	if err != nil {
 		var ae *apperr.Error
 		if errors.As(err, &ae) && ae.Code != "token_unavailable" {
 			return "token reference configured but the stored credential could not be read: " + ae.Message
 		}
 		return "token reference configured but no stored credential was found"
 	}
+	var backend string
 	switch ref {
 	case secrets.BackendKeyring:
-		return "token available from the OS keychain"
+		backend = "the OS keychain"
 	case secrets.BackendFile:
-		return "token available from the local credentials file"
+		backend = "the local credentials file"
 	default:
 		return "token reference configured"
 	}
+	if p.TokenStyle == string(auth.StyleOAuth3LO) {
+		return oauthTokenStatus(value, backend)
+	}
+	return "token available from " + backend
+}
+
+// oauthTokenStatus reports presence and access-token expiry for an oauth-3lo
+// bundle. It parses the stored bundle only to read its expiry timestamp and
+// never echoes any token value.
+func oauthTokenStatus(value, backend string) string {
+	bundle, err := oauth.ParseBundle(value)
+	if err != nil {
+		return "OAuth token bundle available from " + backend + " but it could not be parsed"
+	}
+	if bundle.Expiry.IsZero() {
+		return "OAuth token available from " + backend + "; access-token expiry unknown"
+	}
+	exp := bundle.Expiry.UTC().Format(time.RFC3339)
+	if bundle.Expired(time.Now()) {
+		return fmt.Sprintf("OAuth token available from %s; access token expired at %s", backend, exp)
+	}
+	return fmt.Sprintf("OAuth token available from %s; access token valid until %s", backend, exp)
 }
 
 // newAuthCommand builds the "auth" subtree shared by every atl-* binary.
