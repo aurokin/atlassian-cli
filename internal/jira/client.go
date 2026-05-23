@@ -262,6 +262,7 @@ func followAll(ctx context.Context,
 ) ([]json.RawMessage, error) {
 	all := []json.RawMessage{}
 	cursor := ""
+	done := false
 	for page := 0; page < restutil.MaxFollowPages; page++ {
 		raw, err := fetch(ctx, cursor)
 		if err != nil {
@@ -273,9 +274,15 @@ func followAll(ctx context.Context,
 		}
 		all = append(all, items...)
 		if next == "" {
+			done = true
 			break
 		}
 		cursor = next
+	}
+	// Exiting the loop without an empty cursor means the cap was hit and the
+	// aggregate is incomplete.
+	if !done {
+		return nil, restutil.TruncatedError()
 	}
 	return all, nil
 }

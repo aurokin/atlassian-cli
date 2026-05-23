@@ -19,6 +19,16 @@ import (
 // against an unbounded loop from a malformed cursor or page token.
 const MaxFollowPages = 100
 
+// TruncatedError reports that an --all request reached MaxFollowPages while the
+// API still had more pages. Returning it (rather than silently aggregating a
+// partial result) keeps --all honest: the caller is told the set is incomplete
+// instead of receiving a truncated list that looks whole.
+func TruncatedError() error {
+	return apperr.New("result_truncated",
+		"the result has more pages than --all will follow (cap: 100 pages); "+
+			"narrow the query or raise --limit to fetch larger pages")
+}
+
 // WithQuery appends an encoded query string to path when it is non-empty.
 func WithQuery(path string, q url.Values) string {
 	if len(q) == 0 {

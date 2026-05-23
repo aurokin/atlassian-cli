@@ -89,7 +89,9 @@ a *synthesized* object — the top-level list key (`values`/`issues`/`comments`/
 `results`) holding every item, with per-page cursors dropped — not a verbatim
 API body. Each item is kept verbatim, so no per-item field is lost. `--jq`
 runs against the synthesized aggregate. Following is bounded by a 100-page
-safety cap; reaching it returns what was collected so far.
+safety cap; if the result still has more pages at the cap, the command fails
+with a `result_truncated` error rather than returning a partial set that looks
+complete. Raise `--limit` (larger pages) or narrow the query to stay under it.
 
 ## Commands
 
