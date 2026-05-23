@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   check:
-    name: fmt-check, compile, vet, test
+    name: fmt-check, compile, compile-integration, vet, test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
