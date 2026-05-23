@@ -40,6 +40,15 @@ go test ./...
 `make check` (fmt-check + compile + compile-integration + vet + test); see `make help` for all
 targets.
 
+`make lint` additionally runs [`golangci-lint`](https://golangci-lint.run/)
+(errcheck, staticcheck, ineffassign, unused — the static-analysis net layered
+on top of `go vet`; config in `.golangci.yml`). It is a separate CI job and is
+skipped locally when the tool is not installed. Install it to match CI:
+
+```bash
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+```
+
 ## Pull-request workflow
 
 1. **Branch.** Never commit directly to `main`. Use a topical branch

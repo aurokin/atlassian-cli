@@ -430,7 +430,7 @@ func runOAuthLogin(cmd *cobra.Command, g *GlobalFlags, p oauthLoginParams) error
 	for _, l := range listeners {
 		go func(l net.Listener) { _ = srv.Serve(l) }(l)
 	}
-	defer srv.Close()
+	defer func() { _ = srv.Close() }()
 
 	client := oauth.New(p.clientID, p.clientSecret, oauth.Options{Endpoints: oauthEndpoints, Now: oauthNow})
 	authURL := client.AuthorizeURL(oauth.AuthorizeParams{

@@ -1,0 +1,41 @@
+# golangci-lint configuration (schema v2). See CONTRIBUTING.md for the loop.
+#
+# The enabled set is the static-analysis net layered on top of `go vet`:
+# errcheck (unchecked errors), staticcheck (the staticcheck/gosimple/stylecheck
+# bundle), ineffassign (dead assignments), and unused (dead code). These catch
+# the classes of bug `go vet` does not.
+version: "2"
+
+run:
+  build-tags:
+    - integration
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  settings:
+    errcheck:
+      # Writes to stdout/stderr/trace and a deferred Close on a response body
+      # cannot be acted on; ignoring them is idiomatic, so exclude the family
+      # rather than scatter `_ =` across every call site.
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (io.Closer).Close
+  exclusions:
+    generated: lax
+    rules:
+      # Test files routinely ignore errors on best-effort writes to a test
+      # server / response recorder, where a failure would surface elsewhere.
+      - path: _test\.go
+        linters:
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt

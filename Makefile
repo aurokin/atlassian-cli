@@ -68,7 +68,12 @@ fmt-check: ## Fail if any Go source needs formatting
 		echo "gofmt needed on:"; echo "$$unformatted"; exit 1; \
 	fi
 
-lint: fmt-check vet ## Formatting check + go vet
+lint: fmt-check vet ## Formatting check, go vet, and golangci-lint (if installed)
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		golangci-lint run ./...; \
+	else \
+		echo "golangci-lint not installed; skipping. Install: https://golangci-lint.run/welcome/install/"; \
+	fi
 
 check: fmt-check compile compile-integration vet test ## Full pre-merge gate: fmt-check, compile, compile-integration, vet, test
 
