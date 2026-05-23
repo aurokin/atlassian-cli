@@ -24,15 +24,20 @@ const (
 	// StyleDataCenterPAT is a Data Center / Server personal access token:
 	// Bearer auth against the instance URL.
 	StyleDataCenterPAT TokenStyle = "data-center-pat"
+	// StyleOAuth3LO is an Atlassian OAuth 2.0 (3LO) credential: Bearer auth
+	// against the api.atlassian.com gateway, addressed by cloud ID. The Token
+	// field carries the current access token; refresh and storage of the wider
+	// token bundle live outside this package.
+	StyleOAuth3LO TokenStyle = "oauth-3lo"
 )
 
 // AllStyles lists every supported token style, in documentation order.
-var AllStyles = []TokenStyle{StyleCloudClassic, StyleCloudScoped, StyleDataCenterPAT}
+var AllStyles = []TokenStyle{StyleCloudClassic, StyleCloudScoped, StyleDataCenterPAT, StyleOAuth3LO}
 
 // Valid reports whether s is a supported token style.
 func (s TokenStyle) Valid() bool {
 	switch s {
-	case StyleCloudClassic, StyleCloudScoped, StyleDataCenterPAT:
+	case StyleCloudClassic, StyleCloudScoped, StyleDataCenterPAT, StyleOAuth3LO:
 		return true
 	default:
 		return false
@@ -46,6 +51,8 @@ func (s TokenStyle) AuthType() string {
 		return "api-token-basic"
 	case StyleDataCenterPAT:
 		return "pat-bearer"
+	case StyleOAuth3LO:
+		return "oauth-bearer"
 	default:
 		return ""
 	}
@@ -68,7 +75,7 @@ type Credential struct {
 	Style    TokenStyle
 	Username string // account email; required for Basic-auth styles
 	Token    string // raw token value
-	CloudID  string // required for StyleCloudScoped
+	CloudID  string // required for StyleCloudScoped and StyleOAuth3LO
 }
 
 // Validate checks that the credential has every field its style requires.
@@ -86,8 +93,11 @@ func (c Credential) Validate() error {
 			return apperr.InvalidInput(fmt.Sprintf("token style %s requires a username", c.Style))
 		}
 	}
-	if c.Style == StyleCloudScoped && c.CloudID == "" {
-		return apperr.InvalidInput("token style cloud-scoped requires a cloud_id")
+	switch c.Style {
+	case StyleCloudScoped, StyleOAuth3LO:
+		if c.CloudID == "" {
+			return apperr.InvalidInput(fmt.Sprintf("token style %s requires a cloud_id", c.Style))
+		}
 	}
 	return nil
 }
@@ -101,7 +111,7 @@ func (c Credential) Sign(req *http.Request) error {
 	switch c.Style {
 	case StyleCloudClassic, StyleCloudScoped:
 		req.SetBasicAuth(c.Username, c.Token)
-	case StyleDataCenterPAT:
+	case StyleDataCenterPAT, StyleOAuth3LO:
 		req.Header.Set("Authorization", "Bearer "+c.Token)
 	}
 	return nil

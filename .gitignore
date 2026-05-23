@@ -3,3 +3,6 @@
 
 # Generated command reference (make docs) — generated on demand, not committed
 /docs/cli/
+
+# Local secrets — never commit
+.env

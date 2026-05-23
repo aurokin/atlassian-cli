@@ -85,9 +85,12 @@ func (t Target) APIBase() (string, error) {
 			return site + "/api/v2", nil
 		}
 
-	case auth.StyleCloudScoped:
+	case auth.StyleCloudScoped, auth.StyleOAuth3LO:
+		// OAuth 3LO reaches the same api.atlassian.com gateway as a scoped API
+		// token; only the Authorization scheme differs (Bearer vs Basic), which
+		// auth.Credential.Sign handles. The base URL resolution is identical.
 		if t.CloudID == "" {
-			return "", apperr.InvalidInput("cloud-scoped requires a cloud_id")
+			return "", apperr.InvalidInput(fmt.Sprintf("%s requires a cloud_id", t.TokenStyle))
 		}
 		switch t.Product {
 		case ProductJira:
