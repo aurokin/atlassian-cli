@@ -193,7 +193,7 @@ func TestAuthLogoutRemovesOnlyRequestedSite(t *testing.T) {
 	for _, site := range []string{"work", "personal"} {
 		if _, err := execRoot(t, jiraInfo(), "auth", "login", "--site", site,
 			"--url", "https://example.atlassian.net", "--username", "user@example.com",
-			"--token-style", "cloud-classic"); err != nil {
+			"--token-style", "cloud-classic", "--token-env", "ATL_TEST_TOKEN"); err != nil {
 			t.Fatalf("login %s: %v", site, err)
 		}
 	}
@@ -218,7 +218,7 @@ func TestAuthDefaultSetShowClear(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	if _, err := execRoot(t, jiraInfo(), "auth", "login", "--site", "work",
 		"--url", "https://example.atlassian.net", "--username", "user@example.com",
-		"--token-style", "cloud-classic"); err != nil {
+		"--token-style", "cloud-classic", "--token-env", "ATL_TEST_TOKEN"); err != nil {
 		t.Fatalf("login: %v", err)
 	}
 
@@ -285,7 +285,7 @@ func TestAuthLogoutClearsDanglingDefault(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	if _, err := execRoot(t, jiraInfo(), "auth", "login", "--site", "work",
 		"--url", "https://example.atlassian.net", "--username", "user@example.com",
-		"--token-style", "cloud-classic"); err != nil {
+		"--token-style", "cloud-classic", "--token-env", "ATL_TEST_TOKEN"); err != nil {
 		t.Fatalf("login: %v", err)
 	}
 	if _, err := execRoot(t, jiraInfo(), "auth", "default", "work"); err != nil {
@@ -311,6 +311,10 @@ func TestAuthLoginMissingFieldsReturnStructuredErrors(t *testing.T) {
 		{"missing token style", []string{"auth", "login", "--site", "work", "--url", "https://example.atlassian.net", "--username", "u@e.com"}},
 		{"missing url", []string{"auth", "login", "--site", "work", "--token-style", "cloud-classic", "--username", "u@e.com"}},
 		{"missing cloud id for scoped", []string{"auth", "login", "--site", "work", "--url", "https://example.atlassian.net", "--username", "u@e.com", "--token-style", "cloud-scoped"}},
+		{"static style without token source", []string{"auth", "login", "--site", "work", "--url", "https://example.atlassian.net", "--username", "u@e.com", "--token-style", "cloud-classic"}},
+		{"data-center-pat without token source", []string{"auth", "login", "--site", "work", "--url", "https://example.datacenter.example", "--token-style", "data-center-pat"}},
+		{"oauth-3lo rejects username", []string{"auth", "login", "--site", "work", "--url", "https://example.atlassian.net", "--token-style", "oauth-3lo", "--username", "u@e.com"}},
+		{"oauth-3lo rejects token-env", []string{"auth", "login", "--site", "work", "--url", "https://example.atlassian.net", "--token-style", "oauth-3lo", "--token-env", "FOO"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -325,6 +329,23 @@ func TestAuthLoginMissingFieldsReturnStructuredErrors(t *testing.T) {
 				t.Fatalf("error type = %T, want *apperr.Error", err)
 			}
 		})
+	}
+}
+
+func TestAuthLoginNotesOverwriteOfExistingSite(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	args := []string{"auth", "login", "--site", "work",
+		"--url", "https://example.atlassian.net", "--token-style", "data-center-pat",
+		"--token-env", "ATL_TEST_TOKEN"}
+	if _, err := execRoot(t, jiraInfo(), args...); err != nil {
+		t.Fatalf("first login: %v", err)
+	}
+	out, err := execRoot(t, jiraInfo(), args...)
+	if err != nil {
+		t.Fatalf("second login: %v", err)
+	}
+	if !strings.Contains(out, "overwriting") {
+		t.Fatalf("re-login output missing overwrite note:\n%s", out)
 	}
 }
 

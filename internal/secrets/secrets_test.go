@@ -24,6 +24,49 @@ func credPath(t *testing.T) string {
 	return filepath.Join(t.TempDir(), "credentials.json")
 }
 
+func TestKeyringStoreHas(t *testing.T) {
+	keyring.MockInit()
+	var s Store = keyringStore{}
+	if has, err := s.Has("absent"); err != nil || has {
+		t.Fatalf("Has(absent) = %v, %v; want false, nil", has, err)
+	}
+	if err := s.Set("work", "tok"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if has, err := s.Has("work"); err != nil || !has {
+		t.Fatalf("Has(work) = %v, %v; want true, nil", has, err)
+	}
+}
+
+func TestKeyringStoreHasReadFailureIsStructured(t *testing.T) {
+	keyring.MockInitWithError(errors.New("keychain is locked"))
+	t.Cleanup(keyring.MockInit)
+	_, err := keyringStore{}.Has("work")
+	if err == nil {
+		t.Fatal("expected an error when the keychain cannot be read")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) {
+		t.Fatalf("error type = %T, want *apperr.Error", err)
+	}
+}
+
+func TestFileStoreHas(t *testing.T) {
+	var s Store = fileStore{path: credPath(t)}
+	if has, err := s.Has("work"); err != nil || has {
+		t.Fatalf("Has(work) on empty store = %v, %v; want false, nil", has, err)
+	}
+	if err := s.Set("work", "tok"); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	if has, err := s.Has("work"); err != nil || !has {
+		t.Fatalf("Has(work) = %v, %v; want true, nil", has, err)
+	}
+	if has, _ := s.Has("other"); has {
+		t.Fatal("Has(other) = true, want false")
+	}
+}
+
 func TestKeyringStoreRoundTrip(t *testing.T) {
 	keyring.MockInit()
 	var s Store = keyringStore{}

@@ -139,7 +139,12 @@ atl-jira auth login --site <name> --url <url> --token-style <style> \
 
 Records a site profile under `--site`. Required: `--site`, `--url`,
 `--token-style`. `--username` is required for `cloud-classic` and
-`cloud-scoped`; `--cloud-id` is required for `cloud-scoped`.
+`cloud-scoped`; `--cloud-id` is required for `cloud-scoped`. The static token
+styles (`cloud-classic`, `cloud-scoped`, `data-center-pat`) require a token
+source — one of `--token-env`/`--token-stdin`/`--token` — so a profile that
+references no credential is never persisted. Re-logging an existing `--site`
+prints a note that the profile is being overwritten (it is not a prompt, so
+`--no-prompt` flows are unaffected).
 
 `--url` must be an `http`/`https` URL with a host and no embedded credentials.
 Cloud token styles (`cloud-classic`, `cloud-scoped`, `oauth-3lo`) require
@@ -168,7 +173,9 @@ keychain is available — CI, containers, minimal Linux — it falls back to a
 flow instead of taking a token. It uses a bring-your-own OAuth app: pass
 `--client-id` and the secret via `--client-secret-stdin` (preferred) or
 `--client-secret`, plus `--scopes` (comma-separated; `offline_access` is added
-automatically so a refresh token is granted). The flow:
+automatically so a refresh token is granted). The static-token and `--username`
+flags do not apply to this style and are rejected (rather than silently ignored)
+if supplied. The flow:
 
 1. Starts a loopback listener on `--callback-port` (default `8976`) and opens
    the browser to Atlassian's authorize page (the URL is also printed).
