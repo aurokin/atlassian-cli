@@ -21,8 +21,8 @@ Every live command resolves the token at request time.
 
 | Your situation | `--token-style` | Also required |
 |---|---|---|
-| Atlassian **Cloud**, authenticating with an account email + API token | `cloud-classic` | `--username <email>` |
-| Atlassian **Cloud**, going through the `api.atlassian.com` gateway with a tenant cloud id | `cloud-scoped` | `--username <email>`, `--cloud-id <id>` |
+| Atlassian **Cloud**, account email + a legacy *unscoped* API token (talks directly to the site URL) | `cloud-classic` | `--username <email>` |
+| Atlassian **Cloud**, an **API token with scopes**, through the `api.atlassian.com` gateway with a tenant cloud id | `cloud-scoped` | `--username <email>`, `--cloud-id <id>` |
 | **Server / Data Center**, authenticating with a Personal Access Token | `data-center-pat` | — |
 | Atlassian **Cloud**, interactive browser sign-in with your own OAuth app | `oauth-3lo` | `--client-id`, `--client-secret`, `--scopes` |
 
@@ -49,12 +49,19 @@ and prints a warning that the token is not keychain-protected.
 
 ## Step 3 — create the token
 
-- **Cloud API token** (for `cloud-classic` and `cloud-scoped`): create one at
-  <https://id.atlassian.com/manage-profile/security/api-tokens>. Your
-  `--username` is the Atlassian account email that owns the token.
+- **API token with scopes** (recommended; use with `cloud-scoped`): create one
+  at <https://id.atlassian.com/manage-profile/security/api-tokens> →
+  **Create API token with scopes**, pick the app (Jira, Confluence, or
+  Bitbucket — one app per token) and grant the scopes your commands need. A
+  scoped token authenticates as your **Atlassian account email** and **must** be
+  used through the gateway, so it requires `cloud-scoped` with a `--cloud-id`;
+  it will not work against the site URL with `cloud-classic`.
+- **Legacy unscoped API token** (for `cloud-classic`): the older "Create API
+  token" button on the same page. Atlassian is phasing these out (existing ones
+  auto-expire through 2026), so prefer a scoped token.
 - **Data Center PAT** (for `data-center-pat`): create one from your profile →
   **Personal Access Tokens** on the instance.
-- **Cloud id** (only for `cloud-scoped`): fetch it from
+- **Cloud id** (for `cloud-scoped`): fetch it from
   `https://<your-site>.atlassian.net/_edge/tenant_info` — the `cloudId` field.
 
 ## Step 4 — log in
@@ -81,7 +88,12 @@ printf '%s' "$YOUR_API_TOKEN" | atl-conf auth login \
   --token-style cloud-classic --username you@example.com --token-stdin
 ```
 
-### Atlassian Cloud — `cloud-scoped`
+### Atlassian Cloud — `cloud-scoped` (API token with scopes)
+
+This is the style for an **API token with scopes** on Jira/Confluence. Scoped
+tokens authenticate as your Atlassian account email and are only honored through
+the `api.atlassian.com` gateway, so a `--cloud-id` is required — they do **not**
+work against the site URL the way a legacy `cloud-classic` token does.
 
 ```bash
 printf '%s' "$YOUR_API_TOKEN" | atl-jira auth login \
@@ -94,6 +106,9 @@ printf '%s' "$YOUR_API_TOKEN" | atl-jira auth login \
 ```
 
 Requests then go through `https://api.atlassian.com/ex/<product>/<cloud-id>/…`.
+Confluence is identical with `atl-conf`. Make sure the token's scopes cover the
+commands you run (the same per-endpoint rules as the `oauth-3lo` section below,
+e.g. Confluence needs both classic and granular scopes for its v1/v2 mix).
 
 ### Atlassian Cloud — `oauth-3lo` (interactive browser sign-in)
 
@@ -184,17 +199,28 @@ reach endpoints through the raw `api` command with the full path, e.g.
 
 ### Bitbucket Cloud — `atl-bb`
 
-Bitbucket Cloud uses an app password / API token with your username via the
-`cloud-classic` (Basic) style; the fixed REST host is filled in automatically:
+Bitbucket Cloud uses the `cloud-classic` (Basic) style; the fixed REST host is
+filled in automatically. Authenticate with an **API token with scopes** (create
+one at <https://id.atlassian.com/manage-profile/security/api-tokens> → **Create
+API token with scopes** → select **Bitbucket**, and grant at least repository
+read/write plus an account/workspace read scope).
+
+The username is your **Atlassian account email**, not your Bitbucket username:
 
 ```bash
-printf '%s' "$YOUR_APP_PASSWORD" | atl-bb auth login \
+printf '%s' "$YOUR_API_TOKEN" | atl-bb auth login \
   --site work \
   --url https://api.bitbucket.org/2.0 \
   --token-style cloud-classic \
-  --username your-bitbucket-username \
+  --username you@example.com \
   --token-stdin
 ```
+
+> **App passwords are deprecated.** Bitbucket stopped issuing new app passwords
+> (Sept 9, 2025) and removes existing ones for good (July 28, 2026, after
+> brownouts begin June 9, 2026). Use an API token with scopes as above. A
+> legacy app password still works the same way until then, but with your
+> Bitbucket username instead of your email.
 
 ## Step 5 — verify
 
