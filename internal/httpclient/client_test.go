@@ -3,6 +3,7 @@ package httpclient
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -252,6 +253,42 @@ func TestDoAcceptingSetsCustomAccept(t *testing.T) {
 	}
 	if gotAccept != "*/*" {
 		t.Fatalf("Accept = %q, want */*", gotAccept)
+	}
+}
+
+func TestDoUploadSetsContentTypeAndNoCheckToken(t *testing.T) {
+	var gotContentType, gotToken, gotAccept, gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotContentType = r.Header.Get("Content-Type")
+		gotToken = r.Header.Get("X-Atlassian-Token")
+		gotAccept = r.Header.Get("Accept")
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+
+	client := New(
+		Target{Product: ProductJira, TokenStyle: auth.StyleDataCenterPAT, BaseURL: srv.URL},
+		auth.Credential{Style: auth.StyleDataCenterPAT, Token: "pat"},
+		srv.Client(),
+	)
+	_, err := client.DoUpload(context.Background(), http.MethodPost, "/upload",
+		"multipart/form-data; boundary=xyz", strings.NewReader("payload"))
+	if err != nil {
+		t.Fatalf("DoUpload: %v", err)
+	}
+	if gotContentType != "multipart/form-data; boundary=xyz" {
+		t.Errorf("Content-Type = %q", gotContentType)
+	}
+	if gotToken != "no-check" {
+		t.Errorf("X-Atlassian-Token = %q, want no-check", gotToken)
+	}
+	if gotAccept != "application/json" {
+		t.Errorf("Accept = %q, want application/json", gotAccept)
+	}
+	if gotBody != "payload" {
+		t.Errorf("body = %q, want payload", gotBody)
 	}
 }
 

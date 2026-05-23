@@ -379,6 +379,9 @@ atl-jira issue link <inward> <outward> --type <link-type>
 atl-jira issue link types
 atl-jira issue worklog list <issue> [--limit N]
 atl-jira issue worklog add <issue> --time <duration> [--comment <text>]
+atl-jira issue attachment list <issue>
+atl-jira issue attachment download <attachment-id> --out <path|->
+atl-jira issue attachment add <issue> --file <path>
 ```
 
 `view` returns one issue. `--fields` and `--expand` pass through verbatim to
@@ -427,6 +430,17 @@ controlled by `--limit` and `--all`. `worklog add` appends a new entry:
 like `3h 30m` or seconds with units; the CLI does not parse or convert),
 and `--comment` is plain text wrapped as an ADF document. Editing or
 deleting an existing worklog is intentionally out of scope.
+
+`attachment list` lists an issue's attachments. Jira has no standalone
+attachment-list endpoint — attachments ride on the issue's `attachment`
+field — so the command fetches the issue scoped to that field and, under
+`--json`/`--jq`, emits the attachment array (with every upstream field) rather
+than the enclosing issue. `attachment download` writes an attachment's bytes to
+`--out <path>` (or `--out -` to stream to stdout); with `--json`/`--jq` it
+prints the attachment metadata and downloads nothing. `attachment add` uploads
+`--file <path>` to the issue as multipart form data, reporting the created
+attachment's filename and id. Deleting an attachment is intentionally out of
+scope.
 
 ### `field`
 
