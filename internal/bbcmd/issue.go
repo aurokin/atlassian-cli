@@ -182,27 +182,17 @@ func writeIssueList(w io.Writer, issues []bitbucket.Issue) {
 
 // writeIssue prints a single issue as aligned label/value lines.
 func writeIssue(w io.Writer, is bitbucket.Issue) {
-	fmt.Fprintf(w, "%-10s #%d\n", "id:", is.ID)
-	fmt.Fprintf(w, "%-10s %s\n", "title:", is.Title)
-	if is.State != "" {
-		fmt.Fprintf(w, "%-10s %s\n", "state:", is.State)
-	}
-	if is.Kind != "" {
-		fmt.Fprintf(w, "%-10s %s\n", "kind:", is.Kind)
-	}
-	if is.Priority != "" {
-		fmt.Fprintf(w, "%-10s %s\n", "priority:", is.Priority)
-	}
-	if reporter := accountLabel(is.Reporter); reporter != "" {
-		fmt.Fprintf(w, "%-10s %s\n", "reporter:", reporter)
-	}
-	if assignee := accountLabel(is.Assignee); assignee != "" {
-		fmt.Fprintf(w, "%-10s %s\n", "assignee:", assignee)
-	}
-	if is.CreatedOn != "" {
-		fmt.Fprintf(w, "%-10s %s\n", "created:", is.CreatedOn)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Addf("id", "#%d", is.ID)
+	lw.Add("title", is.Title)
+	lw.AddIf("state", is.State)
+	lw.AddIf("kind", is.Kind)
+	lw.AddIf("priority", is.Priority)
+	lw.AddIf("reporter", accountLabel(is.Reporter))
+	lw.AddIf("assignee", accountLabel(is.Assignee))
+	lw.AddIf("created", is.CreatedOn)
 	if is.Content != nil && is.Content.Raw != "" {
-		fmt.Fprintf(w, "%-10s %s\n", "body:", is.Content.Raw)
+		lw.Add("body", is.Content.Raw)
 	}
+	_ = lw.Flush()
 }

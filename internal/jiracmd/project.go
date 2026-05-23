@@ -91,15 +91,13 @@ func writeProjectList(w io.Writer, projects []jira.Project) {
 
 // writeProject prints a single project as aligned label/value lines.
 func writeProject(w io.Writer, p jira.Project) {
-	fmt.Fprintf(w, "%-6s %s\n", "key:", p.Key)
-	fmt.Fprintf(w, "%-6s %s\n", "name:", p.Name)
-	if p.ProjectTypeKey != "" {
-		fmt.Fprintf(w, "%-6s %s\n", "type:", p.ProjectTypeKey)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Add("key", p.Key)
+	lw.Add("name", p.Name)
+	lw.AddIf("type", p.ProjectTypeKey)
 	if p.Lead != nil && p.Lead.DisplayName != "" {
-		fmt.Fprintf(w, "%-6s %s\n", "lead:", p.Lead.DisplayName)
+		lw.Add("lead", p.Lead.DisplayName)
 	}
-	if p.ID != "" {
-		fmt.Fprintf(w, "%-6s %s\n", "id:", p.ID)
-	}
+	lw.AddIf("id", p.ID)
+	_ = lw.Flush()
 }

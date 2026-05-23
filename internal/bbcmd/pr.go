@@ -201,17 +201,13 @@ func writePRList(w io.Writer, prs []bitbucket.PullRequest) {
 
 // writePR prints a single pull request as aligned label/value lines.
 func writePR(w io.Writer, pr bitbucket.PullRequest) {
-	fmt.Fprintf(w, "%-12s #%d\n", "id:", pr.ID)
-	fmt.Fprintf(w, "%-12s %s\n", "title:", pr.Title)
-	if pr.State != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "state:", pr.State)
-	}
-	if author := accountLabel(pr.Author); author != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "author:", author)
-	}
-	if branches := branchFlow(pr.Source, pr.Destination); branches != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "branches:", branches)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Addf("id", "#%d", pr.ID)
+	lw.Add("title", pr.Title)
+	lw.AddIf("state", pr.State)
+	lw.AddIf("author", accountLabel(pr.Author))
+	lw.AddIf("branches", branchFlow(pr.Source, pr.Destination))
+	_ = lw.Flush()
 }
 
 // accountLabel renders an account's display name (or nickname) for human

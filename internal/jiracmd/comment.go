@@ -10,6 +10,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/cli"
 	"github.com/aurokin/atlassian-cli/internal/jira"
+	"github.com/aurokin/atlassian-cli/internal/output"
 )
 
 // newCommentCommand builds the "issue comment" command group.
@@ -188,14 +189,14 @@ func writeComment(w io.Writer, c jira.Comment) {
 	if c.Author != nil && c.Author.DisplayName != "" {
 		author = c.Author.DisplayName
 	}
-	fmt.Fprintf(w, "%-9s %s\n", "id:", c.ID)
-	fmt.Fprintf(w, "%-9s %s\n", "author:", author)
-	if c.Created != "" {
-		fmt.Fprintf(w, "%-9s %s\n", "created:", c.Created)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Add("id", c.ID)
+	lw.Add("author", author)
+	lw.AddIf("created", c.Created)
 	if c.Updated != "" && c.Updated != c.Created {
-		fmt.Fprintf(w, "%-9s %s\n", "updated:", c.Updated)
+		lw.Add("updated", c.Updated)
 	}
+	_ = lw.Flush()
 	if text := jira.TextOf(c.Body); text != "" {
 		fmt.Fprintf(w, "\n%s\n", text)
 	}

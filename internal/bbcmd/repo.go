@@ -103,20 +103,20 @@ func addRepoFlags(cmd *cobra.Command, repoFlag, workspaceFlag *string) {
 
 // writeRepo prints a single repository as aligned label/value lines.
 func writeRepo(w io.Writer, r bitbucket.Repository) {
-	fmt.Fprintf(w, "%-12s %s\n", "full name:", r.FullName)
+	lw := output.NewLabelWriter(w)
+	lw.Add("full name", r.FullName)
 	if r.Name != "" && r.Name != r.FullName {
-		fmt.Fprintf(w, "%-12s %s\n", "name:", r.Name)
+		lw.Add("name", r.Name)
 	}
-	fmt.Fprintf(w, "%-12s %s\n", "visibility:", visibilityLabel(r.IsPrivate))
+	lw.Add("visibility", visibilityLabel(r.IsPrivate))
 	if r.Project != nil && (r.Project.Key != "" || r.Project.Name != "") {
-		fmt.Fprintf(w, "%-12s %s\n", "project:", projectLabel(r.Project))
+		lw.Add("project", projectLabel(r.Project))
 	}
 	if r.MainBranch != nil && r.MainBranch.Name != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "main branch:", r.MainBranch.Name)
+		lw.Add("main branch", r.MainBranch.Name)
 	}
-	if r.Description != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "description:", r.Description)
-	}
+	lw.AddIf("description", r.Description)
+	_ = lw.Flush()
 }
 
 // writeRepoList prints repositories as aligned full-name/visibility rows.

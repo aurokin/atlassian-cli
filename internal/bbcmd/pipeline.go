@@ -168,22 +168,14 @@ func writePipelineList(w io.Writer, pipelines []bitbucket.Pipeline) {
 
 // writePipeline prints a single pipeline run as aligned label/value lines.
 func writePipeline(w io.Writer, p bitbucket.Pipeline) {
-	fmt.Fprintf(w, "%-12s #%d\n", "build:", p.BuildNumber)
-	if p.UUID != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "uuid:", p.UUID)
-	}
-	if s := pipelineState(p.State); s != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "state:", s)
-	}
-	if t := pipelineTarget(p.Target); t != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "target:", t)
-	}
-	if creator := accountLabel(p.Creator); creator != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "creator:", creator)
-	}
-	if p.CreatedOn != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "created:", p.CreatedOn)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Addf("build", "#%d", p.BuildNumber)
+	lw.AddIf("uuid", p.UUID)
+	lw.AddIf("state", pipelineState(p.State))
+	lw.AddIf("target", pipelineTarget(p.Target))
+	lw.AddIf("creator", accountLabel(p.Creator))
+	lw.AddIf("created", p.CreatedOn)
+	_ = lw.Flush()
 }
 
 // pipelineState renders a state as "NAME (RESULT)", "NAME", or "".

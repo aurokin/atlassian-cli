@@ -199,16 +199,14 @@ func writeDeploymentList(w io.Writer, deployments []bitbucket.Deployment) {
 
 // writeDeployment prints a single deployment as aligned label/value lines.
 func writeDeployment(w io.Writer, d bitbucket.Deployment) {
-	fmt.Fprintf(w, "%-12s %s\n", "uuid:", d.UUID)
-	if s := deploymentState(d.State); s != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "state:", s)
-	}
-	if env := deploymentEnvironment(d.Environment); env != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "environment:", env)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Add("uuid", d.UUID)
+	lw.AddIf("state", deploymentState(d.State))
+	lw.AddIf("environment", deploymentEnvironment(d.Environment))
 	if d.Release != nil && d.Release.Name != "" {
-		fmt.Fprintf(w, "%-12s %s\n", "release:", d.Release.Name)
+		lw.Add("release", d.Release.Name)
 	}
+	_ = lw.Flush()
 }
 
 // writeEnvironmentList prints environments as aligned name/type/uuid rows.
@@ -226,16 +224,12 @@ func writeEnvironmentList(w io.Writer, envs []bitbucket.Environment) {
 
 // writeEnvironment prints a single environment as aligned label/value lines.
 func writeEnvironment(w io.Writer, e bitbucket.Environment) {
-	fmt.Fprintf(w, "%-8s %s\n", "name:", e.Name)
-	if e.Slug != "" {
-		fmt.Fprintf(w, "%-8s %s\n", "slug:", e.Slug)
-	}
-	if e.Type != "" {
-		fmt.Fprintf(w, "%-8s %s\n", "type:", e.Type)
-	}
-	if e.UUID != "" {
-		fmt.Fprintf(w, "%-8s %s\n", "uuid:", e.UUID)
-	}
+	lw := output.NewLabelWriter(w)
+	lw.Add("name", e.Name)
+	lw.AddIf("slug", e.Slug)
+	lw.AddIf("type", e.Type)
+	lw.AddIf("uuid", e.UUID)
+	_ = lw.Flush()
 }
 
 // deploymentState renders a deployment state's name, or "".
