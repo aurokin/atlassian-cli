@@ -128,8 +128,16 @@ func (c *Client) ListPages(ctx context.Context, spaceID string, limit int) (json
 // GetPage returns a single page by id with its storage-format body
 // (GET /pages/{id}?body-format=storage).
 func (c *Client) GetPage(ctx context.Context, id string) (json.RawMessage, error) {
+	return c.GetPageWithFormat(ctx, id, "storage")
+}
+
+// GetPageWithFormat returns a single page by id in the requested body
+// representation. The v2 body-format query param is a single value (not a
+// comma list), so each representation needs its own GET; callers that need
+// both storage and atlas_doc_format make two requests.
+func (c *Client) GetPageWithFormat(ctx context.Context, id, bodyFormat string) (json.RawMessage, error) {
 	q := url.Values{}
-	q.Set("body-format", "storage")
+	q.Set("body-format", bodyFormat)
 	return c.get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id), q))
 }
 

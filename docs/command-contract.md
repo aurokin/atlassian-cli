@@ -456,11 +456,12 @@ together.
 Confluence v2 treats a page update as a full replacement, so `edit` first GETs
 the page to read its current title, body, status, and version, then PUTs the
 merged state with the version number incremented by one. A title-only edit
-re-sends the page's current body in storage representation; if the page has no
-storage-format body to re-send it is refused with an `invalid_input` error
-rather than risk clearing the body — pass `--body` with `--body-format` to set
-the body explicitly. A version conflict surfaces as the structured error model
-below.
+re-sends the page's current body: the storage representation for classic pages,
+falling back to a second GET for `atlas_doc_format` when storage is empty (the
+case for pages authored in the modern editor). Only if neither representation
+is populated is the edit refused with an `invalid_input` error, rather than risk
+clearing the body — pass `--body` with `--body-format` to set the body
+explicitly. A version conflict surfaces as the structured error model below.
 
 ### `page comment`
 
@@ -858,8 +859,9 @@ plain `Error: <code>: <message>` line.
   implemented.
 - `page create`/`edit` take a `--body` plus an explicit `--body-format`; the
   content is sent verbatim and never converted between representations. A
-  title-only `page edit` re-sends the page's current storage body; if the page
-  has no storage-format body the edit is refused, so pass `--body` explicitly.
+  title-only `page edit` re-sends the page's current body, preferring storage
+  and falling back to `atlas_doc_format` for modern-editor pages; only if the
+  page has neither representation is the edit refused, so pass `--body` then.
 - Confluence page delete, move, and restore are not implemented; the page
   surface is list/view/children, create/edit, and the comment/label
   sub-groups.

@@ -393,6 +393,49 @@ func TestPageEditTitleOnlyReusesBody(t *testing.T) {
 	}
 }
 
+// TestPageEditTitleOnlyFallsBackToADF covers a page authored in the modern
+// editor: its storage body is empty, so a title-only edit must re-fetch the
+// atlas_doc_format representation and re-send that on the PUT.
+func TestPageEditTitleOnlyFallsBackToADF(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			switch r.URL.Query().Get("body-format") {
+			case "storage":
+				// Modern-editor page: empty storage representation.
+				_, _ = w.Write([]byte(`{"id":"10","title":"Old","status":"current","spaceId":"1",` +
+					`"version":{"number":3},"body":{"storage":{"representation":"storage","value":""}}}`))
+			case "atlas_doc_format":
+				_, _ = w.Write([]byte(`{"id":"10","title":"Old","status":"current","spaceId":"1",` +
+					`"version":{"number":3},"body":{"atlas_doc_format":` +
+					`{"representation":"atlas_doc_format","value":"{\"type\":\"doc\"}"}}}`))
+			default:
+				t.Errorf("unexpected body-format %q", r.URL.Query().Get("body-format"))
+			}
+		case http.MethodPut:
+			_ = json.NewDecoder(r.Body).Decode(&gotBody)
+			_, _ = w.Write([]byte(`{"id":"10","title":"Renamed","status":"current","version":{"number":4}}`))
+		default:
+			t.Errorf("method = %q, want GET or PUT", r.Method)
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	if _, err := execConf(t, "page", "edit", "10", "--title", "Renamed", "--site", "work"); err != nil {
+		t.Fatalf("page edit: %v", err)
+	}
+	body, _ := gotBody["body"].(map[string]any)
+	if body["representation"] != "atlas_doc_format" || body["value"] != `{"type":"doc"}` {
+		t.Errorf("title-only edit sent body %v, want the fetched atlas_doc_format body re-sent", gotBody["body"])
+	}
+	if gotBody["title"] != "Renamed" {
+		t.Errorf("edit sent title %v, want Renamed", gotBody["title"])
+	}
+}
+
 func TestPageEditJSON(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {

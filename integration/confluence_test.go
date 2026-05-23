@@ -246,3 +246,60 @@ func TestConfPageLifecycle(t *testing.T) {
 	}
 	s.mustWrite("page comment delete", "page", "comment", "delete", comment.ID)
 }
+
+// TestConfPageADFTitleEdit covers the modern-editor case: a page created in
+// atlas_doc_format has an empty storage body, so a title-only edit must fall
+// back to re-fetching and re-sending the atlas_doc_format representation
+// instead of aborting with "no body to preserve".
+func TestConfPageADFTitleEdit(t *testing.T) {
+	s := confSession(t)
+	space := confSpace(t)
+
+	stamp := time.Now().UTC().Format("20060102-150405")
+	title := "atl-cli integration ADF page " + stamp
+	adf := `{"version":1,"type":"doc","content":[{"type":"paragraph",` +
+		`"content":[{"type":"text","text":"Created by the atl-cli integration suite. Safe to delete."}]}]}`
+
+	createRes := s.run("page", "create",
+		"--space", space,
+		"--title", title,
+		"--body", adf,
+		"--body-format", "atlas_doc_format",
+		"--json")
+	s.skipIfScopeOrPermission(createRes, "page create (atlas_doc_format)")
+	if createRes.err != nil {
+		t.Fatalf("page create failed: %v\nstdout:\n%s\nstderr:\n%s", createRes.err, createRes.stdout, createRes.stderr)
+	}
+
+	var pageID string
+	t.Cleanup(func() {
+		if pageID == "" {
+			t.Logf("cleanup: ADF page was created but its id could not be parsed; delete it manually.\ncreate output:\n%s", createRes.stdout)
+			return
+		}
+		res := s.run("api", "/pages/"+pageID, "--method", "DELETE")
+		if res.err != nil {
+			res = s.run("api", "/pages/"+pageID, "--method", "DELETE")
+		}
+		if res.err != nil && !strings.Contains(res.stdout+res.stderr, "not_found") {
+			t.Logf("cleanup: failed to delete ADF page %s (delete it manually): %v\n%s", pageID, res.err, res.stdout+res.stderr)
+			return
+		}
+		t.Logf("cleanup: deleted ADF page %s", pageID)
+	})
+
+	var created struct {
+		ID string `json:"id"`
+	}
+	if err := jsonUnmarshal(createRes.stdout, &created); err != nil || created.ID == "" {
+		t.Fatalf("could not parse created ADF page id: %v\nstdout:\n%s", err, createRes.stdout)
+	}
+	pageID = created.ID
+	t.Logf("created ADF page %s", pageID)
+
+	// Title-only edit must succeed by re-sending the atlas_doc_format body.
+	editRes := s.mustWrite("page edit (ADF title-only)", "page", "edit", pageID, "--title", title+" (edited)")
+	if !strings.Contains(editRes.stdout, "updated page "+pageID) {
+		t.Fatalf("ADF title-only edit output unexpected: %q\nstderr:\n%s", editRes.stdout, editRes.stderr)
+	}
+}
