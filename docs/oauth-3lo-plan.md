@@ -1,5 +1,9 @@
 # OAuth 2.0 (3LO) implementation plan
 
+> **Status: implemented.** All six slices below shipped. This document is kept
+> as the design record; for usage see [auth-runbook.md](auth-runbook.md) and
+> [command-contract.md](command-contract.md).
+
 Plan for adding an `oauth-3lo` token style to the `atl-*` CLIs: interactive,
 user-consented, scoped Atlassian Cloud access with automatic token refresh.
 This complements — it does not replace — the existing static-token styles

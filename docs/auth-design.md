@@ -36,8 +36,18 @@ Important: Atlassian says integrations generally cannot distinguish scoped from 
 ### OAuth 2.0 3LO
 
 - Token style: `oauth-3lo`
-- Later feature, not MVP.
-- Must use a real Atlassian app flow and token refresh, not copied browser/session tokens.
+- Auth type: `oauth-bearer`
+- Signing: `Authorization: Bearer <access_token>`
+- Base URL: `https://api.atlassian.com/ex/<product>/<cloudId>/...` (the same
+  gateway as `cloud-scoped`).
+- **Implemented** (interactive, bring-your-own-app). The user registers an
+  Atlassian OAuth 2.0 (3LO) app and supplies `--client-id` + `--client-secret`;
+  `auth login` runs a loopback authorization-code flow with PKCE, resolves the
+  `cloud_id` from accessible-resources, and stores a token bundle in the
+  keychain. The access token is refreshed at request time using the refresh
+  token. It uses a real Atlassian app flow and token refresh, never copied
+  browser/session tokens. See [oauth-3lo-plan.md](oauth-3lo-plan.md) for the
+  design and [auth-runbook.md](auth-runbook.md) for usage.
 
 ## Config sketch
 
