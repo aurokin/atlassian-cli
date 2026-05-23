@@ -66,6 +66,7 @@ func newIssueListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			list := bc.ListIssues
 			if all {
 				list = bc.ListIssuesAll
+				limit = allPageSize(limit)
 			}
 			raw, err := list(cmd.Context(), target.Workspace, target.Repo, st, limit)
 			if err != nil {

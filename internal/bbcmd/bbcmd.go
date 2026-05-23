@@ -61,6 +61,17 @@ func AddCommands(root *cobra.Command, info appinfo.Info, g *cli.GlobalFlags) {
 	)
 }
 
+// allPageSize picks the per-page size for an --all request: the explicit
+// --limit when the caller set one, otherwise Bitbucket's maximum page size so
+// the page follow makes the fewest round-trips and is least likely to hit the
+// page-follow cap. A non-positive limit means "unset" (the --limit default).
+func allPageSize(limit int) int {
+	if limit > 0 {
+		return limit
+	}
+	return bitbucket.MaxPageLen
+}
+
 // bbClient builds a typed Bitbucket client for the profile named by --site.
 func bbClient(info appinfo.Info, g *cli.GlobalFlags) (*bitbucket.Client, error) {
 	c, err := cli.SiteClient(info, g)
@@ -133,7 +144,10 @@ func resolveRepoTarget(args []string, repoFlag, workspaceFlag string) (repoTarge
 // from an optional positional argument or the --workspace flag. The positional
 // and the flag name the same resource, so a positional that conflicts with a
 // supplied --workspace is rejected rather than silently overriding it
-// (matching resolveRepoTarget's conflict handling).
+// (matching resolveRepoTarget's conflict handling). When neither is supplied it
+// falls back to the workspace of the local git checkout's Bitbucket remote, so
+// workspace-scoped listings (repo list, project list, search repos) work
+// in-repo without --workspace.
 func resolveWorkspace(args []string, workspaceFlag string) (string, error) {
 	flag := strings.TrimSpace(workspaceFlag)
 	ws := flag
@@ -146,8 +160,11 @@ func resolveWorkspace(args []string, workspaceFlag string) (string, error) {
 		ws = arg
 	}
 	if ws == "" {
+		if t, ok := inferRepoTarget(); ok && t.Workspace != "" {
+			return t.Workspace, nil
+		}
 		return "", apperr.InvalidInput(
-			"a workspace is required; pass it as a positional argument or --workspace")
+			"a workspace is required; pass it as a positional argument or --workspace, or run inside a Bitbucket git checkout")
 	}
 	if strings.Contains(ws, "/") {
 		return "", apperr.InvalidInput(

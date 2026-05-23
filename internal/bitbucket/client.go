@@ -21,6 +21,11 @@ import (
 // productName labels this product in shared structured error messages.
 const productName = "Bitbucket"
 
+// MaxPageLen is Bitbucket Cloud's maximum page size (the "pagelen" parameter).
+// An --all request with no explicit --limit defaults to it, so the page follow
+// makes the fewest round-trips and is least likely to hit the page-follow cap.
+const MaxPageLen = 100
+
 // Client is a typed Bitbucket API client bound to one authenticated site. It
 // embeds restutil.Base for the shared request plumbing, with the base's
 // RemapError hook set to remapError so a disabled-capability response is

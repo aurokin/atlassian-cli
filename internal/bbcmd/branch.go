@@ -53,6 +53,7 @@ func newBranchListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			list := bc.ListBranches
 			if all {
 				list = bc.ListBranchesAll
+				limit = allPageSize(limit)
 			}
 			raw, err := list(cmd.Context(), target.Workspace, target.Repo, limit)
 			if err != nil {

@@ -53,6 +53,7 @@ func newTagListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			list := bc.ListTags
 			if all {
 				list = bc.ListTagsAll
+				limit = allPageSize(limit)
 			}
 			raw, err := list(cmd.Context(), target.Workspace, target.Repo, limit)
 			if err != nil {

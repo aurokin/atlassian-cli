@@ -112,6 +112,10 @@ safety cap; if the result still has more pages at the cap, the command fails
 with a `result_truncated` error rather than returning a partial set that looks
 complete. Raise `--limit` (larger pages) or narrow the query to stay under it.
 
+For Bitbucket, an `--all` request with no explicit `--limit` defaults the page
+size to the API maximum (100), so the follow makes the fewest round-trips and
+is least likely to hit the cap. An explicit `--limit` still wins.
+
 ## Commands
 
 ### `version`
@@ -603,6 +607,13 @@ remote). Inference is best-effort and offline: outside a git repository, with
 no usable remote, or when the remote is not a `bitbucket.org` host, the command
 reports that a repository is required instead. Passing `--workspace` alone (a
 deliberate partial target) skips inference rather than guessing the repository.
+
+Workspace-scoped commands (`repo list`, `project list`, `search repos`) take a
+workspace as a positional argument or `--workspace`. When neither is given they
+fall back to the **workspace** of the same git-checkout-inferred Bitbucket
+remote, so these listings work in-repo without `--workspace`. An explicit
+positional/flag still wins, and a positional that conflicts with `--workspace`
+is rejected.
 
 ### `repo`
 
