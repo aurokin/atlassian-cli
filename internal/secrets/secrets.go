@@ -42,6 +42,10 @@ type Store interface {
 	// Get returns the stored token, or a structured token_unavailable error
 	// when no token is stored for site.
 	Get(site string) (string, error)
+	// Has reports whether a token is stored for site without returning the
+	// secret value, so a caller can check presence (e.g. auth status) without
+	// reading the credential. A backend error other than "absent" is returned.
+	Has(site string) (bool, error)
 	// Delete removes any stored token for site. Deleting an absent token is
 	// not an error.
 	Delete(site string) error
@@ -126,6 +130,20 @@ func (keyringStore) Get(site string) (string, error) {
 			"could not read the credential from the OS keychain: "+err.Error())
 	}
 	return v, nil
+}
+
+func (keyringStore) Has(site string) (bool, error) {
+	// The keychain API has no presence check separate from a read; the value is
+	// fetched here but never returned to the caller.
+	_, err := keyring.Get(keyringService, site)
+	if errors.Is(err, keyring.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, apperr.New("credential_read_failed",
+			"could not read the credential from the OS keychain: "+err.Error())
+	}
+	return true, nil
 }
 
 func (keyringStore) Delete(site string) error {
@@ -225,6 +243,14 @@ func (f fileStore) Get(site string) (string, error) {
 			fmt.Sprintf("no stored credential for site %q in %s", site, f.path))
 	}
 	return token, nil
+}
+
+func (f fileStore) Has(site string) (bool, error) {
+	doc, err := f.load()
+	if err != nil {
+		return false, err
+	}
+	return doc.Tokens[site] != "", nil
 }
 
 func (f fileStore) Delete(site string) error {

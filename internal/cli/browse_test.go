@@ -21,7 +21,8 @@ func swapBrowseOpener(fn func(string) error) func() {
 func loginBrowseSite(t *testing.T) {
 	t.Helper()
 	if _, err := execRoot(t, jiraInfo(), "auth", "login", "--site", "work",
-		"--url", "https://example.atlassian.net", "--token-style", "data-center-pat"); err != nil {
+		"--url", "https://example.atlassian.net", "--token-style", "data-center-pat",
+		"--token-env", "ATL_TEST_TOKEN"); err != nil {
 		t.Fatalf("login: %v", err)
 	}
 }

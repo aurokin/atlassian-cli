@@ -112,14 +112,6 @@ func tokenStatus(site string, p config.SiteProfile) string {
 	if err != nil {
 		return fmt.Sprintf("unrecognized token reference %q", ref)
 	}
-	value, err := store.Get(site)
-	if err != nil {
-		var ae *apperr.Error
-		if errors.As(err, &ae) && ae.Code != "token_unavailable" {
-			return "token reference configured but the stored credential could not be read: " + ae.Message
-		}
-		return "token reference configured but no stored credential was found"
-	}
 	var backend string
 	switch ref {
 	case secrets.BackendKeyring:
@@ -129,10 +121,32 @@ func tokenStatus(site string, p config.SiteProfile) string {
 	default:
 		return "token reference configured"
 	}
-	if p.TokenStyle == string(auth.StyleOAuth3LO) {
-		return oauthTokenStatus(value, backend)
+	// An oauth-3lo profile needs the stored bundle to report its access-token
+	// expiry; every other style only needs to know the credential is present,
+	// so it uses Has and never reads the secret value.
+	if p.TokenStyle != string(auth.StyleOAuth3LO) {
+		present, err := store.Has(site)
+		if err != nil {
+			var ae *apperr.Error
+			if errors.As(err, &ae) {
+				return "token reference configured but the stored credential could not be read: " + ae.Message
+			}
+			return "token reference configured but the stored credential could not be read: " + err.Error()
+		}
+		if !present {
+			return "token reference configured but no stored credential was found"
+		}
+		return "token available from " + backend
 	}
-	return "token available from " + backend
+	value, err := store.Get(site)
+	if err != nil {
+		var ae *apperr.Error
+		if errors.As(err, &ae) && ae.Code != "token_unavailable" {
+			return "token reference configured but the stored credential could not be read: " + ae.Message
+		}
+		return "token reference configured but no stored credential was found"
+	}
+	return oauthTokenStatus(value, backend)
 }
 
 // oauthTokenStatus reports presence and access-token expiry for an oauth-3lo
@@ -276,6 +290,14 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 				return err
 			}
 			if style == auth.StyleOAuth3LO {
+				// oauth-3lo authenticates via the browser flow and stores a token
+				// bundle itself; the static-token and username inputs do not apply
+				// and were previously ignored silently. Reject them so the caller
+				// is not misled into thinking they took effect.
+				if username != "" || tokenEnv != "" || tokenValue != "" || tokenStdin {
+					return apperr.InvalidInput(
+						"token style oauth-3lo does not use --username or --token-env/--token-stdin/--token; it authenticates through the browser authorization flow")
+				}
 				secret := clientSecret
 				if clientSecretStdin {
 					raw, err := io.ReadAll(cmd.InOrStdin())
@@ -309,6 +331,13 @@ func newAuthLoginCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 			}
 			if sources > 1 {
 				return apperr.InvalidInput("pass at most one of --token-env, --token-stdin, or --token")
+			}
+			if sources == 0 {
+				// Without a token source the profile would reference no credential
+				// and every request through it would fail. Reject up front rather
+				// than persisting an unusable profile.
+				return apperr.InvalidInput(fmt.Sprintf(
+					"token style %s requires a token source; pass one of --token-env, --token-stdin, or --token", style))
 			}
 
 			profile := config.SiteProfile{
@@ -422,7 +451,14 @@ func persistProfile(cmd *cobra.Command, g *GlobalFlags, info appinfo.Info, profi
 	if err != nil {
 		return err
 	}
-	prevRef := cfg.Sites[g.Site].TokenRef
+	prev, existed := cfg.Sites[g.Site]
+	prevRef := prev.TokenRef
+	if existed {
+		// Re-logging an existing site replaces its profile. Note it so the
+		// overwrite is never silent; this stays a note (not a prompt) so
+		// --no-prompt agent flows are unaffected.
+		fmt.Fprintf(cmd.ErrOrStderr(), "Note: overwriting the existing %q site profile.\n", g.Site)
+	}
 	cfg.Sites[g.Site] = profile
 	if err := config.Save(path, cfg); err != nil {
 		return err
