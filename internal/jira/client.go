@@ -219,55 +219,32 @@ func decodeError(err error) error {
 	return restutil.DecodeError(productName, err)
 }
 
-// followAll follows a paginated endpoint to completion. fetch issues the
-// request for a cursor ("" for the first page); extract pulls a page's raw
-// items and the next cursor ("" when there is no next page) from a response.
-// It returns every collected item, stopping at restutil.MaxFollowPages.
-func followAll(ctx context.Context,
-	fetch func(context.Context, string) (json.RawMessage, error),
-	extract func(json.RawMessage) ([]json.RawMessage, string, error),
-) ([]json.RawMessage, error) {
-	all := []json.RawMessage{}
-	cursor := ""
-	done := false
-	for page := 0; page < restutil.MaxFollowPages; page++ {
-		raw, err := fetch(ctx, cursor)
-		if err != nil {
-			return nil, err
-		}
-		items, next, err := extract(raw)
-		if err != nil {
-			return nil, err
-		}
-		all = append(all, items...)
-		if next == "" {
-			done = true
-			break
-		}
-		cursor = next
+// offsetCursor parses a startAt cursor ("" means 0), the offset we sent for the
+// current page. Deriving the next offset from what we requested — rather than
+// the startAt the response echoes back — keeps --all correct even when a server
+// omits or misreports startAt.
+func offsetCursor(cursor string) int {
+	if cursor == "" {
+		return 0
 	}
-	// Exiting the loop without an empty cursor means the cap was hit and the
-	// aggregate is incomplete.
-	if !done {
-		return nil, restutil.TruncatedError()
-	}
-	return all, nil
+	n, _ := strconv.Atoi(cursor)
+	return n
 }
 
-// synthesize assembles an aggregate list body, {"<key>": [<item>, ...]}. Items
-// are kept verbatim, so every field each API page returned is preserved.
-func synthesize(key string, items []json.RawMessage) (json.RawMessage, error) {
-	out, err := json.Marshal(map[string][]json.RawMessage{key: items})
-	if err != nil {
-		return nil, decodeError(err)
+// offsetNext computes the next startAt cursor for an offset-paginated endpoint:
+// the empty string when this page is the last, otherwise the locally-derived
+// end offset. count is this page's item count and total the reported total.
+func offsetNext(sent, count, total int) string {
+	if count == 0 || sent+count >= total {
+		return ""
 	}
-	return out, nil
+	return strconv.Itoa(sent + count)
 }
 
 // SearchProjectsAll follows /project/search to completion and returns an
 // aggregated {"values": [...]} body. /project/search is offset paginated.
 func (c *Client) SearchProjectsAll(ctx context.Context, limit int) (json.RawMessage, error) {
-	items, err := followAll(ctx,
+	items, err := restutil.FollowAll(ctx, "",
 		func(ctx context.Context, cursor string) (json.RawMessage, error) {
 			q := url.Values{}
 			setLimit(q, limit)
@@ -276,33 +253,31 @@ func (c *Client) SearchProjectsAll(ctx context.Context, limit int) (json.RawMess
 			}
 			return c.Get(ctx, restutil.WithQuery("/project/search", q))
 		},
-		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
+		func(raw json.RawMessage, cursor string) ([]json.RawMessage, string, error) {
 			var pg struct {
-				Values  []json.RawMessage `json:"values"`
-				StartAt int               `json:"startAt"`
-				Total   int               `json:"total"`
-				IsLast  bool              `json:"isLast"`
+				Values []json.RawMessage `json:"values"`
+				Total  int               `json:"total"`
+				IsLast bool              `json:"isLast"`
 			}
 			if err := json.Unmarshal(raw, &pg); err != nil {
 				return nil, "", decodeError(err)
 			}
-			next := ""
-			if end := pg.StartAt + len(pg.Values); !pg.IsLast && len(pg.Values) > 0 && end < pg.Total {
-				next = strconv.Itoa(end)
+			if pg.IsLast {
+				return pg.Values, "", nil
 			}
-			return pg.Values, next, nil
+			return pg.Values, offsetNext(offsetCursor(cursor), len(pg.Values), pg.Total), nil
 		},
 	)
 	if err != nil {
 		return nil, err
 	}
-	return synthesize("values", items)
+	return restutil.Aggregate(productName, "values", items)
 }
 
 // SearchIssuesAll follows /search/jql to completion and returns an aggregated
 // {"issues": [...]} body. /search/jql is token paginated via nextPageToken.
 func (c *Client) SearchIssuesAll(ctx context.Context, jql string, limit int) (json.RawMessage, error) {
-	items, err := followAll(ctx,
+	items, err := restutil.FollowAll(ctx, "",
 		func(ctx context.Context, cursor string) (json.RawMessage, error) {
 			q := url.Values{}
 			q.Set("jql", jql)
@@ -313,7 +288,7 @@ func (c *Client) SearchIssuesAll(ctx context.Context, jql string, limit int) (js
 			}
 			return c.Get(ctx, restutil.WithQuery("/search/jql", q))
 		},
-		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
+		func(raw json.RawMessage, _ string) ([]json.RawMessage, string, error) {
 			var pg struct {
 				Issues        []json.RawMessage `json:"issues"`
 				NextPageToken string            `json:"nextPageToken"`
@@ -327,13 +302,13 @@ func (c *Client) SearchIssuesAll(ctx context.Context, jql string, limit int) (js
 	if err != nil {
 		return nil, err
 	}
-	return synthesize("issues", items)
+	return restutil.Aggregate(productName, "issues", items)
 }
 
 // ListCommentsAll follows an issue's comment list to completion and returns an
 // aggregated {"comments": [...]} body. The endpoint is offset paginated.
 func (c *Client) ListCommentsAll(ctx context.Context, issue string, limit int) (json.RawMessage, error) {
-	items, err := followAll(ctx,
+	items, err := restutil.FollowAll(ctx, "",
 		func(ctx context.Context, cursor string) (json.RawMessage, error) {
 			q := url.Values{}
 			setLimit(q, limit)
@@ -342,32 +317,27 @@ func (c *Client) ListCommentsAll(ctx context.Context, issue string, limit int) (
 			}
 			return c.Get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(issue)+"/comment", q))
 		},
-		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
+		func(raw json.RawMessage, cursor string) ([]json.RawMessage, string, error) {
 			var pg struct {
 				Comments []json.RawMessage `json:"comments"`
-				StartAt  int               `json:"startAt"`
 				Total    int               `json:"total"`
 			}
 			if err := json.Unmarshal(raw, &pg); err != nil {
 				return nil, "", decodeError(err)
 			}
-			next := ""
-			if end := pg.StartAt + len(pg.Comments); len(pg.Comments) > 0 && end < pg.Total {
-				next = strconv.Itoa(end)
-			}
-			return pg.Comments, next, nil
+			return pg.Comments, offsetNext(offsetCursor(cursor), len(pg.Comments), pg.Total), nil
 		},
 	)
 	if err != nil {
 		return nil, err
 	}
-	return synthesize("comments", items)
+	return restutil.Aggregate(productName, "comments", items)
 }
 
 // ListWorklogsAll follows an issue's worklog list to completion and returns
 // an aggregated {"worklogs": [...]} body. The endpoint is offset paginated.
 func (c *Client) ListWorklogsAll(ctx context.Context, idOrKey string, limit int) (json.RawMessage, error) {
-	items, err := followAll(ctx,
+	items, err := restutil.FollowAll(ctx, "",
 		func(ctx context.Context, cursor string) (json.RawMessage, error) {
 			q := url.Values{}
 			setLimit(q, limit)
@@ -376,24 +346,19 @@ func (c *Client) ListWorklogsAll(ctx context.Context, idOrKey string, limit int)
 			}
 			return c.Get(ctx, restutil.WithQuery("/issue/"+url.PathEscape(idOrKey)+"/worklog", q))
 		},
-		func(raw json.RawMessage) ([]json.RawMessage, string, error) {
+		func(raw json.RawMessage, cursor string) ([]json.RawMessage, string, error) {
 			var pg struct {
 				Worklogs []json.RawMessage `json:"worklogs"`
-				StartAt  int               `json:"startAt"`
 				Total    int               `json:"total"`
 			}
 			if err := json.Unmarshal(raw, &pg); err != nil {
 				return nil, "", decodeError(err)
 			}
-			next := ""
-			if end := pg.StartAt + len(pg.Worklogs); len(pg.Worklogs) > 0 && end < pg.Total {
-				next = strconv.Itoa(end)
-			}
-			return pg.Worklogs, next, nil
+			return pg.Worklogs, offsetNext(offsetCursor(cursor), len(pg.Worklogs), pg.Total), nil
 		},
 	)
 	if err != nil {
 		return nil, err
 	}
-	return synthesize("worklogs", items)
+	return restutil.Aggregate(productName, "worklogs", items)
 }

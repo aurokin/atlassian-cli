@@ -70,33 +70,27 @@ func (c *Client) ListRepositoriesAll(ctx context.Context, workspace string, limi
 // malformed cursor. Bitbucket returns an absolute "next" URL whose host is the
 // configured API origin, so the httpclient same-origin guard accepts it.
 func (c *Client) followValues(ctx context.Context, firstPath string) (json.RawMessage, error) {
-	all := []json.RawMessage{}
-	next := firstPath
-	for page := 0; page < restutil.MaxFollowPages && next != ""; page++ {
-		raw, err := c.Get(ctx, next)
-		if err != nil {
-			return nil, err
-		}
-		var pg struct {
-			Values []json.RawMessage `json:"values"`
-			Next   string            `json:"next"`
-		}
-		if err := json.Unmarshal(raw, &pg); err != nil {
-			return nil, decodeError(err)
-		}
-		all = append(all, pg.Values...)
-		next = pg.Next
-	}
-	// A non-empty cursor here means the loop stopped at the page cap, not
-	// because the API ran out of pages — the aggregate is incomplete.
-	if next != "" {
-		return nil, restutil.TruncatedError()
-	}
-	out, err := json.Marshal(map[string][]json.RawMessage{"values": all})
+	items, err := restutil.FollowAll(ctx, firstPath,
+		func(ctx context.Context, cursor string) (json.RawMessage, error) {
+			return c.Get(ctx, cursor)
+		},
+		func(raw json.RawMessage, _ string) ([]json.RawMessage, string, error) {
+			var pg struct {
+				Values []json.RawMessage `json:"values"`
+				Next   string            `json:"next"`
+			}
+			if err := json.Unmarshal(raw, &pg); err != nil {
+				return nil, "", decodeError(err)
+			}
+			// Bitbucket's "next" is an absolute same-origin URL accepted by the
+			// httpclient origin guard; follow it directly.
+			return pg.Values, pg.Next, nil
+		},
+	)
 	if err != nil {
-		return nil, decodeError(err)
+		return nil, err
 	}
-	return out, nil
+	return restutil.Aggregate(productName, "values", items)
 }
 
 // remapError upgrades a generic transport error to a Bitbucket-specific one

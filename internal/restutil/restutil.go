@@ -106,6 +106,63 @@ func SetLimit(q url.Values, param string, limit int) {
 	}
 }
 
+// FollowAll follows a paginated endpoint to completion, collecting every
+// page's items into one slice. It is the single follow loop shared by all
+// three products' --all aggregation.
+//
+// initial is the first cursor: "" for products that build the first request
+// from an empty cursor (Jira), or the first request URL for products that page
+// by following a link (Confluence, Bitbucket). fetch issues the request for a
+// cursor and returns the raw body. extract pulls a page's raw items and the
+// next cursor ("" when there is no next page) from a response; it also receives
+// the cursor that produced the response, which Confluence uses to thread its
+// relative _links.next onto the current URL. Following stops at MaxFollowPages,
+// returning TruncatedError rather than a silently partial result.
+func FollowAll(
+	ctx context.Context,
+	initial string,
+	fetch func(ctx context.Context, cursor string) (json.RawMessage, error),
+	extract func(raw json.RawMessage, cursor string) (items []json.RawMessage, next string, err error),
+) ([]json.RawMessage, error) {
+	all := []json.RawMessage{}
+	cursor := initial
+	done := false
+	for page := 0; page < MaxFollowPages; page++ {
+		raw, err := fetch(ctx, cursor)
+		if err != nil {
+			return nil, err
+		}
+		items, next, err := extract(raw, cursor)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, items...)
+		if next == "" {
+			done = true
+			break
+		}
+		cursor = next
+	}
+	// Exiting the loop without an empty next means the cap was hit and the
+	// aggregate is incomplete.
+	if !done {
+		return nil, TruncatedError()
+	}
+	return all, nil
+}
+
+// Aggregate assembles a synthesized list body, {"<key>": [<item>, ...]}, from
+// items collected by FollowAll. Items are kept verbatim, so every field each
+// API page returned is preserved. product names the API in the (effectively
+// unreachable) marshal-error message.
+func Aggregate(product, key string, items []json.RawMessage) (json.RawMessage, error) {
+	out, err := json.Marshal(map[string][]json.RawMessage{key: items})
+	if err != nil {
+		return nil, DecodeError(product, err)
+	}
+	return out, nil
+}
+
 // WithQuery appends an encoded query string to path when it is non-empty.
 func WithQuery(path string, q url.Values) string {
 	if len(q) == 0 {
