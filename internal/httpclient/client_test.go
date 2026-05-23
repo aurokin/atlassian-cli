@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -208,6 +209,57 @@ func TestDoSuccessReturnsBody(t *testing.T) {
 	}
 	if string(resp.Body) != `{"accountId":"abc"}` {
 		t.Fatalf("Body = %q", resp.Body)
+	}
+}
+
+func TestDoCallsCredentialProviderPerRequest(t *testing.T) {
+	var gotAuth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	calls := 0
+	client := NewWithProvider(
+		Target{Product: ProductJira, TokenStyle: auth.StyleOAuth3LO, CloudID: "c", BaseURL: srv.URL},
+		func(context.Context) (auth.Credential, error) {
+			calls++
+			return auth.Credential{Style: auth.StyleOAuth3LO, Token: "access-" + strconv.Itoa(calls), CloudID: "c"}, nil
+		},
+		srv.Client(),
+	)
+	// The provider is consulted on every request (so a refreshed token is
+	// picked up), and oauth-3lo signs Bearer.
+	if _, err := client.Do(context.Background(), http.MethodGet, srv.URL+"/x", nil); err != nil {
+		t.Fatalf("Do 1: %v", err)
+	}
+	if gotAuth != "Bearer access-1" {
+		t.Fatalf("first auth = %q", gotAuth)
+	}
+	if _, err := client.Do(context.Background(), http.MethodGet, srv.URL+"/x", nil); err != nil {
+		t.Fatalf("Do 2: %v", err)
+	}
+	if gotAuth != "Bearer access-2" {
+		t.Fatalf("second auth = %q, want the provider re-consulted", gotAuth)
+	}
+}
+
+func TestDoPropagatesCredentialProviderError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("request should not be sent when the provider fails")
+	}))
+	defer srv.Close()
+
+	wantErr := apperr.Unauthorized("refresh failed; re-authenticate")
+	client := NewWithProvider(
+		Target{Product: ProductJira, TokenStyle: auth.StyleOAuth3LO, CloudID: "c", BaseURL: srv.URL},
+		func(context.Context) (auth.Credential, error) { return auth.Credential{}, wantErr },
+		srv.Client(),
+	)
+	_, err := client.Do(context.Background(), http.MethodGet, srv.URL+"/x", nil)
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("Do error = %v, want the provider error propagated", err)
 	}
 }
 
