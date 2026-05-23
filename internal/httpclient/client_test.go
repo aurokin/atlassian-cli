@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/auth"
@@ -293,6 +294,8 @@ func TestDoMapsErrorStatuses(t *testing.T) {
 		{http.StatusForbidden, apperr.CodeForbidden},
 		{http.StatusNotFound, apperr.CodeNotFoundOrNotVisible},
 		{http.StatusTooManyRequests, apperr.CodeRateLimited},
+		{http.StatusGone, apperr.CodeGone},
+		{http.StatusInternalServerError, apperr.CodeHTTPError},
 	}
 	for _, tc := range cases {
 		t.Run(http.StatusText(tc.status), func(t *testing.T) {
@@ -333,6 +336,41 @@ func TestDoMapsErrorStatuses(t *testing.T) {
 			if tc.status == http.StatusTooManyRequests && ae.Next == "" {
 				t.Error("rate-limit error missing retry guidance")
 			}
+			if tc.status == http.StatusGone && ae.Next == "" {
+				t.Error("gone error missing upgrade guidance")
+			}
 		})
+	}
+}
+
+// TestDoClassifiesTimeout verifies that a request that exceeds the context
+// deadline is mapped to the retryable timeout category, not request_failed.
+func TestDoClassifiesTimeout(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done() // never reply; let the client deadline fire
+	}))
+	defer srv.Close()
+
+	client := New(
+		Target{Product: ProductJira, TokenStyle: auth.StyleDataCenterPAT, BaseURL: srv.URL, SiteName: "work"},
+		auth.Credential{Style: auth.StyleDataCenterPAT, Token: "pat"},
+		srv.Client(),
+	)
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	_, err := client.Do(ctx, http.MethodGet, "/rest/api/2/myself", nil)
+	if err == nil {
+		t.Fatal("Do returned no error for a timed-out request")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) {
+		t.Fatalf("error type = %T, want *apperr.Error", err)
+	}
+	if ae.Code != apperr.CodeTimeout {
+		t.Fatalf("Code = %q, want %q", ae.Code, apperr.CodeTimeout)
+	}
+	if ae.Next == "" {
+		t.Error("timeout error missing retry guidance")
 	}
 }

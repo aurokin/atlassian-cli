@@ -84,6 +84,34 @@ func TestStatusHelpers(t *testing.T) {
 	}
 }
 
+func TestExitCode(t *testing.T) {
+	cases := []struct {
+		code string
+		want int
+	}{
+		{CodeUnauthorized, 4},
+		{CodeForbidden, 5},
+		{CodeNotFoundOrNotVisible, 6},
+		{CodeRateLimited, 7},
+		{CodeInvalidInput, 8},
+		{CodeTimeout, 9},
+		// Categories without a dedicated exit code fall through to 1.
+		{CodeFeatureDisabled, 1},
+		{CodeGone, 1},
+		{CodeHTTPError, 1},
+		{CodeRequestFailed, 1},
+		{CodeResultTruncated, 1},
+		{"some_unknown_code", 1},
+	}
+	for _, c := range cases {
+		t.Run(c.code, func(t *testing.T) {
+			if got := New(c.code, "m").ExitCode(); got != c.want {
+				t.Errorf("ExitCode() for %q = %d, want %d", c.code, got, c.want)
+			}
+		})
+	}
+}
+
 func TestErrorSatisfiesErrorInterface(t *testing.T) {
 	var err error = Forbidden("denied")
 	if err.Error() == "" {

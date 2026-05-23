@@ -24,7 +24,7 @@ const MaxFollowPages = 100
 // partial result) keeps --all honest: the caller is told the set is incomplete
 // instead of receiving a truncated list that looks whole.
 func TruncatedError() error {
-	return apperr.New("result_truncated",
+	return apperr.New(apperr.CodeResultTruncated,
 		"the result has more pages than --all will follow (cap: 100 pages); "+
 			"narrow the query or raise --limit to fetch larger pages")
 }
@@ -51,6 +51,6 @@ func Decode[T any](raw json.RawMessage, product string) (T, error) {
 // DecodeError wraps a decode or pagination-aggregation failure as a
 // structured error naming the product whose response could not be decoded.
 func DecodeError(product string, err error) error {
-	return apperr.New("response_decode_failed",
+	return apperr.New(apperr.CodeResponseDecodeFailed,
 		"could not decode the "+product+" API response: "+err.Error())
 }

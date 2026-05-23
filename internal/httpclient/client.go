@@ -5,8 +5,10 @@ package httpclient
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"sort"
@@ -132,7 +134,7 @@ func (t Target) ResolveURL(ref string) (string, error) {
 		}
 		cand := originOf(u)
 		if !originAllowed(origins, cand) {
-			return "", apperr.New("untrusted_url", fmt.Sprintf(
+			return "", apperr.New(apperr.CodeUntrustedURL, fmt.Sprintf(
 				"absolute URL %s://%s is not the configured site or Atlassian API gateway for site %q",
 				cand.scheme, cand.host, t.SiteName))
 		}
@@ -277,14 +279,14 @@ func (c *Client) Do(ctx context.Context, method, pathOrURL string, body io.Reade
 	resp, err := c.http.Do(req)
 	if err != nil {
 		c.traceFailure(time.Since(start), err)
-		return nil, apperr.New("request_failed", fmt.Sprintf("request to %s failed: %v", target, err))
+		return nil, transportError(target, err)
 	}
 	defer resp.Body.Close()
 
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
 		c.traceFailure(time.Since(start), err)
-		return nil, apperr.New("request_failed", fmt.Sprintf("read response body: %v", err))
+		return nil, transportError(target, err)
 	}
 	out := &Response{Status: resp.StatusCode, Header: resp.Header, Body: raw}
 	c.traceResponse(out.Status, time.Since(start), len(raw))
@@ -342,6 +344,25 @@ func (c *Client) traceFailure(elapsed time.Duration, err error) {
 	fmt.Fprintf(c.trace, "[trace] < error after %s: %v\n", elapsed.Round(time.Millisecond), err)
 }
 
+// transportError classifies a transport-level failure (no usable HTTP
+// response): a deadline or client timeout becomes a retryable timeout
+// category, everything else a generic request_failed.
+func transportError(target string, err error) *apperr.Error {
+	if errors.Is(err, context.DeadlineExceeded) || isTimeout(err) {
+		e := apperr.New(apperr.CodeTimeout,
+			fmt.Sprintf("request to %s timed out: %v", target, err))
+		e.Next = "Retry the request, or raise the client timeout if the operation is legitimately slow."
+		return e
+	}
+	return apperr.New(apperr.CodeRequestFailed, fmt.Sprintf("request to %s failed: %v", target, err))
+}
+
+// isTimeout reports whether err is (or wraps) a net.Error that timed out.
+func isTimeout(err error) bool {
+	var nerr net.Error
+	return errors.As(err, &nerr) && nerr.Timeout()
+}
+
 // classify maps a non-2xx Response to a structured *apperr.Error, enriched
 // with target context.
 func (c *Client) classify(resp *Response) *apperr.Error {
@@ -361,8 +382,13 @@ func (c *Client) classify(resp *Response) *apperr.Error {
 		if ra := resp.Header.Get("Retry-After"); ra != "" {
 			e.Next = "Retry after " + ra + " seconds."
 		}
+	case http.StatusGone:
+		e = apperr.New(apperr.CodeGone,
+			orDefault(msg, "this API endpoint has been removed"))
+		e.Status = resp.Status
+		e.Next = "Upgrade the CLI; this endpoint is no longer served by Atlassian."
 	default:
-		e = apperr.New("http_error", orDefault(msg, fmt.Sprintf("request failed with HTTP %d", resp.Status)))
+		e = apperr.New(apperr.CodeHTTPError, orDefault(msg, fmt.Sprintf("request failed with HTTP %d", resp.Status)))
 		e.Status = resp.Status
 	}
 	e.Product = c.target.Product
