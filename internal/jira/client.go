@@ -38,6 +38,14 @@ func (c *Client) Myself(ctx context.Context) (json.RawMessage, error) {
 	return c.Get(ctx, "/myself")
 }
 
+// SearchUsers finds users matching a query string — an email or display-name
+// fragment — via GET /user/search. The response is a JSON array of users.
+func (c *Client) SearchUsers(ctx context.Context, query string) (json.RawMessage, error) {
+	q := url.Values{}
+	q.Set("query", query)
+	return c.Get(ctx, restutil.WithQuery("/user/search", q))
+}
+
 // GetProject returns a single project by id or key (GET /project/{idOrKey}).
 func (c *Client) GetProject(ctx context.Context, idOrKey string) (json.RawMessage, error) {
 	return c.Get(ctx, "/project/"+url.PathEscape(idOrKey))

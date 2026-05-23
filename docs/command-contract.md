@@ -367,11 +367,11 @@ single project by id or key.
 
 ```
 atl-jira issue view <issue> [--fields <f1,f2,...>] [--expand <e1,e2,...>]
-atl-jira issue list --project <key> [--status <name>] [--assignee <id>] [--limit N]
-atl-jira issue create --project <key> --type <name> --summary <text> [--description <text>] [--assignee <id>] [--field name=value]...
-atl-jira issue edit <issue> [--summary <text>] [--description <text>] [--assignee <id>] [--field name=value]...
+atl-jira issue list --project <key> [--status <name>] [--assignee <id|email|@me>] [--limit N]
+atl-jira issue create --project <key> --type <name> --summary <text> [--description <text>] [--assignee <id|email|@me>] [--field name=value]...
+atl-jira issue edit <issue> [--summary <text>] [--description <text>] [--assignee <id|email|@me>] [--field name=value]...
 atl-jira issue transition <issue> [--to <name-or-id>]
-atl-jira issue assign <issue> <account-id|->
+atl-jira issue assign <issue> <account-id|email|@me|->
 atl-jira issue watch <issue>
 atl-jira issue unwatch <issue>
 atl-jira issue watchers <issue>
@@ -388,8 +388,10 @@ pulls expanded data — most useful with `--json`/`--jq` for scripted extraction
 of custom fields, comments, or changelog. Without `--fields`, Jira's default
 navigable set is returned. `list` builds a JQL query from its flags — `--project`
 is required, `--status` and `--assignee` are optional filters, and results are
-ordered newest-first by creation date. `--assignee` takes an account id or the
-literal `currentUser()`. Broader queries go through `search issues`.
+ordered newest-first by creation date. `--assignee` takes an account id, an
+email, `@me`, or the literal `currentUser()`; `@me` and `currentUser()` both
+map to the JQL `currentUser()` function. Broader queries go through `search
+issues`.
 
 `create` and `edit` set fields from typed flags plus a repeatable `--field
 name=value` escape for any other field; a `--field` value is sent as parsed
@@ -402,9 +404,12 @@ current status; with `--to <name-or-id>` it resolves the target against that
 list (by id, or case-insensitive name) and applies it. There is no universal
 close/reopen abstraction — Jira transitions are workflow specific.
 
-`assign` sets the issue's assignee to the given account id; passing the
-literal `-` sends `accountId: null` and unassigns the issue. Setting a
-project's default assignee from the CLI is intentionally out of scope.
+`assign` sets the issue's assignee; passing the literal `-` sends `accountId:
+null` and unassigns the issue. The assignee value accepts an account id, an
+email (resolved via `/user/search`, which must match exactly one user), or
+`@me` (the authenticated account, via `/myself`). The same resolution applies
+to `create`/`edit` `--assignee`. Setting a project's default assignee from the
+CLI is intentionally out of scope.
 
 `watch` adds the authenticated account to the issue's watchers; `unwatch`
 removes it (the API requires an explicit account id, so `unwatch` first
@@ -951,8 +956,8 @@ plain `Error: <code>: <message>` line.
   surface is list/view/children, create/edit, and the comment/label
   sub-groups.
 - Jira `issue assign` does not set a project's default assignee (the `-1`
-  sentinel is not exposed); pass `-` to unassign and an explicit account id
-  to assign.
+  sentinel is not exposed); pass `-` to unassign, or an account id, email, or
+  `@me` to assign. Email resolution requires exactly one matching user.
 - Jira `issue link` creates a link but does not edit or delete existing
   links. Worklogs can be listed and added but not edited or deleted; worklog
   visibility/restriction is not modeled.

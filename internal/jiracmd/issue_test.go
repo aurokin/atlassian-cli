@@ -27,6 +27,8 @@ func TestBuildIssueListJQL(t *testing.T) {
 			`project = "PROJ" AND assignee = "5b10a2" ORDER BY created DESC`},
 		{"currentUser is unquoted", "PROJ", "", "currentUser()",
 			`project = "PROJ" AND assignee = currentUser() ORDER BY created DESC`},
+		{"@me maps to currentUser", "PROJ", "", "@me",
+			`project = "PROJ" AND assignee = currentUser() ORDER BY created DESC`},
 		{"all filters", "PROJ", "Done", "currentUser()",
 			`project = "PROJ" AND status = "Done" AND assignee = currentUser() ORDER BY created DESC`},
 	}
@@ -108,6 +110,35 @@ func TestIssueListBuildsJQLFromFlags(t *testing.T) {
 	}
 	if !strings.Contains(out, "PROJ-1") || !strings.Contains(out, "First") {
 		t.Fatalf("issue list output:\n%s", out)
+	}
+}
+
+func TestIssueListResolvesEmailAssigneeToAccountID(t *testing.T) {
+	var gotJQL string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/user/search":
+			if q := r.URL.Query().Get("query"); q != "ada@example.com" {
+				t.Errorf("user search query = %q, want ada@example.com", q)
+			}
+			_, _ = w.Write([]byte(`[{"accountId":"ada-1"}]`))
+		case "/search/jql":
+			gotJQL = r.URL.Query().Get("jql")
+			_, _ = w.Write([]byte(`{"issues":[],"isLast":true}`))
+		default:
+			t.Errorf("unexpected path %q", r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "list", "--project", "PROJ", "--assignee", "ada@example.com", "--site", "work")
+	if err != nil {
+		t.Fatalf("issue list --assignee email: %v\n%s", err, out)
+	}
+	if gotJQL != `project = "PROJ" AND assignee = "ada-1" ORDER BY created DESC` {
+		t.Fatalf("issue list sent jql %q, want resolved account id", gotJQL)
 	}
 }
 
@@ -218,6 +249,35 @@ func TestIssueCreateJSON(t *testing.T) {
 	}
 	if got["key"] != "PROJ-9" {
 		t.Fatalf("unexpected create JSON: %v", got)
+	}
+}
+
+func TestIssueCreateResolvesAtMeAssignee(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/myself":
+			_, _ = w.Write([]byte(`{"accountId":"me-123"}`))
+		case "/issue":
+			b, _ := io.ReadAll(r.Body)
+			gotBody = string(b)
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"key":"PROJ-9"}`))
+		default:
+			t.Errorf("unexpected path %q", r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "create", "--project", "PROJ", "--type", "Bug",
+		"--summary", "S", "--assignee", "@me", "--site", "work")
+	if err != nil {
+		t.Fatalf("issue create --assignee @me: %v\n%s", err, out)
+	}
+	if !strings.Contains(gotBody, `"assignee":{"accountId":"me-123"}`) {
+		t.Errorf("create body missing resolved assignee:\n%s", gotBody)
 	}
 }
 
