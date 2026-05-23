@@ -124,6 +124,37 @@ type TokenBundle struct {
 	Expiry       time.Time `json:"expiry"`
 }
 
+// Marshal serializes the bundle to the JSON string stored under one site in the
+// secrets.Store. The store is string-keyed, so the whole bundle (client_secret
+// included) round-trips as a single opaque value; it is written only to the
+// keychain or the 0600 fallback file, never to config.json.
+func (b TokenBundle) Marshal() (string, error) {
+	data, err := json.Marshal(b)
+	if err != nil {
+		return "", apperr.New("oauth_error", fmt.Sprintf("marshal OAuth token bundle: %v", err))
+	}
+	return string(data), nil
+}
+
+// ParseBundle deserializes a stored bundle string produced by Marshal.
+func ParseBundle(data string) (TokenBundle, error) {
+	var b TokenBundle
+	if err := json.Unmarshal([]byte(data), &b); err != nil {
+		return TokenBundle{}, apperr.New("oauth_error", "stored OAuth token bundle is not valid JSON")
+	}
+	return b, nil
+}
+
+// Expired reports whether the access token is at or past its expiry as of now.
+// A zero expiry is treated as expired so an unknown-expiry bundle refreshes
+// rather than being trusted indefinitely.
+func (b TokenBundle) Expired(now time.Time) bool {
+	if b.Expiry.IsZero() {
+		return true
+	}
+	return !now.Before(b.Expiry)
+}
+
 // AuthorizeParams are the per-flow inputs to an authorize URL.
 type AuthorizeParams struct {
 	// RedirectURI must byte-for-byte match the callback registered on the app.
