@@ -3,8 +3,11 @@ package bbcmd
 import (
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/aurokin/atlassian-cli/internal/bitbucket"
 )
 
 func TestRepoViewHuman(t *testing.T) {
@@ -157,6 +160,27 @@ func TestRepoTargetErrors(t *testing.T) {
 	}
 }
 
+func TestRepoListAllDefaultsToMaxPageSize(t *testing.T) {
+	var gotPagelen string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPagelen = r.URL.Query().Get("pagelen")
+		// One page, no "next": the follow completes after a single request.
+		_, _ = w.Write([]byte(`{"values":[{"full_name":"acme/widgets"}]}`))
+	}))
+	defer srv.Close()
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	// --all with no --limit must request the API max page size.
+	if _, err := execBB(t, "repo", "list", "--workspace", "acme", "--site", "work", "--all"); err != nil {
+		t.Fatalf("repo list --all: %v", err)
+	}
+	if gotPagelen != strconv.Itoa(bitbucket.MaxPageLen) {
+		t.Fatalf("pagelen query = %q, want %d", gotPagelen, bitbucket.MaxPageLen)
+	}
+}
+
 func TestResolveWorkspace(t *testing.T) {
 	t.Run("conflicting positional and flag rejected", func(t *testing.T) {
 		_, err := resolveWorkspace([]string{"acme"}, "other")
@@ -170,9 +194,34 @@ func TestResolveWorkspace(t *testing.T) {
 			t.Fatalf("ws = %q, err = %v", ws, err)
 		}
 	})
-	t.Run("missing workspace", func(t *testing.T) {
+	t.Run("missing workspace with no inference", func(t *testing.T) {
+		orig := inferRepoTarget
+		inferRepoTarget = func() (repoTarget, bool) { return repoTarget{}, false }
+		t.Cleanup(func() { inferRepoTarget = orig })
 		if _, err := resolveWorkspace(nil, ""); err == nil {
 			t.Fatalf("expected error")
+		}
+	})
+	t.Run("falls back to inferred workspace", func(t *testing.T) {
+		orig := inferRepoTarget
+		inferRepoTarget = func() (repoTarget, bool) {
+			return repoTarget{Workspace: "inferred-ws", Repo: "widgets"}, true
+		}
+		t.Cleanup(func() { inferRepoTarget = orig })
+		ws, err := resolveWorkspace(nil, "")
+		if err != nil || ws != "inferred-ws" {
+			t.Fatalf("ws = %q, err = %v; want inferred-ws", ws, err)
+		}
+	})
+	t.Run("explicit flag wins over inference", func(t *testing.T) {
+		orig := inferRepoTarget
+		inferRepoTarget = func() (repoTarget, bool) {
+			return repoTarget{Workspace: "inferred-ws"}, true
+		}
+		t.Cleanup(func() { inferRepoTarget = orig })
+		ws, err := resolveWorkspace(nil, "explicit")
+		if err != nil || ws != "explicit" {
+			t.Fatalf("ws = %q, err = %v; want explicit", ws, err)
 		}
 	})
 	t.Run("slash rejected", func(t *testing.T) {
@@ -180,6 +229,18 @@ func TestResolveWorkspace(t *testing.T) {
 			t.Fatalf("expected error")
 		}
 	})
+}
+
+func TestAllPageSize(t *testing.T) {
+	if got := allPageSize(0); got != bitbucket.MaxPageLen {
+		t.Errorf("allPageSize(0) = %d, want %d", got, bitbucket.MaxPageLen)
+	}
+	if got := allPageSize(-1); got != bitbucket.MaxPageLen {
+		t.Errorf("allPageSize(-1) = %d, want %d", got, bitbucket.MaxPageLen)
+	}
+	if got := allPageSize(25); got != 25 {
+		t.Errorf("allPageSize(25) = %d, want 25", got)
+	}
 }
 
 func TestRepoTargetResolves(t *testing.T) {

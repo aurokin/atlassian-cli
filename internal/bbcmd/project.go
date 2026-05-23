@@ -51,6 +51,7 @@ func newProjectListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			list := bc.ListProjects
 			if all {
 				list = bc.ListProjectsAll
+				limit = allPageSize(limit)
 			}
 			raw, err := list(cmd.Context(), workspace, limit)
 			if err != nil {

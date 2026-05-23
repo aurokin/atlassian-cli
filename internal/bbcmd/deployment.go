@@ -51,6 +51,7 @@ func newDeploymentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comm
 			list := bc.ListDeployments
 			if all {
 				list = bc.ListDeploymentsAll
+				limit = allPageSize(limit)
 			}
 			raw, err := list(cmd.Context(), target.Workspace, target.Repo, limit)
 			if err != nil {
@@ -136,6 +137,7 @@ func newEnvironmentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 			list := bc.ListEnvironments
 			if all {
 				list = bc.ListEnvironmentsAll
+				limit = allPageSize(limit)
 			}
 			raw, err := list(cmd.Context(), target.Workspace, target.Repo, limit)
 			if err != nil {

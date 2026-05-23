@@ -55,6 +55,7 @@ func newPipelineListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			list := bc.ListPipelines
 			if all {
 				list = bc.ListPipelinesAll
+				limit = allPageSize(limit)
 			}
 			raw, err := list(cmd.Context(), target.Workspace, target.Repo, st, limit)
 			if err != nil {

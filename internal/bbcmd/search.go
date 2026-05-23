@@ -56,6 +56,7 @@ func newSearchReposCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			search := bc.SearchRepositories
 			if all {
 				search = bc.SearchRepositoriesAll
+				limit = allPageSize(limit)
 			}
 			raw, err := search(cmd.Context(), workspace, query, sort, limit)
 			if err != nil {
@@ -101,6 +102,7 @@ func newSearchPRsCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			search := bc.SearchPullRequests
 			if all {
 				search = bc.SearchPullRequestsAll
+				limit = allPageSize(limit)
 			}
 			raw, err := search(cmd.Context(), target.Workspace, target.Repo, query, sort, limit)
 			if err != nil {
@@ -145,6 +147,7 @@ func newSearchIssuesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			search := bc.SearchIssues
 			if all {
 				search = bc.SearchIssuesAll
+				limit = allPageSize(limit)
 			}
 			raw, err := search(cmd.Context(), target.Workspace, target.Repo, query, sort, limit)
 			if err != nil {

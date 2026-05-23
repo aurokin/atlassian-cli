@@ -53,6 +53,7 @@ func newCommitListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			list := bc.ListCommits
 			if all {
 				list = bc.ListCommitsAll
+				limit = allPageSize(limit)
 			}
 			raw, err := list(cmd.Context(), target.Workspace, target.Repo, rev, limit)
 			if err != nil {

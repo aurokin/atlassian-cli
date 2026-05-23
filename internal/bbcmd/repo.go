@@ -77,6 +77,7 @@ func newRepoListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			list := bc.ListRepositories
 			if all {
 				list = bc.ListRepositoriesAll
+				limit = allPageSize(limit)
 			}
 			raw, err := list(cmd.Context(), workspace, limit)
 			if err != nil {
