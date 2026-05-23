@@ -13,6 +13,7 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/auth"
 	"github.com/aurokin/atlassian-cli/internal/httpclient"
+	"github.com/aurokin/atlassian-cli/internal/restutil"
 )
 
 // newTestClient builds a Bitbucket client whose requests are routed to srv.
@@ -135,6 +136,33 @@ func TestListRepositoriesAllFollowsNext(t *testing.T) {
 	}
 	if page.Next != "" {
 		t.Fatalf("aggregated body should not carry a next cursor, got %q", page.Next)
+	}
+}
+
+// TestListRepositoriesAllTruncates verifies that following more than the page
+// cap (a server that never stops paginating) returns a truncation error rather
+// than silently aggregating a partial, whole-looking result.
+func TestListRepositoriesAllTruncates(t *testing.T) {
+	var srv *httptest.Server
+	pages := 0
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		pages++
+		// Always advertise a further page, so the follow loop only ever exits
+		// at the page cap.
+		_, _ = w.Write([]byte(`{"values":[{"full_name":"acme/a"}],"next":"` +
+			srv.URL + `/repositories/acme?page=next"}`))
+	}))
+	defer srv.Close()
+
+	_, err := newTestClient(srv).ListRepositoriesAll(context.Background(), "acme", 0)
+	if err == nil {
+		t.Fatal("expected a truncation error when the API never stops paginating")
+	}
+	if !strings.Contains(err.Error(), "result_truncated") {
+		t.Fatalf("error = %q, want a result_truncated error", err)
+	}
+	if pages != restutil.MaxFollowPages {
+		t.Fatalf("followed %d pages, want the cap of %d", pages, restutil.MaxFollowPages)
 	}
 }
 

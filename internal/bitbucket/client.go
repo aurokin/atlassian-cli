@@ -121,6 +121,11 @@ func (c *Client) followValues(ctx context.Context, firstPath string) (json.RawMe
 		all = append(all, pg.Values...)
 		next = pg.Next
 	}
+	// A non-empty cursor here means the loop stopped at the page cap, not
+	// because the API ran out of pages — the aggregate is incomplete.
+	if next != "" {
+		return nil, restutil.TruncatedError()
+	}
 	out, err := json.Marshal(map[string][]json.RawMessage{"values": all})
 	if err != nil {
 		return nil, decodeError(err)

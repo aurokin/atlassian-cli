@@ -221,6 +221,7 @@ func nextPageURL(current, next string) (string, error) {
 func (c *Client) followList(ctx context.Context, firstURL string) (json.RawMessage, error) {
 	all := []json.RawMessage{}
 	reqURL := firstURL
+	done := false
 	for page := 0; page < restutil.MaxFollowPages; page++ {
 		raw, err := c.get(ctx, reqURL)
 		if err != nil {
@@ -237,11 +238,17 @@ func (c *Client) followList(ctx context.Context, firstURL string) (json.RawMessa
 		}
 		all = append(all, pg.Results...)
 		if pg.Links.Next == "" {
+			done = true
 			break
 		}
 		if reqURL, err = nextPageURL(reqURL, pg.Links.Next); err != nil {
 			return nil, err
 		}
+	}
+	// Exiting the loop without seeing the last page means the cap was hit and
+	// the aggregate is incomplete.
+	if !done {
+		return nil, restutil.TruncatedError()
 	}
 	out, err := json.Marshal(map[string][]json.RawMessage{"results": all})
 	if err != nil {
