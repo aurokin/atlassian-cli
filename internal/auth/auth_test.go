@@ -65,6 +65,28 @@ func TestDataCenterPATSignsWithBearer(t *testing.T) {
 	}
 }
 
+func TestOAuth3LOSignsWithBearerAndRequiresCloudID(t *testing.T) {
+	missing := Credential{Style: StyleOAuth3LO, Token: "access-token"}
+	err := missing.Sign(newRequest(t))
+	if err == nil {
+		t.Fatal("Sign without cloud_id returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) {
+		t.Fatalf("error type = %T, want *apperr.Error", err)
+	}
+
+	// oauth-3lo carries the access token in Token and needs no username.
+	complete := Credential{Style: StyleOAuth3LO, Token: "access-token", CloudID: "cloud-123"}
+	req := newRequest(t)
+	if err := complete.Sign(req); err != nil {
+		t.Fatalf("Sign with cloud_id: %v", err)
+	}
+	if got := req.Header.Get("Authorization"); got != "Bearer access-token" {
+		t.Fatalf("Authorization = %q, want %q", got, "Bearer access-token")
+	}
+}
+
 func TestMissingRequiredFieldsReturnStructuredErrors(t *testing.T) {
 	cases := []struct {
 		name string
@@ -73,6 +95,8 @@ func TestMissingRequiredFieldsReturnStructuredErrors(t *testing.T) {
 		{"missing token", Credential{Style: StyleCloudClassic, Username: "user@example.com"}},
 		{"missing username", Credential{Style: StyleCloudClassic, Token: "t"}},
 		{"missing cloud id", Credential{Style: StyleCloudScoped, Username: "u", Token: "t"}},
+		{"oauth-3lo missing token", Credential{Style: StyleOAuth3LO, CloudID: "c"}},
+		{"oauth-3lo missing cloud id", Credential{Style: StyleOAuth3LO, Token: "t"}},
 		{"unknown style", Credential{Style: TokenStyle("nonsense"), Token: "t"}},
 	}
 	for _, tc := range cases {
@@ -98,6 +122,9 @@ func TestAuthTypeMapping(t *testing.T) {
 	}
 	if got := StyleDataCenterPAT.AuthType(); got != "pat-bearer" {
 		t.Errorf("data-center-pat AuthType = %q, want pat-bearer", got)
+	}
+	if got := StyleOAuth3LO.AuthType(); got != "oauth-bearer" {
+		t.Errorf("oauth-3lo AuthType = %q, want oauth-bearer", got)
 	}
 }
 

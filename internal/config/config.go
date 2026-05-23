@@ -36,16 +36,23 @@ type Config struct {
 //
 // TokenRef holds an indirect reference to a credential (for example an
 // environment variable name), never a raw token value.
+//
+// ClientID and Scopes apply only to the oauth-3lo token style. Neither is a
+// secret: the OAuth client_secret is never stored in config — it lives in the
+// keychain token bundle alongside the access and refresh tokens. Scopes is the
+// full scope set sent to Atlassian (so it includes offline_access).
 type SiteProfile struct {
-	Product    string `json:"product"`
-	Deployment string `json:"deployment"`
-	BaseURL    string `json:"base_url"`
-	APIBaseURL string `json:"api_base_url,omitempty"`
-	CloudID    string `json:"cloud_id,omitempty"`
-	Username   string `json:"username,omitempty"`
-	TokenStyle string `json:"token_style"`
-	AuthType   string `json:"auth_type"`
-	TokenRef   string `json:"token_ref,omitempty"`
+	Product    string   `json:"product"`
+	Deployment string   `json:"deployment"`
+	BaseURL    string   `json:"base_url"`
+	APIBaseURL string   `json:"api_base_url,omitempty"`
+	CloudID    string   `json:"cloud_id,omitempty"`
+	Username   string   `json:"username,omitempty"`
+	TokenStyle string   `json:"token_style"`
+	AuthType   string   `json:"auth_type"`
+	TokenRef   string   `json:"token_ref,omitempty"`
+	ClientID   string   `json:"client_id,omitempty"`
+	Scopes     []string `json:"scopes,omitempty"`
 }
 
 // New returns an empty config at the current schema version.

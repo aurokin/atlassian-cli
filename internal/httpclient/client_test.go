@@ -87,6 +87,31 @@ func TestAPIBaseScopedRequiresCloudID(t *testing.T) {
 	}
 }
 
+func TestAPIBaseOAuth3LOReusesGateway(t *testing.T) {
+	// oauth-3lo resolves to the same api.atlassian.com gateway base as a
+	// cloud-scoped token; only the Authorization scheme differs (handled by
+	// auth.Credential.Sign), not the URL.
+	jira := Target{Product: ProductJira, TokenStyle: auth.StyleOAuth3LO, CloudID: "cloud-123"}
+	if got, err := jira.APIBase(); err != nil || got != "https://api.atlassian.com/ex/jira/cloud-123/rest/api/3" {
+		t.Fatalf("oauth-3lo Jira APIBase = (%q, %v)", got, err)
+	}
+	conf := Target{Product: ProductConfluence, TokenStyle: auth.StyleOAuth3LO, CloudID: "cloud-123"}
+	if got, err := conf.APIBase(); err != nil || got != "https://api.atlassian.com/ex/confluence/cloud-123/wiki/api/v2" {
+		t.Fatalf("oauth-3lo Confluence APIBase = (%q, %v)", got, err)
+	}
+}
+
+func TestAPIBaseOAuth3LORequiresCloudID(t *testing.T) {
+	_, err := Target{Product: ProductJira, TokenStyle: auth.StyleOAuth3LO}.APIBase()
+	if err == nil {
+		t.Fatal("oauth-3lo APIBase without cloud_id returned no error")
+	}
+	var ae *apperr.Error
+	if !errors.As(err, &ae) {
+		t.Fatalf("error type = %T, want *apperr.Error", err)
+	}
+}
+
 func TestResolveURLRelativePath(t *testing.T) {
 	target := Target{Product: ProductJira, TokenStyle: auth.StyleCloudClassic, BaseURL: "https://example.atlassian.net"}
 	got, err := target.ResolveURL("/myself")
