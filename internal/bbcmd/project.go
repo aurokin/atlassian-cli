@@ -56,7 +56,7 @@ func newProjectListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			page, err := bitbucket.Decode[bitbucket.ProjectPage](raw)
@@ -92,7 +92,7 @@ func newProjectViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			p, err := bitbucket.Decode[bitbucket.Project](raw)
@@ -140,7 +140,7 @@ func newProjectCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			p, err := bitbucket.Decode[bitbucket.Project](raw)

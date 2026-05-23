@@ -9,6 +9,28 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/apperr"
 )
 
+func TestWantsStructured(t *testing.T) {
+	cases := []struct {
+		name string
+		g    GlobalFlags
+		want bool
+	}{
+		{"neither", GlobalFlags{}, false},
+		{"json-all", GlobalFlags{JSON: "*"}, true},
+		{"json-fields", GlobalFlags{JSON: "a,b"}, true},
+		{"jq-only", GlobalFlags{JQ: ".x"}, true},
+		{"both", GlobalFlags{JSON: "*", JQ: ".x"}, true},
+		{"site-irrelevant", GlobalFlags{Site: "work"}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.g.WantsStructured(); got != tc.want {
+				t.Fatalf("WantsStructured() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 // TestRenderErrorStructuredOutput verifies that the machine-readable error
 // envelope is emitted whenever structured output is selected — by --json OR by
 // --jq — and that plain human output is used otherwise.

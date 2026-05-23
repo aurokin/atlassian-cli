@@ -50,7 +50,7 @@ func newCommentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			page, err := jira.Decode[jira.CommentPage](raw)
@@ -79,7 +79,7 @@ func newCommentViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			c, err := jira.Decode[jira.Comment](raw)
@@ -110,7 +110,7 @@ func newCommentCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			c, err := jira.Decode[jira.Comment](raw)
@@ -143,7 +143,7 @@ func newCommentEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "updated comment %s on %s\n", args[1], args[0])
@@ -167,7 +167,7 @@ func newCommentDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 			if err := jc.DeleteComment(cmd.Context(), args[0], args[1]); err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, commentDeleteResult{
 					Issue: args[0], Comment: args[1], Deleted: true})
 			}

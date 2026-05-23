@@ -65,7 +65,7 @@ func newExtensionListCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			entries := discoverExtensions(prefix)
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return Render(cmd, g, entries)
 			}
 			writeExtensionList(cmd.OutOrStdout(), entries)

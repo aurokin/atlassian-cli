@@ -68,7 +68,7 @@ func newIssueLinkTypesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comm
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			lt, err := jira.Decode[jira.LinkTypeList](raw)

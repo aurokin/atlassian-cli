@@ -58,7 +58,7 @@ func newBranchListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			page, err := bitbucket.Decode[bitbucket.BranchPage](raw)
@@ -100,7 +100,7 @@ func newBranchViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			branch, err := bitbucket.Decode[bitbucket.Branch](raw)
@@ -144,7 +144,7 @@ func newBranchCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			branch, err := bitbucket.Decode[bitbucket.Branch](raw)

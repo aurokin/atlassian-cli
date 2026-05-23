@@ -17,7 +17,7 @@ func newVersionCommand(info appinfo.Info, g *GlobalFlags) *cobra.Command {
 		Short: "Print binary, product, and version information",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return Render(cmd, g, info)
 			}
 			out := cmd.OutOrStdout()

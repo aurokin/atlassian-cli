@@ -49,7 +49,7 @@ func newAttachmentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comm
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			al, err := conf.Decode[conf.AttachmentList](raw)
@@ -74,7 +74,7 @@ func newAttachmentDownloadCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.
 			"metadata is printed instead and no download occurs.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			renderMeta := g.JSON != "" || g.JQ != ""
+			renderMeta := g.WantsStructured()
 			if !renderMeta && out == "" {
 				return apperr.InvalidInput(
 					"attachment download requires --out (use --out - to stream to stdout)")

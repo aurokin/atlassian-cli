@@ -62,7 +62,7 @@ func runBrowse(cmd *cobra.Command, info appinfo.Info, g *GlobalFlags, input stri
 	// --no-browser and the global --no-prompt both force print-only, keeping
 	// the command safe in non-interactive and agent contexts.
 	if noBrowser || g.NoPrompt {
-		if g.JSON != "" || g.JQ != "" {
+		if g.WantsStructured() {
 			return Render(cmd, g, browseResult{URL: canonical})
 		}
 		fmt.Fprintln(cmd.OutOrStdout(), canonical)

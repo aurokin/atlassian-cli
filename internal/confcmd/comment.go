@@ -52,7 +52,7 @@ func newPageCommentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			cl, err := conf.Decode[conf.CommentList](raw)
@@ -81,7 +81,7 @@ func newPageCommentViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			c, err := conf.Decode[conf.Comment](raw)
@@ -116,7 +116,7 @@ func newPageCommentCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.C
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			c, err := conf.Decode[conf.Comment](raw)
@@ -167,7 +167,7 @@ func newPageCommentEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, updated)
 			}
 			c, err := conf.Decode[conf.Comment](updated)

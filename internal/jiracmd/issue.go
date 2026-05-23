@@ -66,7 +66,7 @@ func newIssueListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			page, err := jira.Decode[jira.IssuePage](raw)
@@ -99,7 +99,7 @@ func newIssueViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			iss, err := jira.Decode[jira.Issue](raw)
@@ -140,7 +140,7 @@ func newIssueCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			iss, err := jira.Decode[jira.Issue](raw)
@@ -187,7 +187,7 @@ func newIssueEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err := jc.EditIssue(cmd.Context(), args[0], fields); err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, editResult{Key: args[0], Updated: true})
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "updated %s\n", args[0])
@@ -271,7 +271,7 @@ func newIssueTransitionCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 				return err
 			}
 			if !cmd.Flags().Changed("to") {
-				if g.JSON != "" || g.JQ != "" {
+				if g.WantsStructured() {
 					return cli.Render(cmd, g, raw)
 				}
 				list, err := jira.Decode[jira.TransitionList](raw)
@@ -292,7 +292,7 @@ func newIssueTransitionCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 			if err := jc.DoTransition(cmd.Context(), args[0], tr.ID); err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, transitionResult{Key: args[0], Transition: tr.Name})
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "transitioned %s to %q\n", args[0], tr.Name)

@@ -49,7 +49,7 @@ func newPageLabelListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			ll, err := conf.Decode[conf.LabelList](raw)
@@ -78,7 +78,7 @@ func newPageLabelAddCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			if g.JSON != "" || g.JQ != "" {
+			if g.WantsStructured() {
 				return cli.Render(cmd, g, raw)
 			}
 			fmt.Fprintf(cmd.OutOrStdout(), "added label %s to page %s\n", args[1], args[0])
