@@ -81,7 +81,8 @@ func newIssueListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 }
 
 func newIssueViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
-	return &cobra.Command{
+	var fields, expand string
+	cmd := &cobra.Command{
 		Use:   "view <issue>",
 		Short: "View a single Jira issue",
 		Args:  cobra.ExactArgs(1),
@@ -90,13 +91,19 @@ func newIssueViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			raw, err := jc.GetIssue(cmd.Context(), args[0])
+			raw, err := jc.GetIssue(cmd.Context(), args[0], fields, expand)
 			if err != nil {
 				return err
 			}
 			return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.Issue], writeIssue)
 		},
 	}
+	f := cmd.Flags()
+	f.StringVar(&fields, "fields", "",
+		"comma-separated Jira fields to return (e.g. summary,status,comment or *all); default is the navigable set")
+	f.StringVar(&expand, "expand", "",
+		"comma-separated Jira expansions to include (e.g. changelog,renderedFields)")
+	return cmd
 }
 
 func newIssueCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {

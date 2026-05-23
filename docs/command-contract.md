@@ -366,7 +366,7 @@ single project by id or key.
 ### `issue`
 
 ```
-atl-jira issue view <issue>
+atl-jira issue view <issue> [--fields <f1,f2,...>] [--expand <e1,e2,...>]
 atl-jira issue list --project <key> [--status <name>] [--assignee <id>] [--limit N]
 atl-jira issue create --project <key> --type <name> --summary <text> [--description <text>] [--assignee <id>] [--field name=value]...
 atl-jira issue edit <issue> [--summary <text>] [--description <text>] [--assignee <id>] [--field name=value]...
@@ -381,7 +381,12 @@ atl-jira issue worklog list <issue> [--limit N]
 atl-jira issue worklog add <issue> --time <duration> [--comment <text>]
 ```
 
-`view` returns one issue. `list` builds a JQL query from its flags — `--project`
+`view` returns one issue. `--fields` and `--expand` pass through verbatim to
+Jira's `fields`/`expand` query parameters: `--fields summary,comment` or
+`--fields '*all'` selects the field set, and `--expand changelog,renderedFields`
+pulls expanded data — most useful with `--json`/`--jq` for scripted extraction
+of custom fields, comments, or changelog. Without `--fields`, Jira's default
+navigable set is returned. `list` builds a JQL query from its flags — `--project`
 is required, `--status` and `--assignee` are optional filters, and results are
 ordered newest-first by creation date. `--assignee` takes an account id or the
 literal `currentUser()`. Broader queries go through `search issues`.
