@@ -153,6 +153,21 @@ type PullRequestPage struct {
 	Next   string        `json:"next,omitempty"`
 }
 
+// SourceEntry is one entry in a repository directory listing. Type is
+// "commit_file" or "commit_directory"; Size is the byte size of a file.
+type SourceEntry struct {
+	Path string `json:"path"`
+	Type string `json:"type"`
+	Size int64  `json:"size,omitempty"`
+}
+
+// SourcePage is one page of a directory listing. Bitbucket paginates with an
+// absolute "next" URL; an empty Next marks the last page.
+type SourcePage struct {
+	Values []SourceEntry `json:"values"`
+	Next   string        `json:"next,omitempty"`
+}
+
 // CommentContent is a comment's body, reduced to its raw markup.
 type CommentContent struct {
 	Raw string `json:"raw,omitempty"`
