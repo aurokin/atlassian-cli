@@ -75,3 +75,59 @@ func (c *Client) CreatePullRequest(ctx context.Context, workspace, repo string, 
 	}
 	return c.Send(ctx, "POST", prBase(workspace, repo), body)
 }
+
+// prAction returns the action sub-resource path for a pull request, e.g.
+// .../pullrequests/{id}/approve.
+func prAction(workspace, repo string, id int, action string) string {
+	return prBase(workspace, repo) + "/" + strconv.Itoa(id) + "/" + action
+}
+
+// ApprovePullRequest records the authenticated user's approval
+// (POST .../pullrequests/{id}/approve) and returns the participant record.
+func (c *Client) ApprovePullRequest(ctx context.Context, workspace, repo string, id int) (json.RawMessage, error) {
+	return c.Send(ctx, "POST", prAction(workspace, repo, id, "approve"), nil)
+}
+
+// UnapprovePullRequest withdraws the authenticated user's approval
+// (DELETE .../pullrequests/{id}/approve). The API returns no body.
+func (c *Client) UnapprovePullRequest(ctx context.Context, workspace, repo string, id int) error {
+	_, err := c.Send(ctx, "DELETE", prAction(workspace, repo, id, "approve"), nil)
+	return err
+}
+
+// DeclinePullRequest declines a pull request
+// (POST .../pullrequests/{id}/decline) and returns the updated PR.
+func (c *Client) DeclinePullRequest(ctx context.Context, workspace, repo string, id int) (json.RawMessage, error) {
+	return c.Send(ctx, "POST", prAction(workspace, repo, id, "decline"), nil)
+}
+
+// MergePullRequestOptions holds the optional fields a merge accepts. An empty
+// Strategy lets Bitbucket apply the repository's default merge strategy.
+type MergePullRequestOptions struct {
+	Strategy          string
+	Message           string
+	CloseSourceBranch bool
+}
+
+// MergePullRequest merges a pull request (POST .../pullrequests/{id}/merge) and
+// returns the merged PR. Strategy, when set, is one of merge_commit, squash, or
+// fast_forward.
+func (c *Client) MergePullRequest(ctx context.Context, workspace, repo string, id int, opts MergePullRequestOptions) (json.RawMessage, error) {
+	path := prAction(workspace, repo, id, "merge")
+	// Pass an untyped nil (not a nil map) when there is nothing to send, so Send
+	// omits the body entirely rather than marshaling JSON null.
+	if opts.Strategy == "" && opts.Message == "" && !opts.CloseSourceBranch {
+		return c.Send(ctx, "POST", path, nil)
+	}
+	body := map[string]any{}
+	if opts.Strategy != "" {
+		body["merge_strategy"] = opts.Strategy
+	}
+	if opts.Message != "" {
+		body["message"] = opts.Message
+	}
+	if opts.CloseSourceBranch {
+		body["close_source_branch"] = true
+	}
+	return c.Send(ctx, "POST", path, body)
+}

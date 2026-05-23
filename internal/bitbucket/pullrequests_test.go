@@ -118,3 +118,96 @@ func TestCreatePullRequestBody(t *testing.T) {
 		t.Fatalf("destination = %+v", gotBody["destination"])
 	}
 }
+
+func TestApprovePullRequest(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		_, _ = w.Write([]byte(`{"approved":true,"role":"REVIEWER"}`))
+	}))
+	defer srv.Close()
+
+	if _, err := newTestClient(srv).ApprovePullRequest(context.Background(), "acme", "widgets", 7); err != nil {
+		t.Fatalf("ApprovePullRequest: %v", err)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/repositories/acme/widgets/pullrequests/7/approve" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+}
+
+func TestUnapprovePullRequest(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	if err := newTestClient(srv).UnapprovePullRequest(context.Background(), "acme", "widgets", 7); err != nil {
+		t.Fatalf("UnapprovePullRequest: %v", err)
+	}
+	if gotMethod != http.MethodDelete || gotPath != "/repositories/acme/widgets/pullrequests/7/approve" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+}
+
+func TestDeclinePullRequest(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		_, _ = w.Write([]byte(`{"id":7,"state":"DECLINED"}`))
+	}))
+	defer srv.Close()
+
+	if _, err := newTestClient(srv).DeclinePullRequest(context.Background(), "acme", "widgets", 7); err != nil {
+		t.Fatalf("DeclinePullRequest: %v", err)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/repositories/acme/widgets/pullrequests/7/decline" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+}
+
+func TestMergePullRequestBody(t *testing.T) {
+	var (
+		gotPath string
+		gotBody map[string]any
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &gotBody)
+		_, _ = w.Write([]byte(`{"id":7,"state":"MERGED"}`))
+	}))
+	defer srv.Close()
+
+	_, err := newTestClient(srv).MergePullRequest(context.Background(), "acme", "widgets", 7,
+		MergePullRequestOptions{Strategy: "squash", Message: "ship it", CloseSourceBranch: true})
+	if err != nil {
+		t.Fatalf("MergePullRequest: %v", err)
+	}
+	if gotPath != "/repositories/acme/widgets/pullrequests/7/merge" {
+		t.Errorf("path = %q", gotPath)
+	}
+	if gotBody["merge_strategy"] != "squash" || gotBody["message"] != "ship it" || gotBody["close_source_branch"] != true {
+		t.Fatalf("body = %+v", gotBody)
+	}
+}
+
+func TestMergePullRequestOmitsEmptyBody(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		gotBody = string(raw)
+		_, _ = w.Write([]byte(`{"id":7,"state":"MERGED"}`))
+	}))
+	defer srv.Close()
+
+	if _, err := newTestClient(srv).MergePullRequest(context.Background(), "acme", "widgets", 7,
+		MergePullRequestOptions{}); err != nil {
+		t.Fatalf("MergePullRequest: %v", err)
+	}
+	// With no options set, no JSON body is sent.
+	if gotBody != "" {
+		t.Errorf("body = %q, want empty", gotBody)
+	}
+}

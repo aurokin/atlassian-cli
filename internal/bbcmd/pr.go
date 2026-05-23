@@ -45,6 +45,10 @@ func newPRCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		newPRListCommand(info, g),
 		newPRViewCommand(info, g),
 		newPRCreateCommand(info, g),
+		newPRApproveCommand(info, g),
+		newPRUnapproveCommand(info, g),
+		newPRDeclineCommand(info, g),
+		newPRMergeCommand(info, g),
 	)
 	return cmd
 }
@@ -176,6 +180,167 @@ func newPRCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	f.BoolVar(&opts.Draft, "draft", false, "open the pull request as a draft")
 	f.BoolVar(&opts.CloseSourceBranch, "close-source-branch", false, "close the source branch after merge")
 	return cmd
+}
+
+// prActionPreamble resolves the inputs the pr action subcommands share: the
+// parsed PR id, the resolved repo target, and an authenticated client.
+func prActionPreamble(info appinfo.Info, g *cli.GlobalFlags, repoFlag, workspaceFlag, idArg string) (*bitbucket.Client, repoTarget, int, error) {
+	id, err := parsePRID(idArg)
+	if err != nil {
+		return nil, repoTarget{}, 0, err
+	}
+	target, err := resolveRepoTarget(nil, repoFlag, workspaceFlag)
+	if err != nil {
+		return nil, repoTarget{}, 0, err
+	}
+	bc, err := bbClient(info, g)
+	if err != nil {
+		return nil, repoTarget{}, 0, err
+	}
+	return bc, target, id, nil
+}
+
+func newPRApproveCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var repoFlag, workspaceFlag string
+	cmd := &cobra.Command{
+		Use:   "approve <id>",
+		Short: "Approve a pull request",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			bc, target, id, err := prActionPreamble(info, g, repoFlag, workspaceFlag, args[0])
+			if err != nil {
+				return err
+			}
+			raw, err := bc.ApprovePullRequest(cmd.Context(), target.Workspace, target.Repo, id)
+			if err != nil {
+				return err
+			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, raw)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "approved pull request #%d\n", id)
+			return nil
+		},
+	}
+	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
+	return cmd
+}
+
+func newPRUnapproveCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var repoFlag, workspaceFlag string
+	cmd := &cobra.Command{
+		Use:   "unapprove <id>",
+		Short: "Withdraw your approval of a pull request",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			bc, target, id, err := prActionPreamble(info, g, repoFlag, workspaceFlag, args[0])
+			if err != nil {
+				return err
+			}
+			if err := bc.UnapprovePullRequest(cmd.Context(), target.Workspace, target.Repo, id); err != nil {
+				return err
+			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, prActionResult{ID: id, Action: "unapprove", Done: true})
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "removed approval from pull request #%d\n", id)
+			return nil
+		},
+	}
+	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
+	return cmd
+}
+
+func newPRDeclineCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var repoFlag, workspaceFlag string
+	cmd := &cobra.Command{
+		Use:   "decline <id>",
+		Short: "Decline a pull request",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			bc, target, id, err := prActionPreamble(info, g, repoFlag, workspaceFlag, args[0])
+			if err != nil {
+				return err
+			}
+			raw, err := bc.DeclinePullRequest(cmd.Context(), target.Workspace, target.Repo, id)
+			if err != nil {
+				return err
+			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, raw)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "declined pull request #%d\n", id)
+			return nil
+		},
+	}
+	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
+	return cmd
+}
+
+func newPRMergeCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var (
+		repoFlag, workspaceFlag string
+		opts                    bitbucket.MergePullRequestOptions
+	)
+	cmd := &cobra.Command{
+		Use:   "merge <id>",
+		Short: "Merge a pull request",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			strategy, err := normalizeMergeStrategy(opts.Strategy)
+			if err != nil {
+				return err
+			}
+			opts.Strategy = strategy
+			bc, target, id, err := prActionPreamble(info, g, repoFlag, workspaceFlag, args[0])
+			if err != nil {
+				return err
+			}
+			raw, err := bc.MergePullRequest(cmd.Context(), target.Workspace, target.Repo, id, opts)
+			if err != nil {
+				return err
+			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, raw)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "merged pull request #%d\n", id)
+			return nil
+		},
+	}
+	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
+	f := cmd.Flags()
+	f.StringVar(&opts.Strategy, "strategy", "",
+		"merge strategy: merge-commit, squash, or fast-forward (default: repository setting)")
+	f.StringVar(&opts.Message, "message", "", "custom merge commit message")
+	f.BoolVar(&opts.CloseSourceBranch, "close-source-branch", false, "close the source branch after merge")
+	return cmd
+}
+
+// normalizeMergeStrategy maps the friendly --strategy values to the Bitbucket
+// API's merge_strategy tokens. An empty value is left unset (the repository's
+// default applies); any other value is rejected.
+func normalizeMergeStrategy(strategy string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(strategy)) {
+	case "":
+		return "", nil
+	case "merge-commit", "merge_commit":
+		return "merge_commit", nil
+	case "squash":
+		return "squash", nil
+	case "fast-forward", "fast_forward":
+		return "fast_forward", nil
+	default:
+		return "", apperr.InvalidInput(fmt.Sprintf(
+			"invalid --strategy %q; expected merge-commit, squash, or fast-forward", strategy))
+	}
+}
+
+// prActionResult is the synthesized outcome of a pull-request action whose API
+// call returns no body, so --json has a stable object to render.
+type prActionResult struct {
+	ID     int    `json:"id"`
+	Action string `json:"action"`
+	Done   bool   `json:"done"`
 }
 
 // parsePRID parses a positive pull-request id.
