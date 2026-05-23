@@ -47,10 +47,23 @@ func (g *GlobalFlags) WantsStructured() bool {
 	return g.JSON != "" || g.JQ != ""
 }
 
+// Command group IDs partition the help listing so a long command surface stays
+// scannable. Product command packages tag their top-level commands with
+// GroupProduct; the shared subcommands are assigned here.
+const (
+	// GroupProduct holds the product-specific commands (issue, page, repo, …).
+	GroupProduct = "product"
+	// GroupConfig holds authentication and configuration commands.
+	GroupConfig = "config"
+	// GroupAdvanced holds the lower-level escape hatches and extensibility
+	// commands (api, resolve, browse, alias, extension).
+	GroupAdvanced = "advanced"
+)
+
 // NewRoot builds the base root command for a binary. It registers the shared
-// global flags and the version subcommand, then returns the command together
-// with the GlobalFlags it binds. Product command packages add their own
-// subcommands to the returned command.
+// global flags, command groups, and the shared subcommands, then returns the
+// command together with the GlobalFlags it binds. Product command packages add
+// their own subcommands (tagged with GroupProduct) to the returned command.
 func NewRoot(info appinfo.Info, short string) (*cobra.Command, *GlobalFlags) {
 	g := &GlobalFlags{}
 	root := &cobra.Command{
@@ -62,6 +75,12 @@ func NewRoot(info appinfo.Info, short string) (*cobra.Command, *GlobalFlags) {
 		SilenceErrors: true,
 	}
 
+	root.AddGroup(
+		&cobra.Group{ID: GroupProduct, Title: "Product Commands:"},
+		&cobra.Group{ID: GroupConfig, Title: "Auth & Config Commands:"},
+		&cobra.Group{ID: GroupAdvanced, Title: "Advanced Commands:"},
+	)
+
 	pf := root.PersistentFlags()
 	pf.StringVar(&g.JSON, "json", "", "render JSON output; pass a comma-separated field list or '*' for all fields")
 	// A bare --json with no value means "all fields".
@@ -70,15 +89,41 @@ func NewRoot(info appinfo.Info, short string) (*cobra.Command, *GlobalFlags) {
 	pf.StringVar(&g.Site, "site", "", "named site profile to target")
 	pf.BoolVar(&g.NoPrompt, "no-prompt", false, "never prompt interactively; fail instead")
 	pf.BoolVar(&g.Trace, "trace", false, "emit verbose request tracing to stderr")
+	// Offer configured site names when completing --site.
+	_ = root.RegisterFlagCompletionFunc("site", completeSiteNames)
 
-	root.AddCommand(newVersionCommand(info, g))
-	root.AddCommand(newAuthCommand(info, g))
-	root.AddCommand(newAPICommand(info, g))
-	root.AddCommand(newResolveCommand(info, g))
-	root.AddCommand(newBrowseCommand(info, g))
-	root.AddCommand(newAliasCommand(info, g))
-	root.AddCommand(newExtensionCommand(info, g))
+	addGrouped(root, GroupConfig,
+		newVersionCommand(info, g),
+		newAuthCommand(info, g),
+	)
+	addGrouped(root, GroupAdvanced,
+		newAPICommand(info, g),
+		newResolveCommand(info, g),
+		newBrowseCommand(info, g),
+		newAliasCommand(info, g),
+		newExtensionCommand(info, g),
+	)
+	// File cobra's auto-generated help/completion commands under Advanced so
+	// they do not land in an ungrouped "Additional Commands" section.
+	root.SetHelpCommandGroupID(GroupAdvanced)
+	root.SetCompletionCommandGroupID(GroupAdvanced)
 	return root, g
+}
+
+// AddProductCommands tags each command with the product group and adds it to
+// root. Product command packages (jiracmd, confcmd, bbcmd) use it so their
+// top-level commands file under "Product Commands:" in the help listing.
+func AddProductCommands(root *cobra.Command, cmds ...*cobra.Command) {
+	addGrouped(root, GroupProduct, cmds...)
+}
+
+// addGrouped tags each command with the group ID and adds it to parent, so the
+// help listing files them under the group's title.
+func addGrouped(parent *cobra.Command, groupID string, cmds ...*cobra.Command) {
+	for _, c := range cmds {
+		c.GroupID = groupID
+		parent.AddCommand(c)
+	}
 }
 
 // Render writes v to the command's stdout honoring the global --json/--jq

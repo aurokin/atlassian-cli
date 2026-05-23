@@ -113,6 +113,7 @@ func newPageCommentCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.C
 	f.StringVar(&body, "body", "", "comment body, sent verbatim (required)")
 	f.StringVar(&bodyFormat, "body-format", "",
 		"body representation: storage, atlas_doc_format, or wiki (required)")
+	_ = cmd.RegisterFlagCompletionFunc("body-format", cli.FixedCompletion(bodyFormatValues...))
 	return cmd
 }
 
@@ -159,6 +160,7 @@ func newPageCommentEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 	f.StringVar(&body, "body", "", "new comment body, sent verbatim (required)")
 	f.StringVar(&bodyFormat, "body-format", "",
 		"body representation: storage, atlas_doc_format, or wiki (required)")
+	_ = cmd.RegisterFlagCompletionFunc("body-format", cli.FixedCompletion(bodyFormatValues...))
 	return cmd
 }
 

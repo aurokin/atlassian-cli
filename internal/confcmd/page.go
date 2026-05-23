@@ -163,6 +163,7 @@ func newPageCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 	f.StringVar(&body, "body", "", "page body, sent verbatim (required)")
 	f.StringVar(&bodyFormat, "body-format", "",
 		"body representation: storage, atlas_doc_format, or wiki (required)")
+	_ = cmd.RegisterFlagCompletionFunc("body-format", cli.FixedCompletion(bodyFormatValues...))
 	return cmd
 }
 
@@ -250,6 +251,7 @@ func newPageEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	f.StringVar(&body, "body", "", "new page body, sent verbatim")
 	f.StringVar(&bodyFormat, "body-format", "",
 		"body representation for --body: storage, atlas_doc_format, or wiki")
+	_ = cmd.RegisterFlagCompletionFunc("body-format", cli.FixedCompletion(bodyFormatValues...))
 	return cmd
 }
 
@@ -268,16 +270,21 @@ func fetchADFBody(ctx context.Context, cc *conf.Client, id string) (string, erro
 	return p.Body.AtlasDocFormat.Value, nil
 }
 
+// bodyFormatValues are the body representations the Confluence v2 write API
+// accepts for --body-format. It is the single source for both validation and
+// shell completion.
+var bodyFormatValues = []string{"storage", "atlas_doc_format", "wiki"}
+
 // validateBodyFormat checks a --body-format value against the body
 // representations the Confluence v2 write API accepts.
 func validateBodyFormat(format string) error {
-	switch format {
-	case "storage", "atlas_doc_format", "wiki":
-		return nil
-	default:
-		return apperr.InvalidInput(fmt.Sprintf(
-			"invalid --body-format %q; expected storage, atlas_doc_format, or wiki", format))
+	for _, v := range bodyFormatValues {
+		if format == v {
+			return nil
+		}
 	}
+	return apperr.InvalidInput(fmt.Sprintf(
+		"invalid --body-format %q; expected storage, atlas_doc_format, or wiki", format))
 }
 
 // writePageList prints pages as aligned id/status/title rows.

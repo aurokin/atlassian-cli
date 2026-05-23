@@ -14,7 +14,7 @@ import (
 
 // AddCommands registers the Confluence product commands on the atl-conf root.
 func AddCommands(root *cobra.Command, info appinfo.Info, g *cli.GlobalFlags) {
-	root.AddCommand(
+	cli.AddProductCommands(root,
 		newSpaceCommand(info, g),
 		newPageCommand(info, g),
 		newAttachmentCommand(info, g),
