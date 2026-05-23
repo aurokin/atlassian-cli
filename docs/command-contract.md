@@ -804,6 +804,22 @@ Human output shows the short hash, the first line of the message, and the
 author. `commit view` resolves a single commit by hash, branch, or tag
 (`GET .../commit/{revision}`).
 
+### `src` / `file`
+
+```
+atl-bb src [path] [--repo <workspace>/<repo>] [--workspace <slug>] [--ref <branch|tag|hash>] [--limit N] [--all]
+atl-bb file <path> [--repo <workspace>/<repo>] [--workspace <slug>] [--ref <branch|tag|hash>]
+```
+
+`src` lists a repository directory at `--ref` (`GET .../src/{ref}/{path}`),
+paged with `--limit`/`--all`; with no path it lists the root, and each row
+shows the entry kind (`dir`/`file`), size, and path. `file` writes a file's
+contents to stdout verbatim (`GET .../src/{ref}/{path}` on a file) — the bytes
+are raw, so `--json`/`--jq` do not apply. When `--ref` is omitted, both resolve
+the repository's main branch first (via `GET /repositories/{ws}/{repo}`), so
+they work without naming a ref. Both pair with the same git-checkout inference as the other
+repo-scoped commands.
+
 ### `branch`
 
 ```
