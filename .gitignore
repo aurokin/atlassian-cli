@@ -4,5 +4,8 @@
 # Generated command reference (make docs) — generated on demand, not committed
 /docs/cli/
 
+# Coverage profile (make cover)
+/coverage.out
+
 # Local secrets — never commit
 .env

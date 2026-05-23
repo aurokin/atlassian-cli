@@ -56,8 +56,10 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
 2. **Implement in small slices.** Prefer a vertical slice (client method →
    models → command → tests → docs) over a broad sweep.
 3. **Verify.** The four-command loop above must be green. GitHub Actions runs
-   the same gate (`make check`) on every push to `main` and every pull request
-   (`.github/workflows/ci.yml`).
+   the same gate (`make check`) plus a `golangci-lint` job and a `race +
+   coverage` job (`go test -race -coverprofile`) on every push to `main` and
+   every pull request (`.github/workflows/ci.yml`). Reproduce those locally
+   with `make lint`, `make test-race`, and `make cover`.
 4. **Review.** Every PR — code *or* docs — passes a subagent code review
    (`codexrabbit-code-reviewer`) before merge. Address findings and re-review
    until clean.
