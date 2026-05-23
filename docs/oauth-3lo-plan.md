@@ -22,7 +22,7 @@ paste a token.
 | # | Decision | Choice | Rationale |
 |---|---|---|---|
 | D1 | OAuth app ownership | **Bring-your-own app** | Atlassian 3LO is a confidential client (needs a `client_secret`). A distributable CLI cannot embed a real secret, so the user registers their own Atlassian OAuth 2.0 (3LO) app and supplies `client_id` + `client_secret`. |
-| D2 | Redirect capture | **Loopback localhost server** | Standard native-app pattern: a temporary `http://localhost:<port>/callback` listener catches the redirect. The user's app must allowlist that callback. |
+| D2 | Redirect capture | **Loopback localhost server on a fixed port** | Standard native-app pattern: a loopback listener catches the redirect at `http://localhost:8976/callback`. Atlassian validates the `redirect_uri` against the app's registered callback **byte-for-byte**, so the port cannot be ephemeral — it is fixed (default `8976`, overridable with `--callback-port` to match the callback the user registered). |
 | D3 | CI / headless | **Interactive-only; API tokens for CI** | 3LO needs a browser. CI keeps using `cloud-classic`/`cloud-scoped` API tokens (already covered by the [auth runbook](auth-runbook.md)). Avoids the fragile "rotating refresh token in an env var" anti-pattern. |
 | D4 | Secret storage | **Keychain bundle** | `client_secret` + access/refresh tokens are stored together as one JSON secret in the OS keychain (or the existing `0600` file fallback). `config.json` keeps only `client_id`, scopes, `cloud_id`, and the `token_ref`. |
 
@@ -40,7 +40,8 @@ Flow:
 
 1. **Authorize.** Open the browser at the authorize endpoint with `client_id`,
    `scope`, `audience=api.atlassian.com`,
-   `redirect_uri=http://127.0.0.1:<port>/callback`, a random `state` (CSRF), a
+   `redirect_uri=http://localhost:8976/callback` (the exact callback registered
+   on the app — Atlassian requires a byte-exact match), a random `state` (CSRF), a
    PKCE `code_challenge`, and `response_type=code`. The CLI **always ensures
    `offline_access` is in the scope set** (deduped) — that is what makes
    Atlassian return a refresh token — so the user's `--scopes` need not include
@@ -169,13 +170,19 @@ it already does for `cloud-scoped`.
    `auth logout` handle the `oauth-3lo` secret (status reports token presence +
    access-token expiry, never values).
 4. **`auth login --token-style oauth-3lo`.** New flags `--client-id`,
-   `--client-secret`/`--client-secret-stdin`, `--scopes`, and `--cloud-id`
+   `--client-secret`/`--client-secret-stdin`, `--scopes`, `--callback-port`
+   (default `8976`, to match the registered callback), and `--cloud-id`
    (optional override when accessible-resources matching is ambiguous). Runs the
    loopback callback + browser-open (reusing `internal/browser`'s `runner` seam)
    + exchange + accessible-resources cloud-id resolution + store. Loopback
-   hardening: bind **`127.0.0.1`** (not `localhost`, which can resolve to `::1`
-   and mismatch the registered `redirect_uri`); the callback handler **rejects a
-   missing/mismatched `state`**; carry a PKCE verifier through to the exchange.
+   hardening: the `redirect_uri` is the **exact registered value**
+   `http://localhost:<callback-port>/callback` (Atlassian matches it
+   byte-for-byte, so the port is fixed, not ephemeral). Because the registered
+   host is the literal `localhost`, the listener binds the fixed port on the
+   loopback interface and must accept whichever family `localhost` resolves to
+   (`127.0.0.1` **or** `::1`) rather than assuming one; the callback handler
+   **rejects a missing/mismatched `state`**; carry a PKCE verifier through to the
+   exchange.
    Cloud-id resolution **normalizes** the comparison (case-insensitive host,
    scheme- and trailing-slash-insensitive) when matching accessible-resources to
    `--url`, falls back to `--cloud-id`, and errors under `--no-prompt` when the
@@ -228,9 +235,12 @@ it already does for `cloud-scoped`.
   2.0 (3LO) app and allowlist the loopback callback. The runbook (slice 6) must
   walk through this; without it the feature is unusable. Acceptable, but it is
   the main UX cost.
-- **Loopback port/firewall.** The callback binds an ephemeral localhost port;
-  rare sandbox environments may block it. Manual-paste fallback is a possible
-  later addition (deferred, not in this plan).
+- **Loopback port/firewall.** The callback binds a **fixed** localhost port
+  (default `8976`, overridable with `--callback-port`); the port can't be
+  ephemeral because Atlassian matches the registered `redirect_uri` exactly. A
+  port already in use, or a rare sandbox that blocks loopback, will fail the
+  flow. Manual-paste fallback is a possible later addition (deferred, not in
+  this plan).
 - **End-to-end validation.** Default tests are hermetic and cannot exercise the
   real Atlassian endpoints; a one-time manual validation against a real
   registered app is needed before declaring the feature done.
@@ -250,6 +260,9 @@ raised the following, now folded into the slices above:
 - **OAuth-package redaction/errors** → `internal/oauth` owns its own redaction
   (form-body `client_secret`/`code`/`refresh_token` are not header-redacted) and
   maps `invalid_grant` to a re-auth apperr.
-- **Loopback hardening** → bind `127.0.0.1`, validate `state`, add PKCE.
+- **Loopback hardening** → fixed registered `redirect_uri`
+  (`http://localhost:8976/callback`, port from `--callback-port`); the listener
+  binds the fixed loopback port and accepts both IPv4/IPv6 loopback; validate
+  `state`; add PKCE.
 - **Clock seam** → injectable `now` for hermetic expiry/refresh tests.
 - **cloud-id matching** → normalized comparison + `--cloud-id` override flag.
