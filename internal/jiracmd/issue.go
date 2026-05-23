@@ -66,15 +66,10 @@ func newIssueListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := jira.Decode[jira.IssuePage](raw)
-			if err != nil {
-				return err
-			}
-			writeIssueList(cmd.OutOrStdout(), page.Issues)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.IssuePage],
+				func(w io.Writer, page jira.IssuePage) {
+					writeIssueList(w, page.Issues)
+				})
 		},
 	}
 	f := cmd.Flags()
@@ -99,15 +94,7 @@ func newIssueViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			iss, err := jira.Decode[jira.Issue](raw)
-			if err != nil {
-				return err
-			}
-			writeIssue(cmd.OutOrStdout(), iss)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.Issue], writeIssue)
 		},
 	}
 }
@@ -140,15 +127,10 @@ func newIssueCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			iss, err := jira.Decode[jira.Issue](raw)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "created %s\n", iss.Key)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.Issue],
+				func(w io.Writer, iss jira.Issue) {
+					fmt.Fprintf(w, "created %s\n", iss.Key)
+				})
 		},
 	}
 	f := cmd.Flags()
@@ -271,15 +253,10 @@ func newIssueTransitionCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 				return err
 			}
 			if !cmd.Flags().Changed("to") {
-				if g.WantsStructured() {
-					return cli.Render(cmd, g, raw)
-				}
-				list, err := jira.Decode[jira.TransitionList](raw)
-				if err != nil {
-					return err
-				}
-				writeTransitionList(cmd.OutOrStdout(), list.Transitions)
-				return nil
+				return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.TransitionList],
+					func(w io.Writer, list jira.TransitionList) {
+						writeTransitionList(w, list.Transitions)
+					})
 			}
 			list, err := jira.Decode[jira.TransitionList](raw)
 			if err != nil {

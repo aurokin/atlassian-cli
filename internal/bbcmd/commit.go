@@ -58,15 +58,10 @@ func newCommitListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := bitbucket.Decode[bitbucket.CommitPage](raw)
-			if err != nil {
-				return err
-			}
-			writeCommitList(cmd.OutOrStdout(), page.Values)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.CommitPage],
+				func(w io.Writer, page bitbucket.CommitPage) {
+					writeCommitList(w, page.Values)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -103,15 +98,7 @@ func newCommitViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			commit, err := bitbucket.Decode[bitbucket.Commit](raw)
-			if err != nil {
-				return err
-			}
-			writeCommit(cmd.OutOrStdout(), commit)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Commit], writeCommit)
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)

@@ -49,15 +49,10 @@ func newPageLabelListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			ll, err := conf.Decode[conf.LabelList](raw)
-			if err != nil {
-				return err
-			}
-			writeLabelList(cmd.OutOrStdout(), ll.Results)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.LabelList],
+				func(w io.Writer, ll conf.LabelList) {
+					writeLabelList(w, ll.Results)
+				})
 		},
 	}
 	cli.AddPaginationFlags(cmd, &limit, &all, "labels")

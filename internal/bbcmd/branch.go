@@ -58,15 +58,10 @@ func newBranchListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := bitbucket.Decode[bitbucket.BranchPage](raw)
-			if err != nil {
-				return err
-			}
-			writeBranchList(cmd.OutOrStdout(), page.Values)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.BranchPage],
+				func(w io.Writer, page bitbucket.BranchPage) {
+					writeBranchList(w, page.Values)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -100,15 +95,7 @@ func newBranchViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			branch, err := bitbucket.Decode[bitbucket.Branch](raw)
-			if err != nil {
-				return err
-			}
-			writeBranch(cmd.OutOrStdout(), branch)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Branch], writeBranch)
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -144,15 +131,10 @@ func newBranchCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			branch, err := bitbucket.Decode[bitbucket.Branch](raw)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "created branch %s\n", branch.Name)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Branch],
+				func(w io.Writer, branch bitbucket.Branch) {
+					fmt.Fprintf(w, "created branch %s\n", branch.Name)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)

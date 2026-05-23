@@ -52,15 +52,10 @@ func newPageCommentListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			cl, err := conf.Decode[conf.CommentList](raw)
-			if err != nil {
-				return err
-			}
-			writeCommentList(cmd.OutOrStdout(), cl.Results)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.CommentList],
+				func(w io.Writer, cl conf.CommentList) {
+					writeCommentList(w, cl.Results)
+				})
 		},
 	}
 	cli.AddPaginationFlags(cmd, &limit, &all, "comments")
@@ -81,15 +76,7 @@ func newPageCommentViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			c, err := conf.Decode[conf.Comment](raw)
-			if err != nil {
-				return err
-			}
-			writeComment(cmd.OutOrStdout(), c)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.Comment], writeComment)
 		},
 	}
 }
@@ -116,15 +103,10 @@ func newPageCommentCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.C
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			c, err := conf.Decode[conf.Comment](raw)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "created comment %s\n", c.ID)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.Comment],
+				func(w io.Writer, c conf.Comment) {
+					fmt.Fprintf(w, "created comment %s\n", c.ID)
+				})
 		},
 	}
 	f := cmd.Flags()
@@ -167,15 +149,10 @@ func newPageCommentEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, updated)
-			}
-			c, err := conf.Decode[conf.Comment](updated)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "updated comment %s to version %d\n", c.ID, c.Version.Number)
-			return nil
+			return cli.RenderDecoded(cmd, g, updated, conf.Decode[conf.Comment],
+				func(w io.Writer, c conf.Comment) {
+					fmt.Fprintf(w, "updated comment %s to version %d\n", c.ID, c.Version.Number)
+				})
 		},
 	}
 	f := cmd.Flags()

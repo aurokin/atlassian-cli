@@ -49,15 +49,10 @@ func newSpaceListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := conf.Decode[conf.SpacePage](raw)
-			if err != nil {
-				return err
-			}
-			writeSpaceList(cmd.OutOrStdout(), page.Results)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.SpacePage],
+				func(w io.Writer, page conf.SpacePage) {
+					writeSpaceList(w, page.Results)
+				})
 		},
 	}
 	cli.AddPaginationFlags(cmd, &limit, &all, "spaces")
@@ -82,15 +77,7 @@ func newSpaceViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			s, err := conf.Decode[conf.Space](raw)
-			if err != nil {
-				return err
-			}
-			writeSpace(cmd.OutOrStdout(), s)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.Space], writeSpace)
 		},
 	}
 }

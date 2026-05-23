@@ -71,15 +71,10 @@ func newIssueListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := bitbucket.Decode[bitbucket.IssuePage](raw)
-			if err != nil {
-				return err
-			}
-			writeIssueList(cmd.OutOrStdout(), page.Values)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.IssuePage],
+				func(w io.Writer, page bitbucket.IssuePage) {
+					writeIssueList(w, page.Values)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -115,15 +110,7 @@ func newIssueViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			issue, err := bitbucket.Decode[bitbucket.Issue](raw)
-			if err != nil {
-				return err
-			}
-			writeIssue(cmd.OutOrStdout(), issue)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Issue], writeIssue)
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -156,15 +143,10 @@ func newIssueCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			issue, err := bitbucket.Decode[bitbucket.Issue](raw)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "created issue #%d: %s\n", issue.ID, issue.Title)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Issue],
+				func(w io.Writer, issue bitbucket.Issue) {
+					fmt.Fprintf(w, "created issue #%d: %s\n", issue.ID, issue.Title)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)

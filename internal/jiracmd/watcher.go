@@ -75,15 +75,10 @@ func newIssueWatchersCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			ws, err := jira.Decode[jira.Watchers](raw)
-			if err != nil {
-				return err
-			}
-			writeWatchers(cmd.OutOrStdout(), ws.Watchers)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.Watchers],
+				func(w io.Writer, ws jira.Watchers) {
+					writeWatchers(w, ws.Watchers)
+				})
 		},
 	}
 }

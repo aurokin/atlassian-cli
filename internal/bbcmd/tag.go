@@ -58,15 +58,10 @@ func newTagListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := bitbucket.Decode[bitbucket.TagPage](raw)
-			if err != nil {
-				return err
-			}
-			writeTagList(cmd.OutOrStdout(), page.Values)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.TagPage],
+				func(w io.Writer, page bitbucket.TagPage) {
+					writeTagList(w, page.Values)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -100,15 +95,7 @@ func newTagViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			tag, err := bitbucket.Decode[bitbucket.Tag](raw)
-			if err != nil {
-				return err
-			}
-			writeTag(cmd.OutOrStdout(), tag)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Tag], writeTag)
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -144,15 +131,10 @@ func newTagCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			tag, err := bitbucket.Decode[bitbucket.Tag](raw)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "created tag %s\n", tag.Name)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Tag],
+				func(w io.Writer, tag bitbucket.Tag) {
+					fmt.Fprintf(w, "created tag %s\n", tag.Name)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)

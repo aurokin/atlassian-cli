@@ -1,6 +1,7 @@
 package bbcmd
 
 import (
+	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -60,15 +61,10 @@ func newSearchReposCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := bitbucket.Decode[bitbucket.RepositoryPage](raw)
-			if err != nil {
-				return err
-			}
-			writeRepoList(cmd.OutOrStdout(), page.Values)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.RepositoryPage],
+				func(w io.Writer, page bitbucket.RepositoryPage) {
+					writeRepoList(w, page.Values)
+				})
 		},
 	}
 	f := cmd.Flags()
@@ -110,15 +106,10 @@ func newSearchPRsCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := bitbucket.Decode[bitbucket.PullRequestPage](raw)
-			if err != nil {
-				return err
-			}
-			writePRList(cmd.OutOrStdout(), page.Values)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.PullRequestPage],
+				func(w io.Writer, page bitbucket.PullRequestPage) {
+					writePRList(w, page.Values)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -159,15 +150,10 @@ func newSearchIssuesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := bitbucket.Decode[bitbucket.IssuePage](raw)
-			if err != nil {
-				return err
-			}
-			writeIssueList(cmd.OutOrStdout(), page.Values)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.IssuePage],
+				func(w io.Writer, page bitbucket.IssuePage) {
+					writeIssueList(w, page.Values)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)

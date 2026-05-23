@@ -48,15 +48,7 @@ func newWorkspaceViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			ws, err := bitbucket.Decode[bitbucket.Workspace](raw)
-			if err != nil {
-				return err
-			}
-			writeWorkspace(cmd.OutOrStdout(), ws)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Workspace], writeWorkspace)
 		},
 	}
 	cmd.Flags().StringVar(&workspaceFlag, "workspace", "", "workspace slug to view")

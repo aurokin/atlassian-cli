@@ -82,15 +82,10 @@ func newPRListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := bitbucket.Decode[bitbucket.PullRequestPage](raw)
-			if err != nil {
-				return err
-			}
-			writePRList(cmd.OutOrStdout(), page.Values)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.PullRequestPage],
+				func(w io.Writer, page bitbucket.PullRequestPage) {
+					writePRList(w, page.Values)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -126,15 +121,7 @@ func newPRViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			pr, err := bitbucket.Decode[bitbucket.PullRequest](raw)
-			if err != nil {
-				return err
-			}
-			writePR(cmd.OutOrStdout(), pr)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.PullRequest], writePR)
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -173,15 +160,10 @@ func newPRCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			pr, err := bitbucket.Decode[bitbucket.PullRequest](raw)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "created pull request #%d: %s\n", pr.ID, pr.Title)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.PullRequest],
+				func(w io.Writer, pr bitbucket.PullRequest) {
+					fmt.Fprintf(w, "created pull request #%d: %s\n", pr.ID, pr.Title)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)

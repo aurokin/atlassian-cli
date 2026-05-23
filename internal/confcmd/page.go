@@ -62,15 +62,10 @@ func newPageListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := conf.Decode[conf.PageList](raw)
-			if err != nil {
-				return err
-			}
-			writePageList(cmd.OutOrStdout(), page.Results)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.PageList],
+				func(w io.Writer, page conf.PageList) {
+					writePageList(w, page.Results)
+				})
 		},
 	}
 	f := cmd.Flags()
@@ -93,15 +88,7 @@ func newPageViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			p, err := conf.Decode[conf.Page](raw)
-			if err != nil {
-				return err
-			}
-			writePage(cmd.OutOrStdout(), p)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.Page], writePage)
 		},
 	}
 }
@@ -128,15 +115,10 @@ func newPageChildrenCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := conf.Decode[conf.PageList](raw)
-			if err != nil {
-				return err
-			}
-			writePageList(cmd.OutOrStdout(), page.Results)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.PageList],
+				func(w io.Writer, page conf.PageList) {
+					writePageList(w, page.Results)
+				})
 		},
 	}
 	cli.AddPaginationFlags(cmd, &limit, &all, "child pages")
@@ -169,15 +151,10 @@ func newPageCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			p, err := conf.Decode[conf.Page](raw)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "created page %s\n", p.ID)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.Page],
+				func(w io.Writer, p conf.Page) {
+					fmt.Fprintf(w, "created page %s\n", p.ID)
+				})
 		},
 	}
 	f := cmd.Flags()
@@ -262,15 +239,10 @@ func newPageEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, updated)
-			}
-			p, err := conf.Decode[conf.Page](updated)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "updated page %s to version %d\n", p.ID, p.Version.Number)
-			return nil
+			return cli.RenderDecoded(cmd, g, updated, conf.Decode[conf.Page],
+				func(w io.Writer, p conf.Page) {
+					fmt.Fprintf(w, "updated page %s to version %d\n", p.ID, p.Version.Number)
+				})
 		},
 	}
 	f := cmd.Flags()

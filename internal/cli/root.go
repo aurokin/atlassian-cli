@@ -88,6 +88,29 @@ func Render(cmd *cobra.Command, g *GlobalFlags, v any) error {
 	return output.Render(cmd.OutOrStdout(), v, output.Options{JSON: g.JSON, JQ: g.JQ})
 }
 
+// RenderDecoded folds the structured-gate + decode + write boilerplate that
+// every list/view command repeats. When structured output is selected it
+// renders the raw upstream body verbatim; otherwise it decodes raw with the
+// product's Decode function and hands the typed value to writeHuman for the
+// compact per-type summary.
+func RenderDecoded[T any](
+	cmd *cobra.Command,
+	g *GlobalFlags,
+	raw json.RawMessage,
+	decode func(json.RawMessage) (T, error),
+	writeHuman func(w io.Writer, v T),
+) error {
+	if g.WantsStructured() {
+		return Render(cmd, g, raw)
+	}
+	v, err := decode(raw)
+	if err != nil {
+		return err
+	}
+	writeHuman(cmd.OutOrStdout(), v)
+	return nil
+}
+
 // Execute runs root and renders any resulting error, returning the process
 // exit code. It is the minimal entry point: it performs no alias expansion or
 // extension dispatch, and is used by tests and as the building block beneath

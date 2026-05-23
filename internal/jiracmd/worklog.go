@@ -48,15 +48,10 @@ func newWorklogListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := jira.Decode[jira.WorklogPage](raw)
-			if err != nil {
-				return err
-			}
-			writeWorklogList(cmd.OutOrStdout(), page.Worklogs)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.WorklogPage],
+				func(w io.Writer, page jira.WorklogPage) {
+					writeWorklogList(w, page.Worklogs)
+				})
 		},
 	}
 	cli.AddPaginationFlags(cmd, &limit, &all, "worklogs")
@@ -92,16 +87,11 @@ func newWorklogAddCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			wl, err := jira.Decode[jira.Worklog](raw)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "logged %s on %s (worklog %s)\n",
-				wl.TimeSpent, args[0], wl.ID)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.Worklog],
+				func(w io.Writer, wl jira.Worklog) {
+					fmt.Fprintf(w, "logged %s on %s (worklog %s)\n",
+						wl.TimeSpent, args[0], wl.ID)
+				})
 		},
 	}
 	f := cmd.Flags()

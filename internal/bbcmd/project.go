@@ -56,15 +56,10 @@ func newProjectListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := bitbucket.Decode[bitbucket.ProjectPage](raw)
-			if err != nil {
-				return err
-			}
-			writeProjectList(cmd.OutOrStdout(), page.Values)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.ProjectPage],
+				func(w io.Writer, page bitbucket.ProjectPage) {
+					writeProjectList(w, page.Values)
+				})
 		},
 	}
 	f := cmd.Flags()
@@ -92,15 +87,7 @@ func newProjectViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			p, err := bitbucket.Decode[bitbucket.Project](raw)
-			if err != nil {
-				return err
-			}
-			writeProject(cmd.OutOrStdout(), p)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Project], writeProject)
 		},
 	}
 	cmd.Flags().StringVar(&workspaceFlag, "workspace", "", "workspace slug the project belongs to (required)")
@@ -140,15 +127,10 @@ func newProjectCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			p, err := bitbucket.Decode[bitbucket.Project](raw)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "created project %s: %s\n", p.Key, p.Name)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Project],
+				func(w io.Writer, p bitbucket.Project) {
+					fmt.Fprintf(w, "created project %s: %s\n", p.Key, p.Name)
+				})
 		},
 	}
 	f := cmd.Flags()

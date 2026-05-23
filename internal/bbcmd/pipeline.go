@@ -60,15 +60,10 @@ func newPipelineListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			page, err := bitbucket.Decode[bitbucket.PipelinePage](raw)
-			if err != nil {
-				return err
-			}
-			writePipelineList(cmd.OutOrStdout(), page.Values)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.PipelinePage],
+				func(w io.Writer, page bitbucket.PipelinePage) {
+					writePipelineList(w, page.Values)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -105,15 +100,7 @@ func newPipelineViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			p, err := bitbucket.Decode[bitbucket.Pipeline](raw)
-			if err != nil {
-				return err
-			}
-			writePipeline(cmd.OutOrStdout(), p)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Pipeline], writePipeline)
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
@@ -152,16 +139,11 @@ func newPipelineRunCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			p, err := bitbucket.Decode[bitbucket.Pipeline](raw)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "triggered pipeline #%d on %s %s\n",
-				p.BuildNumber, refType, refName)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Pipeline],
+				func(w io.Writer, p bitbucket.Pipeline) {
+					fmt.Fprintf(w, "triggered pipeline #%d on %s %s\n",
+						p.BuildNumber, refType, refName)
+				})
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)

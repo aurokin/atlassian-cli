@@ -68,15 +68,10 @@ func newIssueLinkTypesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comm
 			if err != nil {
 				return err
 			}
-			if g.WantsStructured() {
-				return cli.Render(cmd, g, raw)
-			}
-			lt, err := jira.Decode[jira.LinkTypeList](raw)
-			if err != nil {
-				return err
-			}
-			writeLinkTypes(cmd.OutOrStdout(), lt.Types)
-			return nil
+			return cli.RenderDecoded(cmd, g, raw, jira.Decode[jira.LinkTypeList],
+				func(w io.Writer, lt jira.LinkTypeList) {
+					writeLinkTypes(w, lt.Types)
+				})
 		},
 	}
 }
