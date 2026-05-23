@@ -15,7 +15,7 @@ LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DA
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build install compile compile-integration test integration vet fmt fmt-check lint check docs clean
+.PHONY: help build install compile compile-integration test test-race cover integration vet fmt fmt-check lint check docs clean
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -47,6 +47,13 @@ compile-integration: ## Type-check the integration suite under its build tag (no
 
 test: ## Run the full hermetic test suite (no network)
 	go test ./...
+
+test-race: ## Run the hermetic suite under the race detector
+	go test -race ./...
+
+cover: ## Run the suite with coverage and print the per-package + total summary
+	go test -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out | tail -1
 
 # Live, manual-only end-to-end tests against a real Atlassian tenant. Excluded
 # from `test`/`check` by the `integration` build tag and the ATL_RUN_INTEGRATION
@@ -81,4 +88,4 @@ docs: ## Regenerate the Markdown command reference under docs/cli (not committed
 	go run ./cmd/gen-docs --product all --out $(DOCS_DIR)
 
 clean: ## Remove build artifacts and generated docs
-	rm -rf $(BIN_DIR) $(DOCS_DIR)
+	rm -rf $(BIN_DIR) $(DOCS_DIR) coverage.out

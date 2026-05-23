@@ -53,3 +53,24 @@ jobs:
 
       - name: Run golangci-lint
         run: golangci-lint run ./...
+
+  race:
+    name: race + coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      # Run the hermetic suite under the race detector with coverage. This is a
+      # separate job from `check` because -race roughly triples runtime; keeping
+      # it parallel means the fast gate is not held up by it.
+      - name: Test with race detector and coverage
+        run: go test -race -coverprofile=coverage.out ./...
+
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -1
