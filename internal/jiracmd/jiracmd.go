@@ -1,5 +1,5 @@
 // Package jiracmd assembles the Jira-specific command tree for the atl-jira
-// binary: project, issue, search, and status. The shared commands (auth, api,
+// binary: project, issue, field, search, and status. The shared commands (auth, api,
 // resolve, browse, version) are built by internal/cli; AddCommands layers the
 // Jira product commands on top of that root.
 package jiracmd
@@ -17,6 +17,7 @@ func AddCommands(root *cobra.Command, info appinfo.Info, g *cli.GlobalFlags) {
 	cli.AddProductCommands(root,
 		newProjectCommand(info, g),
 		newIssueCommand(info, g),
+		newFieldCommand(info, g),
 		newSearchCommand(info, g),
 		newStatusCommand(info, g),
 	)

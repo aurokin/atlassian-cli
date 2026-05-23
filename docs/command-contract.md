@@ -423,6 +423,18 @@ like `3h 30m` or seconds with units; the CLI does not parse or convert),
 and `--comment` is plain text wrapped as an ADF document. Editing or
 deleting an existing worklog is intentionally out of scope.
 
+### `field`
+
+```
+atl-jira field list
+```
+
+`field list` returns the site's global field catalog (`GET /field`) as
+`id`/`type`/`scope`/`name` rows (`scope` is `system` or `custom`). It is the way
+to discover the field ids — including `customfield_*` ids — and value types that
+`issue create`/`edit`'s `--field` and `issue view`'s `--fields` accept, instead
+of guessing. Under `--json` the raw API array is emitted verbatim.
+
 ### `search issues`
 
 ```

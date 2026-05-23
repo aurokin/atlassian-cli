@@ -129,6 +129,28 @@ func TestClientGetIssue(t *testing.T) {
 	}
 }
 
+func TestClientListFields(t *testing.T) {
+	srv := serveJSON(t, "/field",
+		`[{"id":"summary","name":"Summary","custom":false,"schema":{"type":"string"}},`+
+			`{"id":"customfield_10010","name":"Sprint","custom":true,"schema":{"type":"array"}}]`)
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).ListFields(context.Background())
+	if err != nil {
+		t.Fatalf("ListFields: %v", err)
+	}
+	fields, err := Decode[[]Field](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(fields) != 2 {
+		t.Fatalf("got %d fields, want 2", len(fields))
+	}
+	if fields[1].ID != "customfield_10010" || !fields[1].Custom || fields[1].Schema.Type != "array" {
+		t.Fatalf("field[1] = %+v", fields[1])
+	}
+}
+
 func TestClientGetIssuePassesFieldsAndExpand(t *testing.T) {
 	var gotFields, gotExpand string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
