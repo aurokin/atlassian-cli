@@ -5,11 +5,9 @@
 package jira
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"io"
-	"mime/multipart"
 	"net/url"
 	"strconv"
 
@@ -306,23 +304,12 @@ func (c *Client) FetchAttachmentData(ctx context.Context, contentURL string) ([]
 // on the attachment; r supplies its bytes. The response is the JSON array of
 // created attachment records.
 func (c *Client) AddAttachment(ctx context.Context, idOrKey, filename string, r io.Reader) (json.RawMessage, error) {
-	var buf bytes.Buffer
-	mw := multipart.NewWriter(&buf)
-	fw, err := mw.CreateFormFile("file", filename)
+	buf, contentType, err := restutil.MultipartFile("file", filename, r)
 	if err != nil {
-		return nil, apperr.New(apperr.CodeRequestEncodeFailed,
-			"could not build the attachment upload body: "+err.Error())
-	}
-	if _, err := io.Copy(fw, r); err != nil {
-		return nil, apperr.New(apperr.CodeRequestEncodeFailed,
-			"could not read the attachment file: "+err.Error())
-	}
-	if err := mw.Close(); err != nil {
-		return nil, apperr.New(apperr.CodeRequestEncodeFailed,
-			"could not finalize the attachment upload body: "+err.Error())
+		return nil, err
 	}
 	path := "/issue/" + url.PathEscape(idOrKey) + "/attachments"
-	return c.Upload(ctx, "POST", path, mw.FormDataContentType(), &buf)
+	return c.Upload(ctx, "POST", path, contentType, buf)
 }
 
 // decodeError wraps a pagination decode failure as a structured error.

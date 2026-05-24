@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
@@ -751,5 +752,31 @@ func TestClientUpdateBlogpost(t *testing.T) {
 	ver, _ := gotBody["version"].(map[string]any)
 	if ver["number"] != float64(3) {
 		t.Fatalf("version = %v", gotBody["version"])
+	}
+}
+
+func TestClientCreateAttachment(t *testing.T) {
+	var gotMethod, gotPath, gotToken, gotContentType string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		gotToken = r.Header.Get("X-Atlassian-Token")
+		gotContentType = r.Header.Get("Content-Type")
+		_, _ = w.Write([]byte(`{"results":[{"id":"att1","title":"notes.txt"}]}`))
+	}))
+	defer srv.Close()
+
+	_, err := newTestClient(srv).CreateAttachment(context.Background(), "123", "notes.txt",
+		strings.NewReader("hello"))
+	if err != nil {
+		t.Fatalf("CreateAttachment: %v", err)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/rest/api/content/123/child/attachment" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	if gotToken != "no-check" {
+		t.Errorf("X-Atlassian-Token = %q, want no-check", gotToken)
+	}
+	if !strings.HasPrefix(gotContentType, "multipart/form-data") {
+		t.Errorf("Content-Type = %q, want multipart/form-data", gotContentType)
 	}
 }

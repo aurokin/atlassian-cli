@@ -84,9 +84,11 @@ func TestSpaceViewHumanOutput(t *testing.T) {
 			if got := r.URL.Query().Get("keys"); got != "DEV" {
 				t.Errorf("keys param = %q, want DEV", got)
 			}
-			_, _ = w.Write([]byte(`{"results":[{"id":"1","key":"DEV","name":"Development"}]}`))
+			// The keys-filtered list returns the full space object, so view
+			// renders it directly without a second GetSpace round-trip.
+			_, _ = w.Write([]byte(`{"results":[{"id":"1","key":"DEV","name":"Development","type":"global"}]}`))
 		case "/spaces/1":
-			_, _ = w.Write([]byte(`{"id":"1","key":"DEV","name":"Development","type":"global"}`))
+			t.Errorf("space view should not make a second round-trip to %q", r.URL.Path)
 		default:
 			t.Errorf("unexpected path %q", r.URL.Path)
 		}
@@ -110,9 +112,7 @@ func TestSpaceViewJSON(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/spaces":
-			_, _ = w.Write([]byte(`{"results":[{"id":"1","key":"DEV","name":"Development"}]}`))
-		case "/spaces/1":
-			_, _ = w.Write([]byte(`{"id":"1","key":"DEV","name":"Development","type":"global"}`))
+			_, _ = w.Write([]byte(`{"results":[{"id":"1","key":"DEV","name":"Development","type":"global"}]}`))
 		default:
 			t.Errorf("unexpected path %q", r.URL.Path)
 		}

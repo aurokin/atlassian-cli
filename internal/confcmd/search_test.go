@@ -125,3 +125,66 @@ func TestSearchCQLJQFiltersOutput(t *testing.T) {
 		t.Fatalf("--jq output = %q, want each title on its own line", out)
 	}
 }
+
+func TestSearchTextBuildsCQL(t *testing.T) {
+	var gotCQL string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotCQL = r.URL.Query().Get("cql")
+		_, _ = w.Write([]byte(`{"results":[{"content":{"id":"10","type":"page","title":"Home"}}]}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	out, err := execConf(t, "search", "text", "release notes",
+		"--space", "DEV", "--type", "page", "--site", "work")
+	if err != nil {
+		t.Fatalf("search text: %v\n%s", err, out)
+	}
+	want := `text ~ "release notes" and type = "page" and space = "DEV"`
+	if gotCQL != want {
+		t.Fatalf("cql = %q, want %q", gotCQL, want)
+	}
+	if !strings.Contains(out, "Home") {
+		t.Fatalf("output missing result:\n%s", out)
+	}
+}
+
+func TestSearchTextEscapesQuotes(t *testing.T) {
+	var gotCQL string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotCQL = r.URL.Query().Get("cql")
+		_, _ = w.Write([]byte(`{"results":[]}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	if _, err := execConf(t, "search", "text", `say "hi"`, "--site", "work"); err != nil {
+		t.Fatalf("search text: %v", err)
+	}
+	want := `text ~ "say \"hi\""`
+	if gotCQL != want {
+		t.Fatalf("cql = %q, want %q", gotCQL, want)
+	}
+}
+
+func TestSearchTextBuildCQLNoFlags(t *testing.T) {
+	if got := buildTextCQL("hello", "", ""); got != `text ~ "hello"` {
+		t.Errorf("buildTextCQL = %q", got)
+	}
+}
+
+func TestCQLEscapeBackslashAndQuote(t *testing.T) {
+	// A trailing backslash must be doubled so it cannot escape the closing
+	// quote; quotes are escaped after.
+	if got := cqlEscape(`foo\`); got != `foo\\` {
+		t.Errorf(`cqlEscape(foo\) = %q, want foo\\`, got)
+	}
+	if got := cqlEscape(`a"b`); got != `a\"b` {
+		t.Errorf(`cqlEscape(a"b) = %q`, got)
+	}
+	if got := buildTextCQL(`x\`, "", ""); got != `text ~ "x\\"` {
+		t.Errorf(`buildTextCQL(x\) = %q`, got)
+	}
+}

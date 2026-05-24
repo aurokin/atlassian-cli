@@ -13,6 +13,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"mime/multipart"
 	"net/url"
 	"strconv"
 
@@ -110,6 +111,29 @@ func (b *Base) Upload(ctx context.Context, method, pathOrURL, contentType string
 		return nil, b.remap(resp, err)
 	}
 	return json.RawMessage(resp.Body), nil
+}
+
+// MultipartFile builds a multipart/form-data body carrying a single file part
+// under fieldName, returning the encoded body and its Content-Type (with the
+// generated boundary). It is the shared upload-body builder for the Jira and
+// Confluence attachment-upload commands; pass the result to Base.Upload.
+func MultipartFile(fieldName, filename string, r io.Reader) (*bytes.Buffer, string, error) {
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	fw, err := mw.CreateFormFile(fieldName, filename)
+	if err != nil {
+		return nil, "", apperr.New(apperr.CodeRequestEncodeFailed,
+			"could not build the upload body: "+err.Error())
+	}
+	if _, err := io.Copy(fw, r); err != nil {
+		return nil, "", apperr.New(apperr.CodeRequestEncodeFailed,
+			"could not read the upload file: "+err.Error())
+	}
+	if err := mw.Close(); err != nil {
+		return nil, "", apperr.New(apperr.CodeRequestEncodeFailed,
+			"could not finalize the upload body: "+err.Error())
+	}
+	return &buf, mw.FormDataContentType(), nil
 }
 
 // remap applies the optional RemapError hook to a non-nil error.

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -18,12 +19,51 @@ import (
 func newAttachmentCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "attachment",
-		Short: "List and download Confluence attachments",
+		Short: "List, download, and upload Confluence attachments",
 	}
 	cmd.AddCommand(
 		newAttachmentListCommand(info, g),
 		newAttachmentDownloadCommand(info, g),
+		newAttachmentUploadCommand(info, g),
 	)
+	return cmd
+}
+
+func newAttachmentUploadCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var file string
+	cmd := &cobra.Command{
+		Use:   "upload <page-id> --file <path>",
+		Short: "Upload a file as an attachment on a page",
+		Long: "Uploads --file as an attachment on the page. Confluence v2 has no\n" +
+			"attachment-create endpoint, so this uses the REST v1 surface. The API\n" +
+			"rejects a file whose name already exists on the page.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if file == "" {
+				return apperr.InvalidInput("a file is required; pass --file")
+			}
+			f, err := os.Open(file)
+			if err != nil {
+				return apperr.New("file_read_failed",
+					fmt.Sprintf("open attachment file %s: %v", file, err))
+			}
+			defer func() { _ = f.Close() }()
+			cc, err := confClient(info, g)
+			if err != nil {
+				return err
+			}
+			raw, err := cc.CreateAttachment(cmd.Context(), args[0], filepath.Base(file), f)
+			if err != nil {
+				return err
+			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, raw)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "uploaded %s to page %s\n", filepath.Base(file), args[0])
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&file, "file", "", "path to the file to upload (required)")
 	return cmd
 }
 
