@@ -17,6 +17,7 @@ func AddCommands(root *cobra.Command, info appinfo.Info, g *cli.GlobalFlags) {
 	cli.AddProductCommands(root,
 		newSpaceCommand(info, g),
 		newPageCommand(info, g),
+		newBlogpostCommand(info, g),
 		newAttachmentCommand(info, g),
 		newSearchCommand(info, g),
 		newStatusCommand(info, g),

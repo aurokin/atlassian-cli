@@ -284,71 +284,23 @@ func newPageEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			"with --body-format to replace the body instead.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			titleSet := cmd.Flags().Changed("title")
-			bodySet := cmd.Flags().Changed("body")
-			if !titleSet && !bodySet {
-				return apperr.InvalidInput(
-					"page edit requires at least one change; pass --title or --body")
-			}
-			if bodySet && bodyFormat == "" {
-				return apperr.InvalidInput("--body requires --body-format")
-			}
-			if !bodySet && bodyFormat != "" {
-				return apperr.InvalidInput("--body-format is only valid together with --body")
-			}
-			if bodySet {
-				if err := validateBodyFormat(bodyFormat); err != nil {
-					return err
-				}
+			titleSet, bodySet := cmd.Flags().Changed("title"), cmd.Flags().Changed("body")
+			if err := validateContentEditFlags("page", titleSet, bodySet, bodyFormat); err != nil {
+				return err
 			}
 			cc, err := confClient(info, g)
 			if err != nil {
 				return err
 			}
-			raw, err := cc.GetPage(cmd.Context(), args[0])
-			if err != nil {
-				return err
+			ops := contentEditOps{
+				noun: "page",
+				get:  cc.GetPage,
+				getADF: func(ctx context.Context, id string) (string, error) {
+					return adfBodyFrom(ctx, cc.GetPageWithFormat, id)
+				},
+				update: cc.UpdatePage,
 			}
-			cur, err := conf.Decode[conf.Page](raw)
-			if err != nil {
-				return err
-			}
-			newTitle := cur.Title
-			if titleSet {
-				newTitle = title
-			}
-			newFormat, newBody := bodyFormat, body
-			if !bodySet {
-				// A title-only edit must re-send the existing body, since a v2
-				// update replaces the whole page. Pages authored in the modern
-				// editor store their body as atlas_doc_format and have an empty
-				// storage representation, so fall back to a second GET for that
-				// representation before giving up.
-				switch {
-				case cur.Body.Storage.Value != "":
-					newFormat, newBody = "storage", cur.Body.Storage.Value
-				default:
-					adf, err := fetchADFBody(cmd.Context(), cc, args[0])
-					if err != nil {
-						return err
-					}
-					if adf == "" {
-						return apperr.InvalidInput(fmt.Sprintf(
-							"page %s has no storage or atlas_doc_format body to preserve; "+
-								"pass --body with --body-format to set the body explicitly", args[0]))
-					}
-					newFormat, newBody = "atlas_doc_format", adf
-				}
-			}
-			updated, err := cc.UpdatePage(cmd.Context(), args[0],
-				cur.Status, newTitle, newFormat, newBody, cur.Version.Number+1)
-			if err != nil {
-				return err
-			}
-			return cli.RenderDecoded(cmd, g, updated, conf.Decode[conf.Page],
-				func(w io.Writer, p conf.Page) {
-					fmt.Fprintf(w, "updated page %s to version %d\n", p.ID, p.Version.Number)
-				})
+			return runContentEdit(cmd, g, ops, args[0], titleSet, title, bodySet, body, bodyFormat)
 		},
 	}
 	f := cmd.Flags()
@@ -407,21 +359,6 @@ type pageDeleteResult struct {
 	ID      string `json:"id"`
 	Purged  bool   `json:"purged"`
 	Deleted bool   `json:"deleted"`
-}
-
-// fetchADFBody re-fetches a page in the atlas_doc_format representation and
-// returns its body value (empty if the page has none). It backs the title-only
-// edit fallback for modern-editor pages, whose storage representation is empty.
-func fetchADFBody(ctx context.Context, cc *conf.Client, id string) (string, error) {
-	raw, err := cc.GetPageWithFormat(ctx, id, "atlas_doc_format")
-	if err != nil {
-		return "", err
-	}
-	p, err := conf.Decode[conf.Page](raw)
-	if err != nil {
-		return "", err
-	}
-	return p.Body.AtlasDocFormat.Value, nil
 }
 
 // bodyFormatValues are the body representations the Confluence v2 write API

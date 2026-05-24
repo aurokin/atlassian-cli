@@ -643,3 +643,113 @@ func TestClientListSpacesAllMapsError(t *testing.T) {
 		t.Fatalf("error = %v, want a forbidden *apperr.Error", err)
 	}
 }
+
+func TestClientListBlogposts(t *testing.T) {
+	var gotPath, gotSpace string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath, gotSpace = r.URL.Path, r.URL.Query().Get("space-id")
+		_, _ = w.Write([]byte(`{"results":[{"id":"5","title":"Hello","status":"current"}]}`))
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).ListBlogposts(context.Background(), "789", 0)
+	if err != nil {
+		t.Fatalf("ListBlogposts: %v", err)
+	}
+	if gotPath != "/blogposts" {
+		t.Errorf("path = %q, want /blogposts", gotPath)
+	}
+	if gotSpace != "789" {
+		t.Errorf("space-id = %q, want 789", gotSpace)
+	}
+	list, err := Decode[BlogpostList](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(list.Results) != 1 || list.Results[0].ID != "5" || list.Results[0].Title != "Hello" {
+		t.Fatalf("blogposts = %+v", list.Results)
+	}
+}
+
+func TestClientListBlogpostsOmitsEmptySpace(t *testing.T) {
+	var gotSpacePresent bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, gotSpacePresent = r.URL.Query()["space-id"]
+		_, _ = w.Write([]byte(`{"results":[]}`))
+	}))
+	defer srv.Close()
+
+	if _, err := newTestClient(srv).ListBlogposts(context.Background(), "", 0); err != nil {
+		t.Fatalf("ListBlogposts: %v", err)
+	}
+	if gotSpacePresent {
+		t.Errorf("space-id query should be omitted when empty")
+	}
+}
+
+func TestClientGetBlogpost(t *testing.T) {
+	var gotPath, gotFormat string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath, gotFormat = r.URL.Path, r.URL.Query().Get("body-format")
+		_, _ = w.Write([]byte(`{"id":"5","title":"Hello","status":"current","version":{"number":2}}`))
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).GetBlogpost(context.Background(), "5")
+	if err != nil {
+		t.Fatalf("GetBlogpost: %v", err)
+	}
+	if gotPath != "/blogposts/5" || gotFormat != "storage" {
+		t.Errorf("request path=%q format=%q", gotPath, gotFormat)
+	}
+	b, err := Decode[Blogpost](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if b.ID != "5" || b.Version.Number != 2 {
+		t.Fatalf("blogpost = %+v", b)
+	}
+}
+
+func TestClientCreateBlogpost(t *testing.T) {
+	var gotMethod, gotPath string
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		_, _ = w.Write([]byte(`{"id":"5","title":"Hello"}`))
+	}))
+	defer srv.Close()
+
+	if _, err := newTestClient(srv).CreateBlogpost(context.Background(), "789", "Hello", "storage", "<p>hi</p>"); err != nil {
+		t.Fatalf("CreateBlogpost: %v", err)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/blogposts" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	if gotBody["spaceId"] != "789" || gotBody["status"] != "current" || gotBody["title"] != "Hello" {
+		t.Fatalf("body = %+v", gotBody)
+	}
+}
+
+func TestClientUpdateBlogpost(t *testing.T) {
+	var gotMethod, gotPath string
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		_, _ = w.Write([]byte(`{"id":"5","version":{"number":3}}`))
+	}))
+	defer srv.Close()
+
+	if _, err := newTestClient(srv).UpdateBlogpost(context.Background(), "5", "current", "New", "storage", "<p>v3</p>", 3); err != nil {
+		t.Fatalf("UpdateBlogpost: %v", err)
+	}
+	if gotMethod != http.MethodPut || gotPath != "/blogposts/5" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	ver, _ := gotBody["version"].(map[string]any)
+	if ver["number"] != float64(3) {
+		t.Fatalf("version = %v", gotBody["version"])
+	}
+}
