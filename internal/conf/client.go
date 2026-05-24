@@ -103,9 +103,16 @@ func (c *Client) GetPage(ctx context.Context, id string) (json.RawMessage, error
 // comma list), so each representation needs its own GET; callers that need
 // both storage and atlas_doc_format make two requests.
 func (c *Client) GetPageWithFormat(ctx context.Context, id, bodyFormat string) (json.RawMessage, error) {
+	return c.getContentWithFormat(ctx, "pages", id, bodyFormat)
+}
+
+// getContentWithFormat returns a single page or blogpost by id in the requested
+// body representation. Pages and blogposts share an identical v2 shape, so the
+// kind ("pages" or "blogposts") only selects the collection path.
+func (c *Client) getContentWithFormat(ctx context.Context, kind, id, bodyFormat string) (json.RawMessage, error) {
 	q := url.Values{}
 	q.Set("body-format", bodyFormat)
-	return c.Get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id), q))
+	return c.Get(ctx, restutil.WithQuery("/"+kind+"/"+url.PathEscape(id), q))
 }
 
 // GetChildPages returns a page of a page's direct children
@@ -146,6 +153,53 @@ func (c *Client) ListPageVersionsAll(ctx context.Context, id string, limit int) 
 	return c.followList(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/versions", q))
 }
 
+// ListBlogposts returns one page of blogposts (GET /blogposts), optionally
+// filtered to a space. An empty spaceID lists blogposts across the site.
+func (c *Client) ListBlogposts(ctx context.Context, spaceID string, limit int) (json.RawMessage, error) {
+	return c.Get(ctx, restutil.WithQuery("/blogposts", blogpostQuery(spaceID, limit)))
+}
+
+// ListBlogpostsAll follows the blogpost listing to completion.
+func (c *Client) ListBlogpostsAll(ctx context.Context, spaceID string, limit int) (json.RawMessage, error) {
+	return c.followList(ctx, restutil.WithQuery("/blogposts", blogpostQuery(spaceID, limit)))
+}
+
+// blogpostQuery assembles the blogpost list query: an optional space filter and
+// a page size.
+func blogpostQuery(spaceID string, limit int) url.Values {
+	q := url.Values{}
+	if spaceID != "" {
+		q.Set("space-id", spaceID)
+	}
+	setLimit(q, limit)
+	return q
+}
+
+// GetBlogpost returns a single blogpost by id with its storage-format body
+// (GET /blogposts/{id}?body-format=storage).
+func (c *Client) GetBlogpost(ctx context.Context, id string) (json.RawMessage, error) {
+	return c.getContentWithFormat(ctx, "blogposts", id, "storage")
+}
+
+// GetBlogpostWithFormat returns a single blogpost by id in the requested body
+// representation. Like pages, each representation needs its own GET.
+func (c *Client) GetBlogpostWithFormat(ctx context.Context, id, bodyFormat string) (json.RawMessage, error) {
+	return c.getContentWithFormat(ctx, "blogposts", id, bodyFormat)
+}
+
+// CreateBlogpost creates a blogpost in a space (POST /blogposts) and returns
+// the created blogpost.
+func (c *Client) CreateBlogpost(ctx context.Context, spaceID, title, bodyFormat, body string) (json.RawMessage, error) {
+	return c.createContent(ctx, "blogposts", spaceID, title, bodyFormat, body)
+}
+
+// UpdateBlogpost replaces a blogpost (PUT /blogposts/{id}) and returns the
+// updated blogpost. Like a page, a v2 update is a full replacement carrying the
+// next version number.
+func (c *Client) UpdateBlogpost(ctx context.Context, id, status, title, bodyFormat, body string, version int) (json.RawMessage, error) {
+	return c.updateContent(ctx, "blogposts", id, status, title, bodyFormat, body, version)
+}
+
 // SearchCQL runs a CQL query. CQL is a v1-only surface, so this uses the v1
 // search endpoint.
 func (c *Client) SearchCQL(ctx context.Context, cql string, limit int) (json.RawMessage, error) {
@@ -163,7 +217,14 @@ func (c *Client) SearchCQL(ctx context.Context, cql string, limit int) (json.Raw
 // page. The body is sent verbatim under the named representation; Confluence
 // never converts it.
 func (c *Client) CreatePage(ctx context.Context, spaceID, title, bodyFormat, body string) (json.RawMessage, error) {
-	return c.Send(ctx, "POST", "/pages", map[string]any{
+	return c.createContent(ctx, "pages", spaceID, title, bodyFormat, body)
+}
+
+// createContent creates a page or blogpost in a space and returns the created
+// content. Pages and blogposts share an identical create body, so the kind
+// ("pages" or "blogposts") only selects the collection path.
+func (c *Client) createContent(ctx context.Context, kind, spaceID, title, bodyFormat, body string) (json.RawMessage, error) {
+	return c.Send(ctx, "POST", "/"+kind, map[string]any{
 		"spaceId": spaceID,
 		"status":  "current",
 		"title":   title,
@@ -179,7 +240,14 @@ func (c *Client) CreatePage(ctx context.Context, spaceID, title, bodyFormat, bod
 // the complete post-edit state: status, title, body, and the next version
 // number (the current number plus one).
 func (c *Client) UpdatePage(ctx context.Context, id, status, title, bodyFormat, body string, version int) (json.RawMessage, error) {
-	return c.Send(ctx, "PUT", "/pages/"+url.PathEscape(id), map[string]any{
+	return c.updateContent(ctx, "pages", id, status, title, bodyFormat, body, version)
+}
+
+// updateContent replaces a page or blogpost and returns the updated content.
+// Pages and blogposts share an identical update body, so the kind ("pages" or
+// "blogposts") only selects the collection path.
+func (c *Client) updateContent(ctx context.Context, kind, id, status, title, bodyFormat, body string, version int) (json.RawMessage, error) {
+	return c.Send(ctx, "PUT", "/"+kind+"/"+url.PathEscape(id), map[string]any{
 		"id":     id,
 		"status": status,
 		"title":  title,

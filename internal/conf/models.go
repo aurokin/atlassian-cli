@@ -65,6 +65,24 @@ type PageList struct {
 	Results []Page `json:"results"`
 }
 
+// Blogpost is the subset of a Confluence blogpost that human output renders,
+// plus the fields a versioned edit needs. A v2 blogpost shares the page field
+// shape (id, title, status, spaceId, version, body), differing only in the
+// content type and collection path.
+type Blogpost struct {
+	ID      string      `json:"id"`
+	Title   string      `json:"title"`
+	Status  string      `json:"status"`
+	SpaceID string      `json:"spaceId"`
+	Version PageVersion `json:"version"`
+	Body    PageBody    `json:"body"`
+}
+
+// BlogpostList is a page of blogpost-list results.
+type BlogpostList struct {
+	Results []Blogpost `json:"results"`
+}
+
 // Ancestor is one entry in a page's ancestor chain (its breadcrumb). The v2
 // ancestors endpoint returns minimal objects — only an id and a content type —
 // so richer detail (e.g. titles) needs a follow-up GET on each ancestor.

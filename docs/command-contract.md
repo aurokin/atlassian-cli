@@ -611,6 +611,26 @@ atl-conf page label remove <page-id> <label>
 detaches one. Confluence v2 has no page-label write endpoint, so `add` and
 `remove` use the REST **v1** content-label surface.
 
+### `blogpost`
+
+```
+atl-conf blogpost list [--space <key>] [--limit N] [--all]
+atl-conf blogpost view <id>
+atl-conf blogpost create --space <key> --title <text> --body <text> --body-format <fmt>
+atl-conf blogpost edit <id> [--title <text>] [--body <text> --body-format <fmt>]
+```
+
+Blogposts share the v2 page field shape (id, title, status, spaceId, version,
+body) over the `/blogposts` collection, so the commands mirror `page`. `list`
+returns blogposts (`GET /blogposts`); `--space` is optional and, when given, is
+resolved from key to id to filter. `view` returns one blogpost including its
+storage-format body under `--json`. `create` requires `--space`, `--title`,
+`--body`, and `--body-format` (one of `storage`, `atlas_doc_format`, `wiki`),
+sent verbatim. `edit` updates a blogpost by id and needs at least one of
+`--title` or `--body`; like `page edit`, a v2 update is a full replacement, so a
+title-only edit re-sends the current body (storage, falling back to
+`atlas_doc_format` for modern-editor blogposts).
+
 ### `attachment`
 
 ```
