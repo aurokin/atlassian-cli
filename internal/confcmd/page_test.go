@@ -561,3 +561,60 @@ func TestPageEditRequiresExactlyOneArg(t *testing.T) {
 		t.Fatal("page edit with no id returned no error")
 	}
 }
+
+func TestPageDeleteMovesToTrash(t *testing.T) {
+	var gotMethod, gotPath, gotPurge string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath, gotPurge = r.Method, r.URL.Path, r.URL.Query().Get("purge")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	out, err := execConf(t, "page", "delete", "10", "--site", "work")
+	if err != nil {
+		t.Fatalf("page delete: %v\n%s", err, out)
+	}
+	if gotMethod != http.MethodDelete || gotPath != "/pages/10" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	if gotPurge != "" {
+		t.Errorf("purge query = %q, want absent for a trash delete", gotPurge)
+	}
+	if !strings.Contains(out, "moved page 10 to trash") {
+		t.Fatalf("output missing confirmation:\n%s", out)
+	}
+}
+
+func TestPagePurgeRequiresConfirmation(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	// The --yes guard runs before client construction, so a clean config never
+	// reaches the network.
+	_, err := execConf(t, "page", "delete", "10", "--site", "work", "--purge")
+	if err == nil || !strings.Contains(err.Error(), "pass --yes") {
+		t.Fatalf("expected confirmation error, got %v", err)
+	}
+}
+
+func TestPagePurgeWithConfirmation(t *testing.T) {
+	var gotPurge string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPurge = r.URL.Query().Get("purge")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	out, err := execConf(t, "page", "delete", "10", "--site", "work", "--purge", "--yes")
+	if err != nil {
+		t.Fatalf("page delete --purge: %v\n%s", err, out)
+	}
+	if gotPurge != "true" {
+		t.Errorf("purge query = %q, want true", gotPurge)
+	}
+	if !strings.Contains(out, "purged page 10") {
+		t.Fatalf("output missing confirmation:\n%s", out)
+	}
+}

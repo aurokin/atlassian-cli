@@ -161,6 +161,21 @@ func (c *Client) UpdatePage(ctx context.Context, id, status, title, bodyFormat, 
 	})
 }
 
+// DeletePage deletes a page (DELETE /pages/{id}). By default Confluence moves
+// the page to the space trash, where it can be restored. When purge is true it
+// sends ?purge=true to permanently delete a page that is *already* in the
+// trash; purging a current (untrashed) page is rejected by the API.
+func (c *Client) DeletePage(ctx context.Context, id string, purge bool) error {
+	path := "/pages/" + url.PathEscape(id)
+	if purge {
+		q := url.Values{}
+		q.Set("purge", "true")
+		path = restutil.WithQuery(path, q)
+	}
+	_, err := c.Send(ctx, "DELETE", path, nil)
+	return err
+}
+
 // decodeError wraps a pagination decode failure as a structured error.
 func decodeError(err error) error {
 	return restutil.DecodeError(productName, err)

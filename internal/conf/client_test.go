@@ -301,6 +301,46 @@ func TestClientUpdatePage(t *testing.T) {
 	}
 }
 
+func TestClientDeletePage(t *testing.T) {
+	t.Run("trash by default", func(t *testing.T) {
+		var gotMethod, gotPurge string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotMethod, gotPurge = r.Method, r.URL.Query().Get("purge")
+			if r.URL.Path != "/pages/10" {
+				t.Errorf("path = %q, want /pages/10", r.URL.Path)
+			}
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		defer srv.Close()
+
+		if err := newTestClient(srv).DeletePage(context.Background(), "10", false); err != nil {
+			t.Fatalf("DeletePage: %v", err)
+		}
+		if gotMethod != http.MethodDelete {
+			t.Errorf("method = %q, want DELETE", gotMethod)
+		}
+		if gotPurge != "" {
+			t.Errorf("purge query = %q, want absent", gotPurge)
+		}
+	})
+
+	t.Run("purge sends purge=true", func(t *testing.T) {
+		var gotPurge string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPurge = r.URL.Query().Get("purge")
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		defer srv.Close()
+
+		if err := newTestClient(srv).DeletePage(context.Background(), "10", true); err != nil {
+			t.Fatalf("DeletePage purge: %v", err)
+		}
+		if gotPurge != "true" {
+			t.Errorf("purge query = %q, want true", gotPurge)
+		}
+	})
+}
+
 func TestSearchCQLMapsNonOKToStructuredError(t *testing.T) {
 	// SearchCQL is a v1 endpoint; this confirms v1 calls also surface the
 	// structured error from httpclient, and exercises a non-404 mapping.
