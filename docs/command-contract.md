@@ -6,24 +6,34 @@
 
 ## Scope
 
-Phase 1 delivers the shared foundation: two binaries, global flags, config,
-structured output and errors, auth signing, an HTTP client, the `auth` command
-subtree, and the raw `api` escape hatch. Phase 2 adds offline URL/key
-resolution: the `resolve` and `browse` commands. Phase 3A adds the read-only
-Jira product commands: `project`, `issue` (view/list), `issue comment`
-(list/view), `search issues`, and `status`. Phase 3B adds the Jira mutating
-commands: `issue` (create/edit/transition) and `issue comment`
-(create/edit/delete). Phase 4A adds the read-only Confluence product commands:
-`space` (list/view), `page` (list/view/children), `search cql`, and `status`.
-Phase 4B adds the Confluence mutating commands: `page` (create/edit). Phase 5A
-makes the global `--jq` flag a real jq filter; Phase 5B adds the `--all`
-follow-all-pages flag to the list and search commands. Phase 6 adds secure
-token storage: `auth login` can store a token in the OS keychain (or a `0600`
-fallback file), so commands no longer require `--token-env` on every run.
-Phase 7 deepens the Confluence surface with `page comment`, `page label`,
-and `attachment` commands. Phase 8 deepens the Jira `issue` surface with
-`assign`, `watch`/`unwatch`/`watchers`, `link`/`link types`, and `worklog`
-(list/add).
+All three binaries are implemented on one shared foundation. This document
+describes the implemented surface, organized by capability; the per-command
+detail follows under [Commands](#commands). (For the phase-by-phase build
+history — *why* something was built — see the archived plans under
+[archive/](archive/). For using the tools from scripts and the stability
+posture, see [consuming.md](consuming.md).)
+
+### Shared foundation (every binary)
+
+Global flags (`--json`, `--jq`, `--site`, `--no-prompt`, `--trace`), config and
+site selection (`--site` → `ATL_SITE` → `default_site`), keychain-first token
+storage, structured output and the per-category error model, the `auth`
+subtree, the raw `api` escape hatch, offline `resolve`/`browse`, `alias`,
+`extension`, shell `completion`, and `version`. List/search commands take
+`--limit` and `--all`.
+
+### Capability matrix
+
+| Area | `atl-jira` | `atl-conf` | `atl-bb` |
+|---|---|---|---|
+| Read / list | `project`, `issue` (view/list), `issue comment`, `field list`, `search issues` (JQL), `status` | `space`, `page` (view/list/children/ancestors/versions), `page comment`, `page label`, `blogpost` (list/view), `attachment` (list/download), `search` (CQL + text), `status` | `repo`, `pr`, `pipeline` (+ steps/log), `issue`, `workspace`, `project`, `commit`, `src`/`file`, `branch`, `tag`, `deployment`/`environment`, `search`, `status` |
+| Create / edit | `issue` create/edit/transition, `assign`, `watch`/`unwatch`, `link`, `worklog` add, `comment` create/edit/delete | `page` create/edit, `blogpost` create/edit, `page comment`/`label` writes, `attachment` upload | `repo create`, `issue update`, `pr` approve/decline/merge, `pipeline stop` |
+| Delete (guarded by `--yes`) | `comment delete` | `page delete` (trash; `--purge` to remove permanently) | `repo delete`, `project delete`, `branch`/`tag` delete |
+
+Destructive verbs require `--yes` (see
+[ADR 0003](adr/0003-destructive-verbs-require-yes.md)). The matrix is a summary;
+the authoritative per-command behavior, flags, and known limitations are the
+sections below.
 
 ## Binaries
 
@@ -125,7 +135,15 @@ atl-jira version [--json]
 ```
 
 Prints binary, product, and version. With `--json`, emits the `appinfo.Info`
-object (`binary`, `product`, `version`, optional `commit`, `date`).
+object (`binary`, `product`, `version`, optional `commit`, `date`):
+
+```json
+{"binary":"atl-jira","product":"jira","version":"v0.1.0","commit":"fa10375","date":"..."}
+```
+
+`version`/`commit`/`date` are stamped at build time via ldflags (by `make
+build`/`make install` locally, and by the release pipeline from the git tag —
+see [releasing.md](releasing.md)). Include this output in bug reports.
 
 ### `auth login`
 
