@@ -30,6 +30,11 @@ jobs:
       - name: Run the pre-merge gate
         run: make check
 
+      # Smoke-test the doc walker (cobra/doc tree generation) so a broken
+      # command tree is caught in CI rather than when someone runs `make docs`.
+      - name: Check gen-docs runs cleanly
+        run: make docs-check
+
   lint:
     name: golangci-lint
     runs-on: ubuntu-latest

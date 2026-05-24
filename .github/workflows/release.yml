@@ -1,0 +1,41 @@
+name: Release
+
+# Cut a release when a version tag is pushed (e.g. `git tag v1.2.0 && git push
+# --tags`). goreleaser builds all three binaries for every target platform,
+# bundles them into per-platform archives, and uploads them to a GitHub Release
+# for the tag. See .goreleaser.yaml for the build/archive configuration.
+on:
+  push:
+    tags:
+      - "v*"
+
+# goreleaser needs write access to create the GitHub Release and upload assets.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: goreleaser
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          # goreleaser derives the changelog from the full commit history and
+          # the previous tag, so it needs the whole repository, not a shallow
+          # clone.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          # Stay in lockstep with the module's Go directive.
+          go-version-file: go.mod
+
+      - name: Run goreleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -15,7 +15,7 @@ LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DA
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build install compile compile-integration test test-race cover integration vet fmt fmt-check lint check docs clean
+.PHONY: help build install compile compile-integration test test-race cover integration vet fmt fmt-check lint check docs docs-check clean
 
 help: ## List available targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -86,6 +86,14 @@ check: fmt-check compile compile-integration vet test ## Full pre-merge gate: fm
 
 docs: ## Regenerate the Markdown command reference under docs/cli (not committed)
 	go run ./cmd/gen-docs --product all --out $(DOCS_DIR)
+
+# Smoke test for the doc walker: generate into a throwaway directory and discard
+# it. This catches a gen-docs regression (a broken command tree, a nil panic in
+# the walker) in CI without committing or diffing the generated Markdown.
+docs-check: ## Verify gen-docs runs cleanly into a temp dir (no output kept)
+	@tmp=$$(mktemp -d); \
+	trap 'rm -rf "$$tmp"' EXIT; \
+	go run ./cmd/gen-docs --product all --out "$$tmp"
 
 clean: ## Remove build artifacts and generated docs
 	rm -rf $(BIN_DIR) $(DOCS_DIR) coverage.out
