@@ -618,3 +618,67 @@ func TestPagePurgeWithConfirmation(t *testing.T) {
 		t.Fatalf("output missing confirmation:\n%s", out)
 	}
 }
+
+func TestPageAncestorsHuman(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/pages/10/ancestors" {
+			t.Errorf("path = %q", r.URL.Path)
+		}
+		_, _ = w.Write([]byte(`{"results":[{"id":"1","type":"page"},{"id":"2","type":"page"}]}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	out, err := execConf(t, "page", "ancestors", "10", "--site", "work")
+	if err != nil {
+		t.Fatalf("page ancestors: %v\n%s", err, out)
+	}
+	for _, want := range []string{"page", "1", "2"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestPageVersionsHuman(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/pages/10/versions" {
+			t.Errorf("path = %q", r.URL.Path)
+		}
+		_, _ = w.Write([]byte(`{"results":[{"number":2,"authorId":"abc","createdAt":"2026-02-02T00:00:00.000Z","message":"second edit","minorEdit":true}]}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	out, err := execConf(t, "page", "versions", "10", "--site", "work")
+	if err != nil {
+		t.Fatalf("page versions: %v\n%s", err, out)
+	}
+	for _, want := range []string{"v2", "minor", "second edit", "abc"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("output missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestPageVersionsJSONIsRawBody(t *testing.T) {
+	body := `{"results":[{"number":1,"authorId":"abc"}]}`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	out, err := execConf(t, "page", "versions", "10", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("page versions --json: %v\n%s", err, out)
+	}
+	for _, want := range []string{`"results"`, `"number"`, `"authorId"`} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("JSON output missing %q:\n%s", want, out)
+		}
+	}
+}

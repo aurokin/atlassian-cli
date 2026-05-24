@@ -301,6 +301,106 @@ func TestClientUpdatePage(t *testing.T) {
 	}
 }
 
+func TestClientGetPageAncestors(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_, _ = w.Write([]byte(`{"results":[{"id":"1","type":"page"},{"id":"2","type":"page"}]}`))
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).GetPageAncestors(context.Background(), "10", 0)
+	if err != nil {
+		t.Fatalf("GetPageAncestors: %v", err)
+	}
+	if gotPath != "/pages/10/ancestors" {
+		t.Errorf("path = %q, want /pages/10/ancestors", gotPath)
+	}
+	list, err := Decode[AncestorList](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(list.Results) != 2 || list.Results[0].ID != "1" || list.Results[0].Type != "page" {
+		t.Fatalf("ancestors = %+v", list.Results)
+	}
+}
+
+func TestClientListPageVersions(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_, _ = w.Write([]byte(`{"results":[{"number":1,"authorId":"abc","createdAt":"2026-01-01T00:00:00.000Z","message":"first","minorEdit":false}]}`))
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).ListPageVersions(context.Background(), "10", 0)
+	if err != nil {
+		t.Fatalf("ListPageVersions: %v", err)
+	}
+	if gotPath != "/pages/10/versions" {
+		t.Errorf("path = %q, want /pages/10/versions", gotPath)
+	}
+	list, err := Decode[VersionList](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(list.Results) != 1 || list.Results[0].Number != 1 || list.Results[0].Message != "first" {
+		t.Fatalf("versions = %+v", list.Results)
+	}
+}
+
+func TestClientGetPageAncestorsAllFollowsCursor(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/pages/10/ancestors" {
+			t.Errorf("path = %q", r.URL.Path)
+		}
+		if r.URL.Query().Get("cursor") == "" {
+			_, _ = w.Write([]byte(`{"results":[{"id":"1","type":"page"}],"_links":{"next":"/wiki/api/v2/pages/10/ancestors?cursor=c2"}}`))
+		} else {
+			_, _ = w.Write([]byte(`{"results":[{"id":"2","type":"page"}]}`))
+		}
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).GetPageAncestorsAll(context.Background(), "10", 0)
+	if err != nil {
+		t.Fatalf("GetPageAncestorsAll: %v", err)
+	}
+	list, err := Decode[AncestorList](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(list.Results) != 2 {
+		t.Fatalf("ancestors = %+v, want 2 aggregated", list.Results)
+	}
+}
+
+func TestClientListPageVersionsAllFollowsCursor(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/pages/10/versions" {
+			t.Errorf("path = %q", r.URL.Path)
+		}
+		if r.URL.Query().Get("cursor") == "" {
+			_, _ = w.Write([]byte(`{"results":[{"number":1}],"_links":{"next":"/wiki/api/v2/pages/10/versions?cursor=c2"}}`))
+		} else {
+			_, _ = w.Write([]byte(`{"results":[{"number":2}]}`))
+		}
+	}))
+	defer srv.Close()
+
+	raw, err := newTestClient(srv).ListPageVersionsAll(context.Background(), "10", 0)
+	if err != nil {
+		t.Fatalf("ListPageVersionsAll: %v", err)
+	}
+	list, err := Decode[VersionList](raw)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(list.Results) != 2 {
+		t.Fatalf("versions = %+v, want 2 aggregated", list.Results)
+	}
+}
+
 func TestClientDeletePage(t *testing.T) {
 	t.Run("trash by default", func(t *testing.T) {
 		var gotMethod, gotPurge string

@@ -116,6 +116,36 @@ func (c *Client) GetChildPages(ctx context.Context, id string, limit int) (json.
 	return c.Get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/children", q))
 }
 
+// GetPageAncestors returns a page of a page's ancestor chain, top-to-bottom
+// (GET /pages/{id}/ancestors). The endpoint returns minimal {id, type} objects.
+func (c *Client) GetPageAncestors(ctx context.Context, id string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.Get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/ancestors", q))
+}
+
+// GetPageAncestorsAll follows a page's ancestor chain to completion.
+func (c *Client) GetPageAncestorsAll(ctx context.Context, id string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.followList(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/ancestors", q))
+}
+
+// ListPageVersions returns a page of a page's version history
+// (GET /pages/{id}/versions). Confluence returns versions oldest-first.
+func (c *Client) ListPageVersions(ctx context.Context, id string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.Get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/versions", q))
+}
+
+// ListPageVersionsAll follows a page's version history to completion.
+func (c *Client) ListPageVersionsAll(ctx context.Context, id string, limit int) (json.RawMessage, error) {
+	q := url.Values{}
+	setLimit(q, limit)
+	return c.followList(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/versions", q))
+}
+
 // SearchCQL runs a CQL query. CQL is a v1-only surface, so this uses the v1
 // search endpoint.
 func (c *Client) SearchCQL(ctx context.Context, cql string, limit int) (json.RawMessage, error) {

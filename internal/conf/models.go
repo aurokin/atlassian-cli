@@ -65,6 +65,35 @@ type PageList struct {
 	Results []Page `json:"results"`
 }
 
+// Ancestor is one entry in a page's ancestor chain (its breadcrumb). The v2
+// ancestors endpoint returns minimal objects — only an id and a content type —
+// so richer detail (e.g. titles) needs a follow-up GET on each ancestor.
+type Ancestor struct {
+	ID   string `json:"id"`
+	Type string `json:"type"`
+}
+
+// AncestorList is a page of ancestor results.
+type AncestorList struct {
+	Results []Ancestor `json:"results"`
+}
+
+// Version is one entry in a page's version history. It is distinct from
+// PageVersion (the bare {number} stamp an edit echoes back); a history entry
+// also carries who changed it, when, and the optional change message.
+type Version struct {
+	Number    int    `json:"number"`
+	Message   string `json:"message,omitempty"`
+	AuthorID  string `json:"authorId,omitempty"`
+	CreatedAt string `json:"createdAt,omitempty"`
+	MinorEdit bool   `json:"minorEdit,omitempty"`
+}
+
+// VersionList is a page of version-history results.
+type VersionList struct {
+	Results []Version `json:"results"`
+}
+
 // Comment is the subset of a Confluence footer comment that human output
 // renders, plus the fields a versioned edit needs to reconstruct it.
 type Comment struct {
