@@ -1,0 +1,81 @@
+# goreleaser configuration for the Atlassian CLIs. A tag push (v*) triggers the
+# release workflow (.github/workflows/release.yml), which runs `goreleaser
+# release`. Validate changes locally with `goreleaser check`.
+version: 2
+
+project_name: atlassian-cli
+
+before:
+  hooks:
+    - go mod download
+
+# One build per binary. The ldflags mirror the Makefile's: the version comes
+# from the tag, plus the short commit and the build date, injected into each
+# command's main package (main.version / main.commit / main.date).
+builds:
+  - id: atl-jira
+    main: ./cmd/atl-jira
+    binary: atl-jira
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .ShortCommit }}
+      - -X main.date={{ .Date }}
+  - id: atl-conf
+    main: ./cmd/atl-conf
+    binary: atl-conf
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .ShortCommit }}
+      - -X main.date={{ .Date }}
+  - id: atl-bb
+    main: ./cmd/atl-bb
+    binary: atl-bb
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X main.version={{ .Version }}
+      - -X main.commit={{ .ShortCommit }}
+      - -X main.date={{ .Date }}
+
+# One archive per platform bundling all three binaries together, so a user
+# downloads a single atlassian-cli archive and gets atl-jira, atl-conf, and
+# atl-bb.
+archives:
+  - id: atlassian-cli
+    ids: [atl-jira, atl-conf, atl-bb]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+release:
+  draft: false
