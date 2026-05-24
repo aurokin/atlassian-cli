@@ -9,6 +9,8 @@
 
 # Release artifacts (goreleaser)
 /dist/
+# Generated command-reference bundle built during a release (goreleaser before-hook)
+/dist-docs/
 
 # Local secrets — never commit
 .env

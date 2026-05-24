@@ -133,7 +133,13 @@ cap; if it hits the cap with pages still remaining, the command exits with the
 
 ## The generated command reference
 
-The full per-command Markdown reference is generated on demand (it is not
-committed to the repo). Build it from a clone with `make docs` (wraps
-`go run ./cmd/gen-docs`), or read [command-contract.md](command-contract.md),
-which is the canonical hand-maintained description of the surface.
+The full per-command Markdown reference is **attached to each release** as
+`atlassian-cli_docs.tar.gz` (under `atlassian-cli-docs/{jira,confluence,bitbucket}/`),
+so you can browse the reference matched to your version without a Go toolchain —
+download it from the [Releases page](https://github.com/aurokin/atlassian-cli/releases)
+next to the binary archives.
+
+It is intentionally **not committed** to the repo (the source of truth is the
+command tree itself). From a clone you can regenerate it with `make docs` (wraps
+`go run ./cmd/gen-docs`). For a hand-maintained, capability-organized overview,
+read [command-contract.md](command-contract.md).

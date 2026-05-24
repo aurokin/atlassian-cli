@@ -8,6 +8,13 @@ project_name: atlassian-cli
 before:
   hooks:
     - go mod download
+    # Generate the per-command Markdown reference and bundle it as a standalone
+    # release asset, so a consumer gets a browsable command reference matched to
+    # the release without a Go toolchain (the in-repo tree stays generated on
+    # demand — see docs/releasing.md). Regenerated fresh each run into a
+    # throwaway, gitignored dir; goreleaser's --clean only touches ./dist.
+    - sh -c 'rm -rf dist-docs && go run ./cmd/gen-docs --product all --out dist-docs/atlassian-cli-docs'
+    - sh -c 'tar -czf dist-docs/atlassian-cli_docs.tar.gz -C dist-docs atlassian-cli-docs'
 
 # One build per binary. The ldflags mirror the Makefile's: the version comes
 # from the tag, plus the short commit and the build date, injected into each
@@ -79,3 +86,7 @@ changelog:
 
 release:
   draft: false
+  # Attach the generated command-reference bundle alongside the binary archives
+  # and checksums. Built by the before-hooks above.
+  extra_files:
+    - glob: ./dist-docs/atlassian-cli_docs.tar.gz
