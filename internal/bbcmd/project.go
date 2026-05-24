@@ -19,12 +19,13 @@ func newProjectCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "project",
 		Aliases: []string{"projects"},
-		Short:   "List, view, and create Bitbucket projects",
+		Short:   "List, view, create, and delete Bitbucket projects",
 	}
 	cmd.AddCommand(
 		newProjectListCommand(info, g),
 		newProjectViewCommand(info, g),
 		newProjectCreateCommand(info, g),
+		newProjectDeleteCommand(info, g),
 	)
 	return cmd
 }
@@ -139,6 +140,42 @@ func newProjectCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 	f.StringVar(&name, "name", "", "project name (required)")
 	f.StringVar(&description, "description", "", "project description")
 	f.BoolVar(&private, "private", false, "create the project as private")
+	return cmd
+}
+
+func newProjectDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var (
+		workspaceFlag string
+		yes           bool
+	)
+	cmd := &cobra.Command{
+		Use:   "delete <project-key>",
+		Short: "Delete a project (irreversible)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !yes {
+				return apperr.InvalidInput("deleting a project is irreversible; pass --yes to confirm")
+			}
+			workspace, err := resolveWorkspace(nil, workspaceFlag)
+			if err != nil {
+				return err
+			}
+			bc, err := bbClient(info, g)
+			if err != nil {
+				return err
+			}
+			if err := bc.DeleteProject(cmd.Context(), workspace, args[0]); err != nil {
+				return err
+			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, deleteResult{Resource: "project", ID: args[0], Deleted: true})
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "deleted project %s\n", args[0])
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&workspaceFlag, "workspace", "", "workspace slug the project belongs to (required)")
+	cmd.Flags().BoolVar(&yes, "yes", false, "confirm the irreversible deletion")
 	return cmd
 }
 

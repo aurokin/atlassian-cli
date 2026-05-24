@@ -171,6 +171,9 @@ func newTagDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err := bc.DeleteTag(cmd.Context(), target.Workspace, target.Repo, name); err != nil {
 				return err
 			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, deleteResult{Resource: "tag", ID: name, Deleted: true})
+			}
 			fmt.Fprintf(cmd.OutOrStdout(), "deleted tag %s\n", name)
 			return nil
 		},

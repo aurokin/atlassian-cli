@@ -127,3 +127,23 @@ func TestBranchDelete(t *testing.T) {
 		t.Fatalf("unexpected output:\n%s", out)
 	}
 }
+
+func TestBranchDeleteJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "branch", "delete", "stale", "--repo", "acme/widgets", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("branch delete --json: %v\n%s", err, out)
+	}
+	for _, want := range []string{`"resource"`, `"branch"`, `"id"`, `"stale"`, `"deleted"`, `true`} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("JSON output missing %q:\n%s", want, out)
+		}
+	}
+}

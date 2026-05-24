@@ -31,12 +31,13 @@ func newIssueCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "issue",
 		Aliases: []string{"issues"},
-		Short:   "List, view, and create Bitbucket issues",
+		Short:   "List, view, create, and update Bitbucket issues",
 	}
 	cmd.AddCommand(
 		newIssueListCommand(info, g),
 		newIssueViewCommand(info, g),
 		newIssueCreateCommand(info, g),
+		newIssueUpdateCommand(info, g),
 	)
 	return cmd
 }
@@ -154,6 +155,55 @@ func newIssueCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 	f := cmd.Flags()
 	f.StringVar(&opts.Title, "title", "", "issue title (required)")
 	f.StringVar(&opts.Body, "body", "", "issue description (raw markup)")
+	f.StringVar(&opts.Kind, "kind", "", "issue kind: bug, enhancement, proposal, or task")
+	f.StringVar(&opts.Priority, "priority", "", "issue priority: trivial, minor, major, critical, or blocker")
+	return cmd
+}
+
+func newIssueUpdateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var (
+		repoFlag      string
+		workspaceFlag string
+		opts          bitbucket.UpdateIssueOptions
+	)
+	cmd := &cobra.Command{
+		Use:   "update <id>",
+		Short: "Update an issue's fields or transition its state",
+		Long: "Changes one or more fields of an existing issue. Use --state to\n" +
+			"transition the issue (e.g. new, open, resolved, on hold, invalid,\n" +
+			"duplicate, wontfix, closed). At least one field flag is required.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := parseIssueID(args[0])
+			if err != nil {
+				return err
+			}
+			if opts.IsEmpty() {
+				return apperr.InvalidInput("nothing to update; pass at least one of --state, --title, --body, --kind, or --priority")
+			}
+			target, err := resolveRepoTarget(nil, repoFlag, workspaceFlag)
+			if err != nil {
+				return err
+			}
+			bc, err := bbClient(info, g)
+			if err != nil {
+				return err
+			}
+			raw, err := bc.UpdateIssue(cmd.Context(), target.Workspace, target.Repo, id, opts)
+			if err != nil {
+				return err
+			}
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Issue],
+				func(w io.Writer, issue bitbucket.Issue) {
+					fmt.Fprintf(w, "updated issue #%d (state: %s)\n", issue.ID, issue.State)
+				})
+		},
+	}
+	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
+	f := cmd.Flags()
+	f.StringVar(&opts.State, "state", "", "transition the issue to this state")
+	f.StringVar(&opts.Title, "title", "", "new issue title")
+	f.StringVar(&opts.Body, "body", "", "new issue description (raw markup)")
 	f.StringVar(&opts.Kind, "kind", "", "issue kind: bug, enhancement, proposal, or task")
 	f.StringVar(&opts.Priority, "priority", "", "issue priority: trivial, minor, major, critical, or blocker")
 	return cmd

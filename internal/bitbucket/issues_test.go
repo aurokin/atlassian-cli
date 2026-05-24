@@ -88,6 +88,43 @@ func TestCreateIssueBody(t *testing.T) {
 	}
 }
 
+func TestUpdateIssueBody(t *testing.T) {
+	var gotMethod, gotPath string
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &gotBody)
+		_, _ = w.Write([]byte(`{"id":3,"title":"t","state":"resolved"}`))
+	}))
+	defer srv.Close()
+
+	_, err := newTestClient(srv).UpdateIssue(context.Background(), "acme", "widgets", 3,
+		UpdateIssueOptions{State: "resolved"})
+	if err != nil {
+		t.Fatalf("UpdateIssue: %v", err)
+	}
+	if gotMethod != http.MethodPut || gotPath != "/repositories/acme/widgets/issues/3" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	if gotBody["state"] != "resolved" {
+		t.Fatalf("body = %+v", gotBody)
+	}
+	// Unset fields are omitted entirely.
+	if _, ok := gotBody["title"]; ok {
+		t.Fatalf("title should be omitted: %+v", gotBody)
+	}
+}
+
+func TestUpdateIssueOptionsIsEmpty(t *testing.T) {
+	if !(UpdateIssueOptions{}).IsEmpty() {
+		t.Errorf("zero options should be empty")
+	}
+	if (UpdateIssueOptions{State: "open"}).IsEmpty() {
+		t.Errorf("options with a state should not be empty")
+	}
+}
+
 func TestListIssuesTrackerDisabled(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)

@@ -129,3 +129,36 @@ func TestProjectCreateRequiresName(t *testing.T) {
 		t.Fatalf("expected name-required error, got %v", err)
 	}
 }
+
+func TestProjectDeleteRequiresConfirmation(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	// --yes guard runs before any client construction, so a clean config never
+	// reaches the network.
+	_, err := execBB(t, "project", "delete", "WID", "--workspace", "acme", "--site", "work")
+	if err == nil || !strings.Contains(err.Error(), "pass --yes") {
+		t.Fatalf("expected confirmation error, got %v", err)
+	}
+}
+
+func TestProjectDeleteWithConfirmation(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "project", "delete", "WID", "--workspace", "acme", "--site", "work", "--yes")
+	if err != nil {
+		t.Fatalf("project delete: %v\n%s", err, out)
+	}
+	if gotMethod != http.MethodDelete || gotPath != "/workspaces/acme/projects/WID" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	if !strings.Contains(out, "deleted project WID") {
+		t.Fatalf("output missing confirmation:\n%s", out)
+	}
+}

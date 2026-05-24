@@ -48,9 +48,47 @@ func (c *Client) CurrentUser(ctx context.Context) (json.RawMessage, error) {
 	return c.Get(ctx, "/user")
 }
 
+// repositoryBase returns the path of a single repository.
+func repositoryBase(workspace, repo string) string {
+	return "/repositories/" + url.PathEscape(workspace) + "/" + url.PathEscape(repo)
+}
+
 // GetRepository returns a single repository (GET /repositories/{ws}/{repo}).
 func (c *Client) GetRepository(ctx context.Context, workspace, repo string) (json.RawMessage, error) {
-	return c.Get(ctx, "/repositories/"+url.PathEscape(workspace)+"/"+url.PathEscape(repo))
+	return c.Get(ctx, repositoryBase(workspace, repo))
+}
+
+// CreateRepositoryOptions holds the fields a repository creation accepts.
+// Bitbucket only supports git, so the SCM is fixed. IsPrivate is a pointer so
+// an unset flag is omitted (letting Bitbucket apply its default) rather than
+// forced to false; ProjectKey places the repository in a project.
+type CreateRepositoryOptions struct {
+	Description string
+	IsPrivate   *bool
+	ProjectKey  string
+}
+
+// CreateRepository creates a repository (POST /repositories/{ws}/{repo}) and
+// returns the created repository. The repo slug is taken from the URL.
+func (c *Client) CreateRepository(ctx context.Context, workspace, repo string, opts CreateRepositoryOptions) (json.RawMessage, error) {
+	body := map[string]any{"scm": "git"}
+	if opts.Description != "" {
+		body["description"] = opts.Description
+	}
+	if opts.IsPrivate != nil {
+		body["is_private"] = *opts.IsPrivate
+	}
+	if opts.ProjectKey != "" {
+		body["project"] = map[string]string{"key": opts.ProjectKey}
+	}
+	return c.Send(ctx, "POST", repositoryBase(workspace, repo), body)
+}
+
+// DeleteRepository removes a repository (DELETE /repositories/{ws}/{repo}).
+// This is irreversible; Bitbucket returns no content on success.
+func (c *Client) DeleteRepository(ctx context.Context, workspace, repo string) error {
+	_, err := c.Send(ctx, "DELETE", repositoryBase(workspace, repo), nil)
+	return err
 }
 
 // ListRepositories returns one page of a workspace's repositories

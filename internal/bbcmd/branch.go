@@ -170,6 +170,9 @@ func newBranchDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 			if err := bc.DeleteBranch(cmd.Context(), target.Workspace, target.Repo, name); err != nil {
 				return err
 			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, deleteResult{Resource: "branch", ID: name, Deleted: true})
+			}
 			fmt.Fprintf(cmd.OutOrStdout(), "deleted branch %s\n", name)
 			return nil
 		},

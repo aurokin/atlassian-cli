@@ -264,3 +264,55 @@ func TestSendEncodesJSONBody(t *testing.T) {
 		t.Fatalf("request body = %q", gotBody)
 	}
 }
+
+func TestCreateRepository(t *testing.T) {
+	var gotMethod, gotPath, gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		buf, _ := io.ReadAll(r.Body)
+		gotBody = string(buf)
+		_, _ = w.Write([]byte(`{"full_name":"acme/widgets"}`))
+	}))
+	defer srv.Close()
+
+	private := true
+	_, err := newTestClient(srv).CreateRepository(context.Background(), "acme", "widgets",
+		CreateRepositoryOptions{Description: "the repo", IsPrivate: &private, ProjectKey: "WID"})
+	if err != nil {
+		t.Fatalf("CreateRepository: %v", err)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/repositories/acme/widgets" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	for _, want := range []string{`"scm":"git"`, `"description":"the repo"`, `"is_private":true`, `"key":"WID"`} {
+		if !strings.Contains(gotBody, want) {
+			t.Errorf("body %q missing %q", gotBody, want)
+		}
+	}
+
+	// A nil IsPrivate and empty project/description send only the SCM.
+	gotBody = ""
+	if _, err := newTestClient(srv).CreateRepository(context.Background(), "acme", "widgets",
+		CreateRepositoryOptions{}); err != nil {
+		t.Fatalf("CreateRepository: %v", err)
+	}
+	if strings.Contains(gotBody, "is_private") || strings.Contains(gotBody, "project") {
+		t.Errorf("unset fields should be omitted: %q", gotBody)
+	}
+}
+
+func TestDeleteRepository(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	if err := newTestClient(srv).DeleteRepository(context.Background(), "acme", "widgets"); err != nil {
+		t.Fatalf("DeleteRepository: %v", err)
+	}
+	if gotMethod != http.MethodDelete || gotPath != "/repositories/acme/widgets" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+}

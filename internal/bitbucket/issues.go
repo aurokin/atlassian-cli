@@ -70,3 +70,44 @@ func (c *Client) CreateIssue(ctx context.Context, workspace, repo string, opts C
 	}
 	return c.Send(ctx, "POST", issuesBase(workspace, repo), body)
 }
+
+// UpdateIssueOptions holds the issue fields an update may change. Each field is
+// sent only when non-empty, so a caller can transition state alone (e.g.
+// State: "resolved") or edit several fields at once. The values are passed
+// through verbatim so the API validates the allowed vocabulary.
+type UpdateIssueOptions struct {
+	Title    string
+	Body     string
+	State    string
+	Kind     string
+	Priority string
+}
+
+// IsEmpty reports whether no field is set, so the command layer can reject an
+// update that would change nothing.
+func (o UpdateIssueOptions) IsEmpty() bool {
+	return o.Title == "" && o.Body == "" && o.State == "" && o.Kind == "" && o.Priority == ""
+}
+
+// UpdateIssue changes one or more fields of an existing issue
+// (PUT /repositories/{ws}/{repo}/issues/{id}) and returns the updated issue.
+// Setting State transitions the issue (e.g. new → resolved).
+func (c *Client) UpdateIssue(ctx context.Context, workspace, repo string, id int, opts UpdateIssueOptions) (json.RawMessage, error) {
+	body := map[string]any{}
+	if opts.Title != "" {
+		body["title"] = opts.Title
+	}
+	if opts.Body != "" {
+		body["content"] = map[string]string{"raw": opts.Body}
+	}
+	if opts.State != "" {
+		body["state"] = opts.State
+	}
+	if opts.Kind != "" {
+		body["kind"] = opts.Kind
+	}
+	if opts.Priority != "" {
+		body["priority"] = opts.Priority
+	}
+	return c.Send(ctx, "PUT", issuesBase(workspace, repo)+"/"+strconv.Itoa(id), body)
+}
