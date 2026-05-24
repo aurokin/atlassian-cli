@@ -40,6 +40,18 @@ go test ./...
 `make check` (fmt-check + compile + compile-integration + vet + test); see `make help` for all
 targets.
 
+When a change touches the command tree, flags, or `cmd/gen-docs`, also run
+`make docs-check` — it generates the Markdown reference into a throwaway dir to
+catch a broken command walker, and is the same smoke test CI runs in the
+`check` job.
+
+[`docs/engineering-notes.md`](docs/engineering-notes.md) collects the
+conventions and gotchas below the command-contract level — the
+validation-before-auth ordering, the nil-body marshaling trap, the
+reusable-helper inventory, and the destructive-verb rule. Read it before adding
+a command. The standing design decisions are recorded as
+[ADRs](docs/adr/).
+
 `make lint` additionally runs [`golangci-lint`](https://golangci-lint.run/)
 (errcheck, staticcheck, ineffassign, unused — the static-analysis net layered
 on top of `go vet`; config in `.golangci.yml`). It is a separate CI job and is
@@ -71,6 +83,10 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
 
 Keep [`docs/command-contract.md`](docs/command-contract.md) current whenever a
 change alters command behavior or the command surface.
+
+Releases are cut by pushing a `v*` tag, which triggers GoReleaser; the
+versioning posture and pipeline-maintenance constraints are in
+[`docs/releasing.md`](docs/releasing.md).
 
 ## Output and error conventions
 

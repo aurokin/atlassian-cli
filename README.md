@@ -21,15 +21,22 @@ exact command behavior and known limitations.
 
 - **`atl-jira`** — `project`, `issue` (view/list, create/edit/transition,
   `assign`/`watch`/`unwatch`/`watchers`, `link` + `link types`,
-  `worklog` list/add, `comment` create/edit/delete), `field list`,
-  `search issues` (JQL), and `status`.
-- **`atl-conf`** — `space`, `page` (read plus create/edit), `page comment`,
-  `page label`, `attachment` (list/download), `search cql`, and `status`. It
-  is a mixed-version client (REST v2, with documented v1 fallbacks for CQL
-  search, the current-user lookup, and label writes).
-- **`atl-bb`** — `repo`, `pr`, `pipeline`, `issue`, `workspace`, `project`,
-  `commit`, `branch`, `tag`, `deployment`, `environment`, `search`, and
-  `status`, with built-in git-checkout repository inference.
+  `worklog` list/add, `attachment`, `comment` create/edit/delete),
+  `field list`, `search issues` (JQL), and `status`.
+- **`atl-conf`** — `space`, `page` (view/list/children/ancestors/versions plus
+  create/edit/delete), `blogpost` (list/view/create/edit), `page comment`,
+  `page label`, `attachment` (list/download/upload), `search` (CQL + text), and
+  `status`. It is a mixed-version client (REST v2, with documented v1 fallbacks
+  for CQL search, the current-user lookup, label writes, and attachment upload —
+  see [ADR 0004](docs/adr/0004-mixed-version-confluence-client.md)).
+- **`atl-bb`** — `repo` (incl. create/delete), `pr` (incl. approve/decline/merge),
+  `pipeline` (incl. stop/steps/log), `issue` (incl. update), `workspace`,
+  `project` (incl. delete), `commit`, `src`/`file`, `branch`, `tag`,
+  `deployment`, `environment`, `search`, and `status`, with built-in
+  git-checkout repository inference.
+
+Destructive verbs (`repo delete`, `project delete`, `page delete`, …) require an
+explicit `--yes` (see [ADR 0003](docs/adr/0003-destructive-verbs-require-yes.md)).
 
 Shared across **every** binary: `version`, `auth`, `api`, `resolve`, `browse`,
 plus `alias` (command shorthands) and `extension` (gh-style `<binary>-<name>`
@@ -64,6 +71,16 @@ for the development loop, PR workflow, and test-harness conventions.
 
 ## Install & build
 
+### From a release
+
+Each [release](https://github.com/aurokin/atlassian-cli/releases) attaches one
+archive per platform bundling all three binaries, plus `checksums.txt`. Download
+the archive for your OS/arch, verify it, and put the binaries on your `PATH` —
+no Go toolchain needed. Step-by-step (with checksum verification) is in
+[docs/consuming.md](docs/consuming.md#install).
+
+### From source
+
 From a clone of this repo (Go 1.26+):
 
 ```bash
@@ -89,10 +106,13 @@ Start here — the living docs:
 
 1. [docs/README.md](docs/README.md) — documentation index
 2. [docs/command-contract.md](docs/command-contract.md) — the implemented command surface
-3. [docs/auth-design.md](docs/auth-design.md) / [docs/auth-runbook.md](docs/auth-runbook.md) — auth model and setup
-4. [docs/access-error-model.md](docs/access-error-model.md) — structured errors and exit codes
-5. [docs/shared-architecture.md](docs/shared-architecture.md) — how the three CLIs share a foundation
-6. [docs/integration-testing.md](docs/integration-testing.md) — the live integration suite
+3. [docs/consuming.md](docs/consuming.md) — using the CLIs from scripts/agents: install, output/exit-code contract, pagination
+4. [docs/auth-design.md](docs/auth-design.md) / [docs/auth-runbook.md](docs/auth-runbook.md) — auth model and setup
+5. [docs/access-error-model.md](docs/access-error-model.md) — structured errors and exit codes
+6. [docs/shared-architecture.md](docs/shared-architecture.md) — how the three CLIs share a foundation
+7. [docs/adr/](docs/adr/) — architecture decision records (the *why* behind standing choices)
+8. [docs/releasing.md](docs/releasing.md) — how releases are cut; [docs/engineering-notes.md](docs/engineering-notes.md) — contributor conventions and gotchas
+9. [docs/integration-testing.md](docs/integration-testing.md) — the live integration suite
 
 The completed phase plans, MVP specs, and the Bitbucket-rewrite arc are kept as
 historical records under [docs/archive/](docs/archive/).

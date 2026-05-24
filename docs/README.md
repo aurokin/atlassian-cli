@@ -8,13 +8,22 @@ system is built and how to use it.
 
 ## Living docs
 
+### Using the CLIs
+
 - [command-contract.md](command-contract.md) — the implemented command surface, config schema, and known limitations. The canonical reference.
-- [shared-architecture.md](shared-architecture.md) — the shared packages, raw `api` escape hatch, output rendering, config, and pagination.
+- [consuming.md](consuming.md) — using the CLIs from scripts and agents: install from a release, the output and exit-code contracts, pagination, and non-interactive use.
 - [auth-design.md](auth-design.md) — the auth model: cloud-classic / cloud-scoped tokens, Data Center PAT, and OAuth 3LO.
 - [auth-runbook.md](auth-runbook.md) — practical end-to-end authentication guide: pick a token style, supply and store the token, log in per product, verify, and troubleshoot.
-- [access-error-model.md](access-error-model.md) — permission-aware UX and the structured error envelope.
+- [access-error-model.md](access-error-model.md) — permission-aware UX, the structured error envelope, and the process exit-code table.
+
+### Building & maintaining
+
+- [shared-architecture.md](shared-architecture.md) — the shared packages, raw `api` escape hatch, output rendering, config, and pagination.
+- [engineering-notes.md](engineering-notes.md) — contributor conventions and gotchas: validation-before-auth, the nil-body trap, the reusable-helper inventory, destructive-verb rules, and local gates.
+- [releasing.md](releasing.md) — versioning posture and how a release is cut (tag → GoReleaser), plus pipeline-maintenance constraints.
 - [integration-testing.md](integration-testing.md) — the live, opt-in integration suite that drives the real binaries against a real tenant.
-- [post-review-improvement-plan.md](post-review-improvement-plan.md) — the sequenced, PR-by-PR plan for the open recommendations from the May 2026 review. Active until its work is merged, then archived.
+- [adr/](adr/) — architecture decision records: the *why* behind standing choices (exit codes, the shared foundation, `--yes`, the mixed-version Confluence client, token storage, verbatim JSON).
+- [post-review-improvement-plan.md](post-review-improvement-plan.md) — the sequenced, PR-by-PR plan for the recommendations from the May 2026 review. Fully merged; retained for traceability pending archival.
 
 ## History
 
