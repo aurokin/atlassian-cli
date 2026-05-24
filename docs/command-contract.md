@@ -540,6 +540,8 @@ id first.
 atl-conf page list --space <key> [--limit N]
 atl-conf page view <id>
 atl-conf page children <id> [--limit N]
+atl-conf page ancestors <id> [--limit N] [--all]
+atl-conf page versions <id> [--limit N] [--all]
 atl-conf page create --space <key> --title <text> --body <text> --body-format <fmt>
 atl-conf page edit <id> [--title <text>] [--body <text> --body-format <fmt>]
 atl-conf page delete <id> [--purge] [--yes]
@@ -548,6 +550,11 @@ atl-conf page delete <id> [--purge] [--yes]
 `list` returns the pages in a space — `--space` is required and is resolved
 from key to id. `view` returns one page by id, including its storage-format
 body under `--json`. `children` lists a page's direct child pages.
+`ancestors` lists the page's ancestor chain top-to-bottom (the v2 API returns
+minimal `{id, type}` entries, so resolve a title with `page view`).
+`versions` lists the page's version history oldest-first, showing each
+version's number, minor-edit flag, creation time, author account id, and
+change message. Both honor `--limit`/`--all`.
 
 `create` makes a new page: `--space` (resolved key to id), `--title`, `--body`,
 and `--body-format` are all required. `edit` updates a page by id and needs at

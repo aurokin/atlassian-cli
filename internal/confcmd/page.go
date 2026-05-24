@@ -27,6 +27,8 @@ func newPageCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		newPageCreateCommand(info, g),
 		newPageEditCommand(info, g),
 		newPageDeleteCommand(info, g),
+		newPageAncestorsCommand(info, g),
+		newPageVersionsCommand(info, g),
 		newPageCommentCommand(info, g),
 		newPageLabelCommand(info, g),
 	)
@@ -124,6 +126,108 @@ func newPageChildrenCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 	}
 	cli.AddPaginationFlags(cmd, &limit, &all, "child pages")
 	return cmd
+}
+
+func newPageAncestorsCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var (
+		limit int
+		all   bool
+	)
+	cmd := &cobra.Command{
+		Use:   "ancestors <id>",
+		Short: "List a page's ancestor chain (breadcrumb)",
+		Long: "Lists the page's ancestors top-to-bottom (the highest ancestor\n" +
+			"first). The v2 API returns minimal {id, type} entries; resolve a\n" +
+			"title with `page view <ancestor-id>`.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cc, err := confClient(info, g)
+			if err != nil {
+				return err
+			}
+			ancestors := cc.GetPageAncestors
+			if all {
+				ancestors = cc.GetPageAncestorsAll
+			}
+			raw, err := ancestors(cmd.Context(), args[0], limit)
+			if err != nil {
+				return err
+			}
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.AncestorList],
+				func(w io.Writer, list conf.AncestorList) {
+					writeAncestorList(w, list.Results)
+				})
+		},
+	}
+	cli.AddPaginationFlags(cmd, &limit, &all, "ancestors")
+	return cmd
+}
+
+func newPageVersionsCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var (
+		limit int
+		all   bool
+	)
+	cmd := &cobra.Command{
+		Use:   "versions <id>",
+		Short: "List a page's version history",
+		Long: "Lists the page's version history, oldest-first (the order the v2\n" +
+			"API returns). Each entry shows the version number, whether it was a\n" +
+			"minor edit, when it was created, the author account id, and the\n" +
+			"optional change message.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cc, err := confClient(info, g)
+			if err != nil {
+				return err
+			}
+			versions := cc.ListPageVersions
+			if all {
+				versions = cc.ListPageVersionsAll
+			}
+			raw, err := versions(cmd.Context(), args[0], limit)
+			if err != nil {
+				return err
+			}
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.VersionList],
+				func(w io.Writer, list conf.VersionList) {
+					writeVersionList(w, list.Results)
+				})
+		},
+	}
+	cli.AddPaginationFlags(cmd, &limit, &all, "versions")
+	return cmd
+}
+
+// writeAncestorList prints ancestors as aligned type/id rows, top-to-bottom.
+func writeAncestorList(w io.Writer, ancestors []conf.Ancestor) {
+	if len(ancestors) == 0 {
+		fmt.Fprintln(w, "No ancestors found.")
+		return
+	}
+	tw := output.TabWriter(w)
+	for _, a := range ancestors {
+		fmt.Fprintf(tw, "%s\t%s\n", a.Type, a.ID)
+	}
+	_ = tw.Flush()
+}
+
+// writeVersionList prints versions as aligned number/minor/created/author/message
+// rows.
+func writeVersionList(w io.Writer, versions []conf.Version) {
+	if len(versions) == 0 {
+		fmt.Fprintln(w, "No versions found.")
+		return
+	}
+	tw := output.TabWriter(w)
+	for _, v := range versions {
+		minor := ""
+		if v.MinorEdit {
+			minor = "minor"
+		}
+		fmt.Fprintf(tw, "v%d\t%s\t%s\t%s\t%s\n", v.Number, minor, v.CreatedAt, v.AuthorID, v.Message)
+	}
+	_ = tw.Flush()
 }
 
 func newPageCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
