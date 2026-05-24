@@ -2,6 +2,7 @@ package confcmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -69,11 +70,10 @@ func newSpaceViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			space, err := resolveSpace(cmd.Context(), cc, args[0])
-			if err != nil {
-				return err
-			}
-			raw, err := cc.GetSpace(cmd.Context(), space.ID)
+			// The keys-filtered list already returns the full space object, so
+			// render its first match directly rather than making a second
+			// GetSpace round-trip by id.
+			raw, _, err := findSpaceRaw(cmd.Context(), cc, args[0])
 			if err != nil {
 				return err
 			}
@@ -82,21 +82,40 @@ func newSpaceViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	}
 }
 
-// resolveSpace looks up a space by key, since Confluence v2 addresses a space
-// by numeric id. It returns a structured not-found error when no space matches.
-func resolveSpace(ctx context.Context, cc *conf.Client, key string) (conf.Space, error) {
+// rawSpacePage decodes a space listing while keeping each result's raw JSON, so
+// a single matched space can be rendered verbatim under --json.
+type rawSpacePage struct {
+	Results []json.RawMessage `json:"results"`
+}
+
+// findSpaceRaw looks up a space by key (Confluence v2 addresses a space by
+// numeric id, so a key lookup is a keys-filtered list) and returns both the
+// matched result's raw JSON and its decoded form. It returns a structured
+// not-found error when no space matches.
+func findSpaceRaw(ctx context.Context, cc *conf.Client, key string) (json.RawMessage, conf.Space, error) {
 	raw, err := cc.FindSpaceByKey(ctx, key)
 	if err != nil {
-		return conf.Space{}, err
+		return nil, conf.Space{}, err
 	}
-	page, err := conf.Decode[conf.SpacePage](raw)
+	page, err := conf.Decode[rawSpacePage](raw)
 	if err != nil {
-		return conf.Space{}, err
+		return nil, conf.Space{}, err
 	}
 	if len(page.Results) == 0 {
-		return conf.Space{}, apperr.NotFoundOrNotVisible("no space found with key " + key)
+		return nil, conf.Space{}, apperr.NotFoundOrNotVisible("no space found with key " + key)
 	}
-	return page.Results[0], nil
+	space, err := conf.Decode[conf.Space](page.Results[0])
+	if err != nil {
+		return nil, conf.Space{}, err
+	}
+	return page.Results[0], space, nil
+}
+
+// resolveSpace looks up a space by key and returns its decoded form, for
+// callers that only need the id/key/name (page and blogpost commands).
+func resolveSpace(ctx context.Context, cc *conf.Client, key string) (conf.Space, error) {
+	_, space, err := findSpaceRaw(ctx, cc, key)
+	return space, err
 }
 
 // writeSpaceList prints spaces as aligned key/name rows.

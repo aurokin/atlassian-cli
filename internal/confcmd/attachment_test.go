@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -162,5 +163,58 @@ func TestAttachmentDownloadJSONPrintsMetadata(t *testing.T) {
 	}
 	if got["id"] != "a1" {
 		t.Errorf("download --json metadata = %v, want id a1", got)
+	}
+}
+
+func TestAttachmentUploadSendsFile(t *testing.T) {
+	var gotMethod, gotPath, gotToken, gotFilename, gotContent string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		gotToken = r.Header.Get("X-Atlassian-Token")
+		if err := r.ParseMultipartForm(1 << 20); err != nil {
+			t.Errorf("ParseMultipartForm: %v", err)
+		}
+		f, hdr, err := r.FormFile("file")
+		if err != nil {
+			t.Errorf("FormFile: %v", err)
+		} else {
+			gotFilename = hdr.Filename
+			b, _ := io.ReadAll(f)
+			gotContent = string(b)
+		}
+		_, _ = w.Write([]byte(`{"results":[{"id":"att1","title":"notes.txt"}]}`))
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	path := filepath.Join(t.TempDir(), "notes.txt")
+	if err := os.WriteFile(path, []byte("hello attachment"), 0o644); err != nil {
+		t.Fatalf("write temp file: %v", err)
+	}
+
+	out, err := execConf(t, "attachment", "upload", "123", "--file", path, "--site", "work")
+	if err != nil {
+		t.Fatalf("attachment upload: %v\n%s", err, out)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/rest/api/content/123/child/attachment" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	if gotToken != "no-check" {
+		t.Errorf("X-Atlassian-Token = %q, want no-check", gotToken)
+	}
+	if gotFilename != "notes.txt" || gotContent != "hello attachment" {
+		t.Errorf("uploaded file = %q content %q", gotFilename, gotContent)
+	}
+	if !strings.Contains(out, "uploaded notes.txt to page 123") {
+		t.Fatalf("output missing confirmation:\n%s", out)
+	}
+}
+
+func TestAttachmentUploadRequiresFile(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	_, err := execConf(t, "attachment", "upload", "123", "--site", "work")
+	if err == nil || !strings.Contains(err.Error(), "a file is required") {
+		t.Fatalf("expected file-required error, got %v", err)
 	}
 }

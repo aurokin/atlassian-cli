@@ -12,6 +12,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"strings"
 
@@ -482,6 +483,25 @@ func (c *Client) ListAttachmentsAll(ctx context.Context, pageID string, limit in
 // downloadLink that locates its binary (GET /attachments/{id}).
 func (c *Client) GetAttachment(ctx context.Context, id string) (json.RawMessage, error) {
 	return c.Get(ctx, "/attachments/"+url.PathEscape(id))
+}
+
+// CreateAttachment uploads a file as an attachment on a page. Confluence v2 has
+// no attachment-create endpoint, so this uses the REST v1 surface
+// (POST /content/{pageID}/child/attachment) with a multipart body and the
+// X-Atlassian-Token: no-check header Base.Upload supplies. filename is the name
+// recorded on the attachment; r supplies its bytes. The response is the v1
+// {results:[…]} body. Uploading a file whose name already exists on the page is
+// rejected by the API unless the existing attachment is updated instead.
+func (c *Client) CreateAttachment(ctx context.Context, pageID, filename string, r io.Reader) (json.RawMessage, error) {
+	buf, contentType, err := restutil.MultipartFile("file", filename, r)
+	if err != nil {
+		return nil, err
+	}
+	u, err := c.v1URL("/content/"+url.PathEscape(pageID)+"/child/attachment", nil)
+	if err != nil {
+		return nil, err
+	}
+	return c.Upload(ctx, "POST", u, contentType, buf)
 }
 
 // FetchAttachmentData downloads an attachment's binary content. downloadLink

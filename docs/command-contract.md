@@ -636,6 +636,7 @@ title-only edit re-sends the current body (storage, falling back to
 ```
 atl-conf attachment list <page-id> [--limit N]
 atl-conf attachment download <attachment-id> --out <path>
+atl-conf attachment upload <page-id> --file <path>
 ```
 
 `list` returns a page's attachments. `download` fetches an attachment's binary
@@ -645,15 +646,25 @@ context path rather than the API base, so it is resolved against the API base
 with the trailing `/api/v2` segment removed. Under `--json` or `--jq` the
 attachment metadata is printed and no binary is fetched. The response body is
 buffered in full like every other response — there is no streaming download.
+`upload` attaches `--file` to the page; Confluence v2 has no attachment-create
+endpoint, so it uses the REST **v1** surface
+(`POST /content/{page-id}/child/attachment`) with a multipart body and the
+`X-Atlassian-Token: no-check` header. The API rejects a file whose name already
+exists on the page.
 
-### `search cql`
+### `search`
 
 ```
-atl-conf search cql <cql> [--limit N]
+atl-conf search cql <cql> [--limit N] [--all]
+atl-conf search text <query> [--space <key>] [--type <type>] [--limit N] [--all]
 ```
 
-Runs a raw CQL query against the v1 search endpoint. CQL is the stable,
-expressive query surface for Confluence content.
+`search cql` runs a raw CQL query against the v1 search endpoint — the stable,
+expressive query surface for Confluence content. `search text` is a shorthand
+that builds `text ~ "<query>"` for you and adds `and type = "<type>"` /
+`and space = "<key>"` clauses when `--type`/`--space` are given (values are
+quoted as CQL string literals with embedded quotes escaped), so common
+free-text lookups need no hand-written CQL.
 
 ### `status`
 
