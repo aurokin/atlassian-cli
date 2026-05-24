@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/bitbucket"
 	"github.com/aurokin/atlassian-cli/internal/cli"
@@ -17,13 +18,106 @@ func newRepoCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "repo",
 		Aliases: []string{"repos", "repository"},
-		Short:   "List and view Bitbucket repositories",
+		Short:   "List, view, create, and delete Bitbucket repositories",
 	}
 	cmd.AddCommand(
 		newRepoViewCommand(info, g),
 		newRepoListCommand(info, g),
+		newRepoCreateCommand(info, g),
+		newRepoDeleteCommand(info, g),
 	)
 	return cmd
+}
+
+func newRepoCreateCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var (
+		repoFlag      string
+		workspaceFlag string
+		description   string
+		projectKey    string
+		private       bool
+	)
+	cmd := &cobra.Command{
+		Use:   "create [<workspace>/<repo>]",
+		Short: "Create a repository in a workspace",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			target, err := resolveRepoTarget(args, repoFlag, workspaceFlag)
+			if err != nil {
+				return err
+			}
+			bc, err := bbClient(info, g)
+			if err != nil {
+				return err
+			}
+			opts := bitbucket.CreateRepositoryOptions{Description: description, ProjectKey: projectKey}
+			// Only forward --private when the user set it, so an unset flag
+			// leaves Bitbucket's default visibility in place.
+			if cmd.Flags().Changed("private") {
+				opts.IsPrivate = &private
+			}
+			raw, err := bc.CreateRepository(cmd.Context(), target.Workspace, target.Repo, opts)
+			if err != nil {
+				return err
+			}
+			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.Repository],
+				func(w io.Writer, r bitbucket.Repository) {
+					fmt.Fprintf(w, "created repository %s\n", r.FullName)
+				})
+		},
+	}
+	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
+	f := cmd.Flags()
+	f.StringVar(&description, "description", "", "repository description")
+	f.StringVar(&projectKey, "project", "", "key of the project to create the repository in")
+	f.BoolVar(&private, "private", false, "create the repository as private")
+	return cmd
+}
+
+func newRepoDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var (
+		repoFlag      string
+		workspaceFlag string
+		yes           bool
+	)
+	cmd := &cobra.Command{
+		Use:   "delete [<workspace>/<repo>]",
+		Short: "Delete a repository (irreversible)",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !yes {
+				return apperr.InvalidInput("deleting a repository is irreversible; pass --yes to confirm")
+			}
+			target, err := resolveRepoTarget(args, repoFlag, workspaceFlag)
+			if err != nil {
+				return err
+			}
+			bc, err := bbClient(info, g)
+			if err != nil {
+				return err
+			}
+			full := target.Workspace + "/" + target.Repo
+			if err := bc.DeleteRepository(cmd.Context(), target.Workspace, target.Repo); err != nil {
+				return err
+			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, deleteResult{Resource: "repository", ID: full, Deleted: true})
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "deleted repository %s\n", full)
+			return nil
+		},
+	}
+	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
+	cmd.Flags().BoolVar(&yes, "yes", false, "confirm the irreversible deletion")
+	return cmd
+}
+
+// deleteResult is the synthesized outcome of a delete, whose API call returns
+// no body, so --json has a stable object to render.
+type deleteResult struct {
+	Resource string `json:"resource"`
+	ID       string `json:"id"`
+	Deleted  bool   `json:"deleted"`
 }
 
 func newRepoViewCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {

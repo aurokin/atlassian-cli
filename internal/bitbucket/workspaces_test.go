@@ -78,3 +78,19 @@ func TestCreateProjectBody(t *testing.T) {
 		t.Fatalf("is_private should be omitted when nil: %+v", gotBody)
 	}
 }
+
+func TestDeleteProject(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	if err := newTestClient(srv).DeleteProject(context.Background(), "acme", "WID"); err != nil {
+		t.Fatalf("DeleteProject: %v", err)
+	}
+	if gotMethod != http.MethodDelete || gotPath != "/workspaces/acme/projects/WID" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+}

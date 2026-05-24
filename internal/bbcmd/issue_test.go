@@ -177,3 +177,43 @@ func TestIssueTrackerDisabledMapsToFeatureDisabled(t *testing.T) {
 		t.Fatalf("error message = %q, want the tracker message", ae.Message)
 	}
 }
+
+func TestIssueUpdateTransitionsState(t *testing.T) {
+	var gotMethod, gotPath string
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &gotBody)
+		_, _ = w.Write([]byte(`{"id":3,"title":"t","state":"resolved"}`))
+	}))
+	defer srv.Close()
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "issue", "update", "3", "--repo", "acme/widgets", "--site", "work",
+		"--state", "resolved")
+	if err != nil {
+		t.Fatalf("issue update: %v\n%s", err, out)
+	}
+	if gotMethod != http.MethodPut || gotPath != "/repositories/acme/widgets/issues/3" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	if gotBody["state"] != "resolved" {
+		t.Fatalf("body = %+v", gotBody)
+	}
+	if !strings.Contains(out, "updated issue #3 (state: resolved)") {
+		t.Fatalf("unexpected output:\n%s", out)
+	}
+}
+
+func TestIssueUpdateRequiresAField(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	// The empty-update guard runs before client construction, so a clean config
+	// never reaches the network.
+	_, err := execBB(t, "issue", "update", "3", "--repo", "acme/widgets", "--site", "work")
+	if err == nil || !strings.Contains(err.Error(), "nothing to update") {
+		t.Fatalf("expected nothing-to-update error, got %v", err)
+	}
+}

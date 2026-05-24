@@ -1,6 +1,8 @@
 package bbcmd
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -129,6 +131,92 @@ func TestRepoListAllFollowsPagination(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Fatalf("output missing %q:\n%s", want, out)
 		}
+	}
+}
+
+func TestRepoCreateSendsBody(t *testing.T) {
+	var gotMethod, gotPath string
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &gotBody)
+		_, _ = w.Write([]byte(`{"full_name":"acme/widgets"}`))
+	}))
+	defer srv.Close()
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "repo", "create", "acme/widgets", "--site", "work",
+		"--description", "the repo", "--project", "WID", "--private")
+	if err != nil {
+		t.Fatalf("repo create: %v\n%s", err, out)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/repositories/acme/widgets" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	if gotBody["scm"] != "git" || gotBody["description"] != "the repo" || gotBody["is_private"] != true {
+		t.Fatalf("body = %+v", gotBody)
+	}
+	project, _ := gotBody["project"].(map[string]any)
+	if project["key"] != "WID" {
+		t.Fatalf("project = %+v", gotBody["project"])
+	}
+	if !strings.Contains(out, "created repository acme/widgets") {
+		t.Fatalf("unexpected output:\n%s", out)
+	}
+}
+
+func TestRepoCreateOmitsUnsetPrivate(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(raw, &gotBody)
+		_, _ = w.Write([]byte(`{"full_name":"acme/widgets"}`))
+	}))
+	defer srv.Close()
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	if _, err := execBB(t, "repo", "create", "acme/widgets", "--site", "work"); err != nil {
+		t.Fatalf("repo create: %v", err)
+	}
+	// --private unset, so Bitbucket's default visibility is left in place.
+	if _, ok := gotBody["is_private"]; ok {
+		t.Fatalf("is_private should be omitted when --private unset: %+v", gotBody)
+	}
+}
+
+func TestRepoDeleteRequiresConfirmation(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	_, err := execBB(t, "repo", "delete", "acme/widgets", "--site", "work")
+	if err == nil || !strings.Contains(err.Error(), "pass --yes") {
+		t.Fatalf("expected confirmation error, got %v", err)
+	}
+}
+
+func TestRepoDeleteWithConfirmation(t *testing.T) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod, gotPath = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginBBSite(t, srv.URL)
+
+	out, err := execBB(t, "repo", "delete", "acme/widgets", "--site", "work", "--yes")
+	if err != nil {
+		t.Fatalf("repo delete: %v\n%s", err, out)
+	}
+	if gotMethod != http.MethodDelete || gotPath != "/repositories/acme/widgets" {
+		t.Errorf("request = %s %s", gotMethod, gotPath)
+	}
+	if !strings.Contains(out, "deleted repository acme/widgets") {
+		t.Fatalf("output missing confirmation:\n%s", out)
 	}
 }
 

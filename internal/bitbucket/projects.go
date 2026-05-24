@@ -56,3 +56,11 @@ func (c *Client) CreateProject(ctx context.Context, workspace, projectKey string
 	}
 	return c.Send(ctx, "POST", projectsBase(workspace), body)
 }
+
+// DeleteProject removes a project
+// (DELETE /workspaces/{ws}/projects/{key}). Bitbucket rejects deletion of a
+// project that still contains repositories; it returns no content on success.
+func (c *Client) DeleteProject(ctx context.Context, workspace, projectKey string) error {
+	_, err := c.Send(ctx, "DELETE", projectsBase(workspace)+"/"+url.PathEscape(projectKey), nil)
+	return err
+}

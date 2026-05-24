@@ -672,13 +672,19 @@ is rejected.
 ```
 atl-bb repo view [<workspace>/<repo>] [--repo <workspace>/<repo>] [--workspace <slug>]
 atl-bb repo list [<workspace>] [--workspace <slug>] [--limit N] [--all]
+atl-bb repo create [<workspace>/<repo>] [--repo <workspace>/<repo>] [--workspace <slug>] [--description <text>] [--project <key>] [--private]
+atl-bb repo delete [<workspace>/<repo>] [--repo <workspace>/<repo>] [--workspace <slug>] --yes
 ```
 
 `repo view` shows one repository (`GET /repositories/{ws}/{repo}`); human
 output lists full name, visibility, project, main branch, and description.
 `repo list` lists a workspace's repositories (`GET /repositories/{ws}`),
 honoring `--limit` (the Bitbucket `pagelen`) and `--all` (follow the API's
-`next`-URL pagination to completion, capped at 100 pages).
+`next`-URL pagination to completion, capped at 100 pages). `repo create`
+creates a git repository (`POST /repositories/{ws}/{repo}`); `--private` is
+forwarded only when set, otherwise Bitbucket's default visibility applies.
+`repo delete` removes a repository (`DELETE /repositories/{ws}/{repo}`) and is
+irreversible, so it requires `--yes` to confirm.
 
 ### `pr`
 
@@ -752,21 +758,26 @@ atl-bb issue list [--repo <workspace>/<repo>] [--workspace <slug>] [--state <nam
 atl-bb issue view <id> [--repo <workspace>/<repo>] [--workspace <slug>]
 atl-bb issue create [--repo <workspace>/<repo>] [--workspace <slug>] \
   --title <text> [--body <raw>] [--kind <kind>] [--priority <priority>]
+atl-bb issue update <id> [--repo <workspace>/<repo>] [--workspace <slug>] \
+  [--state <name>] [--title <text>] [--body <raw>] [--kind <kind>] [--priority <priority>]
 ```
 
-`issue list`/`view`/`create` operate on a repository's issue tracker. Issue
-states are lower-case (`new`, `open`, `resolved`, `on hold`, `invalid`,
+`issue list`/`view`/`create`/`update` operate on a repository's issue tracker.
+Issue states are lower-case (`new`, `open`, `resolved`, `on hold`, `invalid`,
 `duplicate`, `wontfix`, `closed`); `--state` is passed through verbatim and
 `ALL` lists every state. `issue create` requires `--title`; `--kind`
 (`bug`/`enhancement`/`proposal`/`task`) and `--priority`
 (`trivial`/`minor`/`major`/`critical`/`blocker`) are passed through for the API
-to validate, and human output prints `created issue #<id>: <title>`.
+to validate, and human output prints `created issue #<id>: <title>`. `issue
+update` (`PUT …/issues/{id}`) changes one or more fields and requires at least
+one flag; use `--state` to transition the issue (e.g. `new` → `resolved`) and
+human output prints `updated issue #<id> (state: <state>)`.
 
 If a repository's **issue tracker is disabled**, Bitbucket returns 404 with a
 recognizable message; `atl-bb` surfaces this as the `feature_disabled` error
 code (distinct from `not_found_or_not_visible`) so an agent can tell "enable
 the tracker" from "the repo or issue is missing". Issue comments, attachments,
-state changes, and taxonomy (milestones/components/versions) are later slices.
+and taxonomy (milestones/components/versions) are later slices.
 
 ### `workspace`
 
@@ -789,14 +800,17 @@ repo-permissions are later slices.
 atl-bb project list [<workspace>] [--workspace <slug>] [--limit N] [--all]
 atl-bb project view <project-key> --workspace <slug>
 atl-bb project create <project-key> --workspace <slug> --name <text> [--description <text>] [--private]
+atl-bb project delete <project-key> --workspace <slug> --yes
 ```
 
 `project list` lists a workspace's projects (`GET /workspaces/{ws}/projects`).
-`project view`/`create` take the project key as the positional argument and the
-workspace from `--workspace`. `project create` requires `--name`; `--private`
-is forwarded only when set, so an unset flag leaves Bitbucket's default
-visibility in place. Project permissions and default reviewers are later
-slices.
+`project view`/`create`/`delete` take the project key as the positional
+argument and the workspace from `--workspace`. `project create` requires
+`--name`; `--private` is forwarded only when set, so an unset flag leaves
+Bitbucket's default visibility in place. `project delete`
+(`DELETE /workspaces/{ws}/projects/{key}`) is irreversible and requires `--yes`
+to confirm; Bitbucket rejects deleting a project that still contains
+repositories. Project permissions and default reviewers are later slices.
 
 ### `commit`
 
