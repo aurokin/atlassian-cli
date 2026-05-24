@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/atlassian-cli-logo.png" alt="atlassian-cli" width="320">
+</p>
+
 # Atlassian CLI Workspace
 
 > Provisional private workspace. Canonical binary family: `atl-*`.
