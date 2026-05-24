@@ -24,3 +24,4 @@ For current, living documentation see the parent [`docs/`](../) directory:
 | `oauth-3lo-plan.md` | The OAuth 3LO design |
 | `shared-foundation-scorecard.md` | The Phase 9 shared-foundation review |
 | `bitbucket-migration-roadmap.md`, `bb-inventory.md`, `bb-rewrite-plan.md`, `bb-compatibility-plan.md` | The Bitbucket (`atl-bb`) import/rewrite arc (B0–B3c) |
+| `post-review-improvement-plan.md` | The May 2026 post-review PR plan (error model, dedup, write parity, release pipeline); fully merged |
