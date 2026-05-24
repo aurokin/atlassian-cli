@@ -542,6 +542,7 @@ atl-conf page view <id>
 atl-conf page children <id> [--limit N]
 atl-conf page create --space <key> --title <text> --body <text> --body-format <fmt>
 atl-conf page edit <id> [--title <text>] [--body <text> --body-format <fmt>]
+atl-conf page delete <id> [--purge] [--yes]
 ```
 
 `list` returns the pages in a space — `--space` is required and is resolved
@@ -564,6 +565,13 @@ case for pages authored in the modern editor). Only if neither representation
 is populated is the edit refused with an `invalid_input` error, rather than risk
 clearing the body — pass `--body` with `--body-format` to set the body
 explicitly. A version conflict surfaces as the structured error model below.
+
+`delete` removes a page by id. By default it moves the page to the space trash
+(`DELETE /pages/{id}`), where it can be restored, and prints `moved page <id>
+to trash`. `--purge` permanently deletes a page that is **already** in the
+trash (`DELETE /pages/{id}?purge=true`); because a purge is irreversible it
+also requires `--yes`, and the command prints `purged page <id>`. Under `--json`
+both forms render `{id, purged, deleted}`.
 
 ### `page comment`
 

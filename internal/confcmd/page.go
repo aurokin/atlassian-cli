@@ -18,7 +18,7 @@ import (
 func newPageCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "page",
-		Short: "List and view Confluence pages",
+		Short: "List, view, create, edit, and delete Confluence pages",
 	}
 	cmd.AddCommand(
 		newPageListCommand(info, g),
@@ -26,6 +26,7 @@ func newPageCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		newPageChildrenCommand(info, g),
 		newPageCreateCommand(info, g),
 		newPageEditCommand(info, g),
+		newPageDeleteCommand(info, g),
 		newPageCommentCommand(info, g),
 		newPageLabelCommand(info, g),
 	)
@@ -253,6 +254,55 @@ func newPageEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		"body representation for --body: storage, atlas_doc_format, or wiki")
 	_ = cmd.RegisterFlagCompletionFunc("body-format", cli.FixedCompletion(bodyFormatValues...))
 	return cmd
+}
+
+func newPageDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
+	var (
+		purge bool
+		yes   bool
+	)
+	cmd := &cobra.Command{
+		Use:   "delete <id>",
+		Short: "Delete a Confluence page",
+		Long: "Moves a page to the space trash, where it can be restored. Pass\n" +
+			"--purge to permanently delete a page that is already in the trash;\n" +
+			"because a purge is irreversible, it also requires --yes.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if purge && !yes {
+				return apperr.InvalidInput("purging a page is irreversible; pass --yes to confirm")
+			}
+			cc, err := confClient(info, g)
+			if err != nil {
+				return err
+			}
+			if err := cc.DeletePage(cmd.Context(), args[0], purge); err != nil {
+				return err
+			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, pageDeleteResult{ID: args[0], Purged: purge, Deleted: true})
+			}
+			if purge {
+				fmt.Fprintf(cmd.OutOrStdout(), "purged page %s\n", args[0])
+			} else {
+				fmt.Fprintf(cmd.OutOrStdout(), "moved page %s to trash\n", args[0])
+			}
+			return nil
+		},
+	}
+	f := cmd.Flags()
+	f.BoolVar(&purge, "purge", false, "permanently delete a page already in the trash (irreversible)")
+	f.BoolVar(&yes, "yes", false, "confirm an irreversible --purge")
+	return cmd
+}
+
+// pageDeleteResult is the synthesized outcome of a page delete, whose API call
+// returns no body, so --json has a stable object to render. Purged is true for
+// a permanent deletion, false for a move to the trash.
+type pageDeleteResult struct {
+	ID      string `json:"id"`
+	Purged  bool   `json:"purged"`
+	Deleted bool   `json:"deleted"`
 }
 
 // fetchADFBody re-fetches a page in the atlas_doc_format representation and
