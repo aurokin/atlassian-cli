@@ -22,8 +22,7 @@ system is built and how to use it.
 - [engineering-notes.md](engineering-notes.md) — contributor conventions and gotchas: validation-before-auth, the nil-body trap, the reusable-helper inventory, destructive-verb rules, and local gates.
 - [releasing.md](releasing.md) — versioning posture and how a release is cut (tag → GoReleaser), plus pipeline-maintenance constraints.
 - [integration-testing.md](integration-testing.md) — the live, opt-in integration suite that drives the real binaries against a real tenant.
-- [adr/](adr/) — architecture decision records: the *why* behind standing choices (exit codes, the shared foundation, `--yes`, the mixed-version Confluence client, token storage, verbatim JSON).
-- [post-review-improvement-plan.md](post-review-improvement-plan.md) — the sequenced, PR-by-PR plan for the recommendations from the May 2026 review. Fully merged; retained for traceability pending archival.
+- [adr/](adr/) — architecture decision records: the *why* behind standing choices (exit codes, the shared foundation, `--yes`, the mixed-version Confluence client, token storage, verbatim JSON, generated-docs delivery).
 
 ## History
 
