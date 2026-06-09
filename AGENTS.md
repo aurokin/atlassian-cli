@@ -32,6 +32,8 @@ built, not for current behavior.
 - Destructive verbs require an explicit `--yes`, and input/confirmation validation must run *before* the product client is constructed. These are standing rules — see `docs/adr/0003-destructive-verbs-require-yes.md` and `docs/engineering-notes.md`.
 - Don't over-abstract product semantics: promote a shared shape only once implementation proves the seam (`docs/adr/0002-shared-foundation.md`).
 - Update `docs/command-contract.md` whenever a change alters the command surface or behavior, and add an ADR under `docs/adr/` when you make a new standing decision.
+- Treat repo-local skills as consumer-facing artifacts. Do not put repo-maintainer workflow instructions into a skill when they belong in `AGENTS.md`, tests, or repo docs.
+- Keep the repo-local skill installable via `npx skills add https://github.com/aurokin/atlassian-cli --skill atlassian-cli`.
 
 ## Secrets
 

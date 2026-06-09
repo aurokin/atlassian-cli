@@ -106,6 +106,18 @@ The per-command Markdown reference is generated on demand (not committed) with
 > only if your environment can fetch it (`GOPRIVATE` set plus repo access);
 > from a local clone the commands above always work.
 
+## Install agent skill
+
+This repo also ships a reusable `atlassian-cli` skill for agents.
+
+Install it from this repo with:
+
+```bash
+npx skills add https://github.com/aurokin/atlassian-cli --skill atlassian-cli
+```
+
+You can also inspect the skill directly in [skills/atlassian-cli](./skills/atlassian-cli).
+
 Start here — the living docs:
 
 1. [docs/README.md](docs/README.md) — documentation index

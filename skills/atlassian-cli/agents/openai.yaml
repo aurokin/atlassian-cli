@@ -1,0 +1,4 @@
+interface:
+  display_name: "Atlassian CLI"
+  short_description: "Jira, Confluence, and Bitbucket workflows"
+  default_prompt: "Use $atlassian-cli when a task involves atl-jira, atl-conf, atl-bb, Jira, Confluence, Bitbucket Cloud, or Atlassian URLs; prefer explicit --site targeting, --json/--jq output, resolve first for pasted URLs, --no-prompt for headless flows, and api for official endpoints not wrapped yet."
