@@ -112,11 +112,12 @@ Start here — the living docs:
 2. [docs/command-contract.md](docs/command-contract.md) — the implemented command surface
 3. [docs/consuming.md](docs/consuming.md) — using the CLIs from scripts/agents: install, output/exit-code contract, pagination
 4. [docs/auth-design.md](docs/auth-design.md) / [docs/auth-runbook.md](docs/auth-runbook.md) — auth model and setup
-5. [docs/access-error-model.md](docs/access-error-model.md) — structured errors and exit codes
-6. [docs/shared-architecture.md](docs/shared-architecture.md) — how the three CLIs share a foundation
-7. [docs/adr/](docs/adr/) — architecture decision records (the *why* behind standing choices)
-8. [docs/releasing.md](docs/releasing.md) — how releases are cut; [docs/engineering-notes.md](docs/engineering-notes.md) — contributor conventions and gotchas
-9. [docs/integration-testing.md](docs/integration-testing.md) — the live integration suite
+5. [docs/token-scopes.md](docs/token-scopes.md) — starter scope sets for scoped API tokens
+6. [docs/access-error-model.md](docs/access-error-model.md) — structured errors and exit codes
+7. [docs/shared-architecture.md](docs/shared-architecture.md) — how the three CLIs share a foundation
+8. [docs/adr/](docs/adr/) — architecture decision records (the *why* behind standing choices)
+9. [docs/releasing.md](docs/releasing.md) — how releases are cut; [docs/engineering-notes.md](docs/engineering-notes.md) — contributor conventions and gotchas
+10. [docs/integration-testing.md](docs/integration-testing.md) — the live integration suite
 
 The completed phase plans, MVP specs, and the Bitbucket-rewrite arc are kept as
 historical records under [docs/archive/](docs/archive/).

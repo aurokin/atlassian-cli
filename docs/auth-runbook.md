@@ -52,7 +52,9 @@ and prints a warning that the token is not keychain-protected.
 - **API token with scopes** (recommended; use with `cloud-scoped`): create one
   at <https://id.atlassian.com/manage-profile/security/api-tokens> →
   **Create API token with scopes**, pick the app (Jira, Confluence, or
-  Bitbucket — one app per token) and grant the scopes your commands need. A
+  Bitbucket — one app per token) and grant the scopes your commands need. See
+  [token-scopes.md](token-scopes.md) for product-neutral starter sets that stay
+  within Atlassian's scope-count guidance. A
   scoped token authenticates as your **Atlassian account email** and **must** be
   used through the gateway, so it requires `cloud-scoped` with a `--cloud-id`;
   it will not work against the site URL with `cloud-classic`.
@@ -202,8 +204,9 @@ reach endpoints through the raw `api` command with the full path, e.g.
 Bitbucket Cloud uses the `cloud-classic` (Basic) style; the fixed REST host is
 filled in automatically. Authenticate with an **API token with scopes** (create
 one at <https://id.atlassian.com/manage-profile/security/api-tokens> → **Create
-API token with scopes** → select **Bitbucket**, and grant at least repository
-read/write plus an account/workspace read scope).
+API token with scopes** → select **Bitbucket**). For a maintained broad starter
+set, use [token-scopes.md](token-scopes.md#bitbucket); for a narrow token,
+grant only the Bitbucket permissions needed by the `atl-bb` commands you run.
 
 The username is your **Atlassian account email**, not your Bitbucket username:
 

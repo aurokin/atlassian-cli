@@ -14,6 +14,7 @@ system is built and how to use it.
 - [consuming.md](consuming.md) — using the CLIs from scripts and agents: install from a release, the output and exit-code contracts, pagination, and non-interactive use.
 - [auth-design.md](auth-design.md) — the auth model: cloud-classic / cloud-scoped tokens, Data Center PAT, and OAuth 3LO.
 - [auth-runbook.md](auth-runbook.md) — practical end-to-end authentication guide: pick a token style, supply and store the token, log in per product, verify, and troubleshoot.
+- [token-scopes.md](token-scopes.md) — product-neutral starter scope sets for Jira, Confluence, and Bitbucket Cloud API tokens.
 - [access-error-model.md](access-error-model.md) — permission-aware UX, the structured error envelope, and the process exit-code table.
 
 ### Building & maintaining
