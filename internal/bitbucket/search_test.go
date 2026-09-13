@@ -77,31 +77,6 @@ func TestSearchPullRequestsQuery(t *testing.T) {
 	}
 }
 
-func TestSearchIssuesQuery(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/repositories/acme/widgets/issues" {
-			t.Errorf("path = %q", r.URL.Path)
-		}
-		if got := r.URL.Query().Get("q"); got != `state = "open"` {
-			t.Errorf("q = %q", got)
-		}
-		_, _ = w.Write([]byte(`{"values":[{"id":3,"title":"bug"}]}`))
-	}))
-	defer srv.Close()
-
-	raw, err := newTestClient(srv).SearchIssues(context.Background(), "acme", "widgets", `state = "open"`, "", 0)
-	if err != nil {
-		t.Fatalf("SearchIssues: %v", err)
-	}
-	page, err := Decode[IssuePage](raw)
-	if err != nil {
-		t.Fatalf("Decode: %v", err)
-	}
-	if len(page.Values) != 1 || page.Values[0].ID != 3 {
-		t.Fatalf("values = %+v", page.Values)
-	}
-}
-
 func TestSearchRepositoriesAllFollowsNext(t *testing.T) {
 	var srv *httptest.Server
 	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

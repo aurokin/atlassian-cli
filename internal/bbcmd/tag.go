@@ -150,12 +150,16 @@ func newTagDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	var (
 		repoFlag      string
 		workspaceFlag string
+		yes           bool
 	)
 	cmd := &cobra.Command{
 		Use:   "delete <name>",
-		Short: "Delete a tag",
+		Short: "Delete a tag (irreversible)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cli.RequireYes(yes, "deleting a tag"); err != nil {
+				return err
+			}
 			name := strings.TrimSpace(args[0])
 			if name == "" {
 				return apperr.InvalidInput("a tag name is required")
@@ -179,6 +183,7 @@ func newTagDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
+	cli.AddYesFlag(cmd, &yes)
 	return cmd
 }
 

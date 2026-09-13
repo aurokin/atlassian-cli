@@ -244,7 +244,7 @@ func TestConfPageLifecycle(t *testing.T) {
 	if err := jsonUnmarshal(commentRes.stdout, &comment); err != nil || comment.ID == "" {
 		t.Fatalf("could not parse created comment id: %v\nstdout:\n%s", err, commentRes.stdout)
 	}
-	s.mustWrite("page comment delete", "page", "comment", "delete", comment.ID)
+	s.mustWrite("page comment delete", "page", "comment", "delete", comment.ID, "--yes")
 }
 
 // TestConfPageADFTitleEdit covers the modern-editor case: a page created in

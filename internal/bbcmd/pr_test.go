@@ -5,8 +5,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/aurokin/atlassian-cli/internal/bitbucket"
 )
 
 func TestPRListHumanAndStateQuery(t *testing.T) {
@@ -425,5 +428,39 @@ func TestPRCommentsAddRequiresBody(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "requires --body") {
 		t.Errorf("error = %v, want requires --body", err)
+	}
+}
+
+func TestPullRequestListingsAllDefaultToPullRequestPageSize(t *testing.T) {
+	// The pull-requests endpoint rejects pagelen above 50, so --all with no
+	// --limit must ask for that cap rather than the general MaxPageLen on both
+	// commands that list it.
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{"pr list", []string{"pr", "list"}},
+		{"search prs", []string{"search", "prs", `title ~ "fix"`}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			var gotPagelen string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotPagelen = r.URL.Query().Get("pagelen")
+				// One page, no "next": the follow completes after a single request.
+				_, _ = w.Write([]byte(`{"values":[]}`))
+			}))
+			defer srv.Close()
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+			loginBBSite(t, srv.URL)
+
+			args := append(c.args, "--repo", "acme/widgets", "--site", "work", "--all")
+			if _, err := execBB(t, args...); err != nil {
+				t.Fatalf("%s --all: %v", c.name, err)
+			}
+			if gotPagelen != strconv.Itoa(bitbucket.MaxPullRequestPageLen) {
+				t.Fatalf("pagelen query = %q, want %d", gotPagelen, bitbucket.MaxPullRequestPageLen)
+			}
+		})
 	}
 }

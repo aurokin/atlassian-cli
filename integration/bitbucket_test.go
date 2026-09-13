@@ -171,7 +171,7 @@ func TestBitbucketBranchLifecycle(t *testing.T) {
 		if deleted {
 			return
 		}
-		res := s.run("branch", "delete", name, "--repo", target)
+		res := s.run("branch", "delete", name, "--repo", target, "--yes")
 		if res.err != nil && !strings.Contains(res.stdout+res.stderr, "not_found") {
 			t.Logf("cleanup: failed to delete branch %q in %s (delete it manually): %v\n%s",
 				name, target, res.err, res.stdout+res.stderr)
@@ -190,7 +190,7 @@ func TestBitbucketBranchLifecycle(t *testing.T) {
 		t.Fatalf("branch view returned name %q, want %q", branch.Name, name)
 	}
 
-	delRes := s.mustWrite("branch delete", "branch", "delete", name, "--repo", target)
+	delRes := s.mustWrite("branch delete", "branch", "delete", name, "--repo", target, "--yes")
 	if !strings.Contains(delRes.stdout, "deleted branch "+name) {
 		t.Fatalf("branch delete output unexpected: %q", delRes.stdout)
 	}
@@ -220,7 +220,7 @@ func TestBitbucketTagLifecycle(t *testing.T) {
 		if deleted {
 			return
 		}
-		res := s.run("tag", "delete", name, "--repo", target)
+		res := s.run("tag", "delete", name, "--repo", target, "--yes")
 		if res.err != nil && !strings.Contains(res.stdout+res.stderr, "not_found") {
 			t.Logf("cleanup: failed to delete tag %q in %s (delete it manually): %v\n%s",
 				name, target, res.err, res.stdout+res.stderr)
@@ -239,7 +239,7 @@ func TestBitbucketTagLifecycle(t *testing.T) {
 		t.Fatalf("tag view returned name %q, want %q", tag.Name, name)
 	}
 
-	delRes := s.mustWrite("tag delete", "tag", "delete", name, "--repo", target)
+	delRes := s.mustWrite("tag delete", "tag", "delete", name, "--repo", target, "--yes")
 	if !strings.Contains(delRes.stdout, "deleted tag "+name) {
 		t.Fatalf("tag delete output unexpected: %q", delRes.stdout)
 	}

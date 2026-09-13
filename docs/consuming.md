@@ -65,7 +65,10 @@ Include this in bug reports — `commit` and `date` pin the exact build.
     API path, the CLI does not fake one (see
     [ADR 0006](adr/0006-verbatim-json-no-fake-parity.md)).
 - `--json` selects top-level fields with `--json=field1,field2`; bare `--json`
-  is all fields (`--json='*'` is the explicit, glob-safe form). `--jq` runs a
+  is all fields (`--json='*'` is the explicit, glob-safe form). Field selection
+  works on an **object-shaped** response and element by element on an array
+  of objects (`atl-jira field list --json=id`); anything else fails with
+  `invalid_input` (exit `8`, after the request), so project it with `--jq`. `--jq` runs a
   full [jq](https://jqlang.github.io/jq/) expression over the same JSON and
   prints each result as compact JSON on its own line. The two cannot be
   combined with a `--json` field list. See
@@ -125,6 +128,11 @@ cap; if it hits the cap with pages still remaining, the command exits with the
 - Set the target site once with `ATL_SITE=<name>` or
   `atl-jira auth default <name>` instead of repeating `--site` (resolution
   order: `--site` → `ATL_SITE` → `default_site`).
+- Bound each request with **`--timeout`** (a Go duration such as `45s` or
+  `2m`), or set `ATL_TIMEOUT` once; precedence is `--timeout` → `ATL_TIMEOUT` →
+  the `30s` default. `--timeout 0` disables the deadline, which large
+  attachment uploads/downloads may need. A deadline that fires exits `9`
+  (`timeout`), which is retryable.
 - For headless/CI auth, supply the token via `--token-env NAME` so nothing is
   written to disk; see [auth-runbook.md](auth-runbook.md).
 - The raw **`api`** command is a first-class escape hatch for any endpoint a

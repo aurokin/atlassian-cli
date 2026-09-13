@@ -83,6 +83,41 @@ func TestRenderSelectedFieldsOmitsUnknownFields(t *testing.T) {
 	}
 }
 
+func TestRenderSelectedFieldsProjectsArrayElements(t *testing.T) {
+	var buf bytes.Buffer
+	in := []sample{{Binary: "atl-jira", Product: "jira"}, {Binary: "atl-conf", Product: "confluence"}}
+	if err := Render(&buf, in, Options{JSON: "binary"}); err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	var want bytes.Buffer
+	if err := json.Indent(&want, []byte(`[{"binary":"atl-jira"},{"binary":"atl-conf"}]`), "", "  "); err != nil {
+		t.Fatal(err)
+	}
+	if got := buf.String(); got != want.String()+"\n" {
+		t.Fatalf("--json=binary on an array = %q, want %q", got, want.String()+"\n")
+	}
+}
+
+func TestRenderSelectedFieldsOnScalarsIsStructured(t *testing.T) {
+	for _, in := range []string{`[1,2]`, `"text"`, `null`, `[null]`} {
+		var buf bytes.Buffer
+		err := Render(&buf, json.RawMessage(in), Options{JSON: "id"})
+		if err == nil {
+			t.Fatalf("Render accepted a --json field list on %s", in)
+		}
+		var ae *apperr.Error
+		if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+			t.Fatalf("err = %v, want an invalid_input *apperr.Error", err)
+		}
+		if !strings.Contains(ae.Message, "--jq") {
+			t.Fatalf("message = %q, want a --jq hint", ae.Message)
+		}
+		if buf.Len() != 0 {
+			t.Fatalf("wrote %q to output on error, want nothing", buf.String())
+		}
+	}
+}
+
 func TestRenderJQExtractsField(t *testing.T) {
 	var buf bytes.Buffer
 	in := sample{Binary: "atl-jira", Product: "jira", Version: "1.0.0"}

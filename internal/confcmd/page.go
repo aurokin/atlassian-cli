@@ -103,28 +103,30 @@ func newPageChildrenCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 	)
 	cmd := &cobra.Command{
 		Use:   "children <id>",
-		Short: "List the direct child pages of a page",
-		Args:  cobra.ExactArgs(1),
+		Short: "List the direct children of a page",
+		Long: "Lists the page's direct children. Children may be pages, folders,\n" +
+			"whiteboards, databases, or embeds; the type column says which.",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cc, err := confClient(info, g)
 			if err != nil {
 				return err
 			}
-			children := cc.GetChildPages
+			children := cc.GetPageChildren
 			if all {
-				children = cc.GetChildPagesAll
+				children = cc.GetPageChildrenAll
 			}
 			raw, err := children(cmd.Context(), args[0], limit)
 			if err != nil {
 				return err
 			}
-			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.PageList],
-				func(w io.Writer, page conf.PageList) {
-					writePageList(w, page.Results)
+			return cli.RenderDecoded(cmd, g, raw, conf.Decode[conf.PageChildList],
+				func(w io.Writer, list conf.PageChildList) {
+					writePageChildList(w, list.Results)
 				})
 		},
 	}
-	cli.AddPaginationFlags(cmd, &limit, &all, "child pages")
+	cli.AddPaginationFlags(cmd, &limit, &all, "children")
 	return cmd
 }
 
@@ -208,6 +210,19 @@ func writeAncestorList(w io.Writer, ancestors []conf.Ancestor) {
 	tw := output.TabWriter(w)
 	for _, a := range ancestors {
 		fmt.Fprintf(tw, "%s\t%s\n", a.Type, a.ID)
+	}
+	_ = tw.Flush()
+}
+
+// writePageChildList prints direct children as aligned id/type/status/title rows.
+func writePageChildList(w io.Writer, children []conf.PageChild) {
+	if len(children) == 0 {
+		fmt.Fprintln(w, "No children found.")
+		return
+	}
+	tw := output.TabWriter(w)
+	for _, c := range children {
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", c.ID, c.Type, c.Status, c.Title)
 	}
 	_ = tw.Flush()
 }
@@ -325,8 +340,10 @@ func newPageDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 			"because a purge is irreversible, it also requires --yes.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if purge && !yes {
-				return apperr.InvalidInput("purging a page is irreversible; pass --yes to confirm")
+			if purge {
+				if err := cli.RequireYes(yes, "purging a page"); err != nil {
+					return err
+				}
 			}
 			cc, err := confClient(info, g)
 			if err != nil {
@@ -348,6 +365,8 @@ func newPageDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 	}
 	f := cmd.Flags()
 	f.BoolVar(&purge, "purge", false, "permanently delete a page already in the trash (irreversible)")
+	// Registered by hand rather than via cli.AddYesFlag: here --yes confirms
+	// only --purge (a plain delete trashes the page), so the help text differs.
 	f.BoolVar(&yes, "yes", false, "confirm an irreversible --purge")
 	return cmd
 }

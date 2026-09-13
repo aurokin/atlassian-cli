@@ -198,7 +198,7 @@ func TestJiraIssueLifecycle(t *testing.T) {
 	s.mustWrite("issue comment edit",
 		"issue", "comment", "edit", key, comment.ID, "--body", "integration comment edited "+stamp)
 
-	delComment := s.mustWrite("issue comment delete", "issue", "comment", "delete", key, comment.ID, "--json")
+	delComment := s.mustWrite("issue comment delete", "issue", "comment", "delete", key, comment.ID, "--yes", "--json")
 	var deleted struct {
 		Deleted bool `json:"deleted"`
 	}

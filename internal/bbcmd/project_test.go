@@ -130,16 +130,6 @@ func TestProjectCreateRequiresName(t *testing.T) {
 	}
 }
 
-func TestProjectDeleteRequiresConfirmation(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	// --yes guard runs before any client construction, so a clean config never
-	// reaches the network.
-	_, err := execBB(t, "project", "delete", "WID", "--workspace", "acme", "--site", "work")
-	if err == nil || !strings.Contains(err.Error(), "pass --yes") {
-		t.Fatalf("expected confirmation error, got %v", err)
-	}
-}
-
 func TestProjectDeleteWithConfirmation(t *testing.T) {
 	var gotMethod, gotPath string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

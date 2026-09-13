@@ -153,8 +153,8 @@ func newProjectDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 		Short: "Delete a project (irreversible)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !yes {
-				return apperr.InvalidInput("deleting a project is irreversible; pass --yes to confirm")
+			if err := cli.RequireYes(yes, "deleting a project"); err != nil {
+				return err
 			}
 			workspace, err := resolveWorkspace(nil, workspaceFlag)
 			if err != nil {
@@ -175,7 +175,7 @@ func newProjectDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 		},
 	}
 	cmd.Flags().StringVar(&workspaceFlag, "workspace", "", "workspace slug the project belongs to (required)")
-	cmd.Flags().BoolVar(&yes, "yes", false, "confirm the irreversible deletion")
+	cli.AddYesFlag(cmd, &yes)
 	return cmd
 }
 

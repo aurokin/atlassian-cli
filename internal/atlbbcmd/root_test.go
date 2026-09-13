@@ -20,7 +20,6 @@ func TestRootWiring(t *testing.T) {
 		"repo":        false,
 		"pr":          false,
 		"pipeline":    false,
-		"issue":       false,
 		"workspace":   false,
 		"project":     false,
 		"commit":      false,

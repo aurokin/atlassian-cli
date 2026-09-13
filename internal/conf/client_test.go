@@ -152,20 +152,22 @@ func TestClientGetPage(t *testing.T) {
 	}
 }
 
-func TestClientGetChildPages(t *testing.T) {
-	srv, _ := serveJSON(t, "/pages/10/children",
-		`{"results":[{"id":"11","title":"Child","status":"current","spaceId":"1"}]}`)
+func TestClientGetPageChildren(t *testing.T) {
+	srv, _ := serveJSON(t, "/pages/10/direct-children",
+		`{"results":[{"id":"11","title":"Child","status":"current","type":"page","spaceId":"1"},`+
+			`{"id":"12","title":"Docs","status":"current","type":"folder","spaceId":"1"}]}`)
 	defer srv.Close()
 
-	raw, err := newTestClient(srv).GetChildPages(context.Background(), "10", 0)
+	raw, err := newTestClient(srv).GetPageChildren(context.Background(), "10", 0)
 	if err != nil {
-		t.Fatalf("GetChildPages: %v", err)
+		t.Fatalf("GetPageChildren: %v", err)
 	}
-	page, err := Decode[PageList](raw)
+	page, err := Decode[PageChildList](raw)
 	if err != nil {
 		t.Fatalf("Decode: %v", err)
 	}
-	if len(page.Results) != 1 || page.Results[0].ID != "11" {
+	if len(page.Results) != 2 || page.Results[0].ID != "11" ||
+		page.Results[0].Type != "page" || page.Results[1].Type != "folder" {
 		t.Fatalf("children = %+v", page.Results)
 	}
 }

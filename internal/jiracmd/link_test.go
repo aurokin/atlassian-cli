@@ -105,3 +105,27 @@ func TestIssueLinkTypesJSON(t *testing.T) {
 		t.Fatalf("unexpected link types JSON: %v", got)
 	}
 }
+
+func TestIssueLinkJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginJiraSite(t, srv.URL)
+
+	out, err := execJira(t, "issue", "link", "PROJ-1", "PROJ-2", "--type", "Blocks", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("issue link --json: %v\n%s", err, out)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("link --json output is not valid JSON: %v\n%s", err, out)
+	}
+	if got["type"] != "Blocks" || got["inward"] != "PROJ-1" || got["outward"] != "PROJ-2" || got["created"] != true {
+		t.Fatalf("unexpected link JSON: %v", got)
+	}
+	if strings.Contains(out, "created Blocks link") {
+		t.Errorf("link --json printed human text:\n%s", out)
+	}
+}

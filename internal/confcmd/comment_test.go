@@ -207,7 +207,7 @@ func TestPageCommentDeleteHumanOutput(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	loginConfSite(t, srv.URL)
 
-	out, err := execConf(t, "page", "comment", "delete", "c1", "--site", "work")
+	out, err := execConf(t, "page", "comment", "delete", "c1", "--site", "work", "--yes")
 	if err != nil {
 		t.Fatalf("page comment delete: %v", err)
 	}
@@ -216,5 +216,43 @@ func TestPageCommentDeleteHumanOutput(t *testing.T) {
 	}
 	if !strings.Contains(out, "deleted comment c1") {
 		t.Errorf("delete output missing 'deleted comment c1':\n%s", out)
+	}
+}
+
+func TestPageCommentDeleteRequiresYes(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		t.Errorf("unexpected request %s %s: a refused delete must not reach the API", r.Method, r.URL.Path)
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	_, err := execConf(t, "page", "comment", "delete", "c1", "--site", "work")
+	if err == nil || !strings.Contains(err.Error(), "pass --yes") {
+		t.Fatalf("page comment delete without --yes: err = %v, want a --yes refusal", err)
+	}
+}
+
+func TestPageCommentDeleteJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	out, err := execConf(t, "page", "comment", "delete", "c1", "--site", "work", "--yes", "--json")
+	if err != nil {
+		t.Fatalf("page comment delete --json: %v\n%s", err, out)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("comment delete --json output is not valid JSON: %v\n%s", err, out)
+	}
+	if got["id"] != "c1" || got["deleted"] != true {
+		t.Fatalf("unexpected comment delete JSON: %v", got)
+	}
+	if strings.Contains(out, "deleted comment") {
+		t.Errorf("comment delete --json printed human text:\n%s", out)
 	}
 }

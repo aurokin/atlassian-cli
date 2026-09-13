@@ -32,7 +32,7 @@ const MaxFollowPages = 100
 func TruncatedError() error {
 	return apperr.New(apperr.CodeResultTruncated,
 		"the result has more pages than --all will follow (cap: 100 pages); "+
-			"narrow the query or raise --limit to fetch larger pages")
+			"narrow the query, or raise --limit where the endpoint allows larger pages")
 }
 
 // Base is the product-agnostic core of a typed REST client: it wraps an
@@ -45,10 +45,6 @@ type Base struct {
 	HTTP *httpclient.Client
 	// Product names the product in encode-error messages (e.g. "Jira").
 	Product string
-	// RemapError optionally post-processes a request error before it is
-	// returned, given the (possibly nil) response. Bitbucket sets it to upgrade
-	// a disabled-capability response to feature_disabled. Nil means identity.
-	RemapError func(resp *httpclient.Response, err error) error
 }
 
 // APIBase returns the resolved API base URL the client sends requests to.
@@ -58,11 +54,11 @@ func (b *Base) APIBase() (string, error) {
 
 // Get issues a GET against an API-relative path or absolute (pagination) URL
 // and returns the raw body. A non-2xx response surfaces as the structured
-// *apperr.Error from httpclient, passed through RemapError when set.
+// *apperr.Error from httpclient.
 func (b *Base) Get(ctx context.Context, pathOrURL string) (json.RawMessage, error) {
 	resp, err := b.HTTP.Do(ctx, "GET", pathOrURL, nil)
 	if err != nil {
-		return nil, b.remap(resp, err)
+		return nil, err
 	}
 	return json.RawMessage(resp.Body), nil
 }
@@ -71,11 +67,11 @@ func (b *Base) Get(ctx context.Context, pathOrURL string) (json.RawMessage, erro
 // response bytes, which need not be JSON. It is the text/binary counterpart to
 // Get — used for endpoints that return a diff or file content rather than a
 // JSON document. A non-2xx response surfaces as the structured *apperr.Error
-// from httpclient, passed through RemapError when set.
+// from httpclient.
 func (b *Base) GetAccepting(ctx context.Context, pathOrURL, accept string) ([]byte, error) {
 	resp, err := b.HTTP.DoAccepting(ctx, "GET", pathOrURL, nil, accept)
 	if err != nil {
-		return nil, b.remap(resp, err)
+		return nil, err
 	}
 	return resp.Body, nil
 }
@@ -83,7 +79,7 @@ func (b *Base) GetAccepting(ctx context.Context, pathOrURL, accept string) ([]by
 // Send marshals payload as a JSON request body, issues method against an
 // API-relative path or absolute URL, and returns the raw response body. A nil
 // payload sends no body. A non-2xx response surfaces as the structured
-// *apperr.Error from httpclient, passed through RemapError when set.
+// *apperr.Error from httpclient.
 func (b *Base) Send(ctx context.Context, method, pathOrURL string, payload any) (json.RawMessage, error) {
 	var body io.Reader
 	if payload != nil {
@@ -96,7 +92,7 @@ func (b *Base) Send(ctx context.Context, method, pathOrURL string, payload any) 
 	}
 	resp, err := b.HTTP.Do(ctx, method, pathOrURL, body)
 	if err != nil {
-		return nil, b.remap(resp, err)
+		return nil, err
 	}
 	return json.RawMessage(resp.Body), nil
 }
@@ -104,11 +100,11 @@ func (b *Base) Send(ctx context.Context, method, pathOrURL string, payload any) 
 // Upload sends body with an explicit Content-Type (e.g. a multipart boundary)
 // and the X-Atlassian-Token: no-check header attachment-upload endpoints
 // require, returning the raw response body. A non-2xx response surfaces as the
-// structured *apperr.Error from httpclient, passed through RemapError when set.
+// structured *apperr.Error from httpclient.
 func (b *Base) Upload(ctx context.Context, method, pathOrURL, contentType string, body io.Reader) (json.RawMessage, error) {
 	resp, err := b.HTTP.DoUpload(ctx, method, pathOrURL, contentType, body)
 	if err != nil {
-		return nil, b.remap(resp, err)
+		return nil, err
 	}
 	return json.RawMessage(resp.Body), nil
 }
@@ -134,14 +130,6 @@ func MultipartFile(fieldName, filename string, r io.Reader) (*bytes.Buffer, stri
 			"could not finalize the upload body: "+err.Error())
 	}
 	return &buf, mw.FormDataContentType(), nil
-}
-
-// remap applies the optional RemapError hook to a non-nil error.
-func (b *Base) remap(resp *httpclient.Response, err error) error {
-	if b.RemapError == nil {
-		return err
-	}
-	return b.RemapError(resp, err)
 }
 
 // SetLimit records a positive limit under the given page-size query parameter

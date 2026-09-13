@@ -1,6 +1,6 @@
 ---
 name: atlassian-cli
-description: Atlassian CLI skill for this repository's `atl-jira`, `atl-conf`, and `atl-bb` commands. Use when a task mentions Jira, Confluence, Bitbucket Cloud, Atlassian, `atl-jira`, `atl-conf`, `atl-bb`, Atlassian site URLs, Jira issue keys, Confluence spaces/pages/blogposts, or Bitbucket workspace/repository/pull request/pipeline/issue URLs. Covers installation, authentication, site targeting, structured output, URL resolution, browse flows, product command workflows, pagination, exit codes, destructive-command guardrails, and raw official Atlassian REST API fallback with `api`.
+description: Atlassian CLI skill for this repository's `atl-jira`, `atl-conf`, and `atl-bb` commands. Use when a task mentions Jira, Confluence, Bitbucket Cloud, Atlassian, `atl-jira`, `atl-conf`, `atl-bb`, Atlassian site URLs, Jira issue keys, Confluence spaces/pages/blogposts, or Bitbucket workspace/repository/pull request/pipeline URLs. Covers installation, authentication, site targeting, structured output, URL resolution, browse flows, product command workflows, pagination, exit codes, destructive-command guardrails, and raw official Atlassian REST API fallback with `api`.
 ---
 
 # Atlassian CLI
@@ -21,7 +21,7 @@ escape hatch.
 
 - The task mentions Jira, Confluence, Bitbucket Cloud, Atlassian, or an `atl-*` binary.
 - The task includes an Atlassian, Jira, Confluence, or Bitbucket URL.
-- The task includes a Jira issue key, Confluence page/space/blogpost target, or Bitbucket workspace/repository/PR/pipeline/issue target.
+- The task includes a Jira issue key, Confluence page/space/blogpost target, or Bitbucket workspace/repository/PR/pipeline target.
 - The task needs deterministic Atlassian CLI output for an agent.
 - The task needs an official Atlassian REST API fallback through `atl-jira api`, `atl-conf api`, or `atl-bb api`.
 
@@ -104,7 +104,7 @@ Read only the reference needed for the task:
 - `references/auth.md` - token styles, login examples, CI auth, status checks, and scopes.
 - `references/jira.md` - Jira projects, issues, comments, worklogs, attachments, JQL, and status.
 - `references/confluence.md` - Confluence spaces, pages, blogposts, comments, labels, attachments, CQL/text search, and mixed v1/v2 behavior.
-- `references/bitbucket.md` - Bitbucket Cloud repositories, pull requests, pipelines, issues, source, branches, tags, deployments, and repository targeting.
+- `references/bitbucket.md` - Bitbucket Cloud repositories, pull requests, pipelines, source, branches, tags, deployments, and repository targeting.
 
 Use repository docs as the source of truth when command behavior is unclear:
 `docs/command-contract.md`, `docs/consuming.md`, `docs/auth-runbook.md`,

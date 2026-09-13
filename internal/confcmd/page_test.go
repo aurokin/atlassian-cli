@@ -153,11 +153,11 @@ func TestPageViewMapsNotFound(t *testing.T) {
 
 func TestPageChildrenHumanOutput(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/pages/10/children" {
-			t.Errorf("path = %q, want /pages/10/children", r.URL.Path)
+		if r.URL.Path != "/pages/10/direct-children" {
+			t.Errorf("path = %q, want /pages/10/direct-children", r.URL.Path)
 		}
-		_, _ = w.Write([]byte(`{"results":[{"id":"11","title":"Child A","status":"current"},` +
-			`{"id":"12","title":"Child B","status":"current"}]}`))
+		_, _ = w.Write([]byte(`{"results":[{"id":"11","title":"Child A","status":"current","type":"page"},` +
+			`{"id":"12","title":"Child B","status":"current","type":"folder"}]}`))
 	}))
 	defer srv.Close()
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
@@ -167,7 +167,7 @@ func TestPageChildrenHumanOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("page children: %v", err)
 	}
-	for _, want := range []string{"11", "Child A", "12", "Child B"} {
+	for _, want := range []string{"11", "page", "Child A", "12", "folder", "Child B"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("page children output missing %q:\n%s", want, out)
 		}
@@ -186,7 +186,7 @@ func TestPageChildrenEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("page children: %v", err)
 	}
-	if !strings.Contains(out, "No pages found") {
+	if !strings.Contains(out, "No children found") {
 		t.Fatalf("empty page children output:\n%s", out)
 	}
 }

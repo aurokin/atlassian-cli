@@ -20,7 +20,6 @@ const (
 	KindConfluenceSpace      ResourceKind = "confluence_space"
 	KindBitbucketRepo        ResourceKind = "bitbucket_repository"
 	KindBitbucketPullRequest ResourceKind = "bitbucket_pull_request"
-	KindBitbucketIssue       ResourceKind = "bitbucket_issue"
 	KindBitbucketCommit      ResourceKind = "bitbucket_commit"
 )
 

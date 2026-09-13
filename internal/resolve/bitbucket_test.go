@@ -15,7 +15,6 @@ func TestBitbucketParseRecognizedForms(t *testing.T) {
 		{"repo URL", "https://bitbucket.org/acme/widgets", KindBitbucketRepo, "acme/widgets", "", "bitbucket.org"},
 		{"repo URL trailing slash", "https://bitbucket.org/acme/widgets/", KindBitbucketRepo, "acme/widgets", "", "bitbucket.org"},
 		{"pull request URL", "https://bitbucket.org/acme/widgets/pull-requests/42", KindBitbucketPullRequest, "acme/widgets", "42", "bitbucket.org"},
-		{"issue URL", "https://bitbucket.org/acme/widgets/issues/7", KindBitbucketIssue, "acme/widgets", "7", "bitbucket.org"},
 		{"commit URL", "https://bitbucket.org/acme/widgets/commits/abc123", KindBitbucketCommit, "acme/widgets", "abc123", "bitbucket.org"},
 		{"src sub-page falls back to repo", "https://bitbucket.org/acme/widgets/src/main/README.md", KindBitbucketRepo, "acme/widgets", "", "bitbucket.org"},
 		{"pull-requests list falls back to repo", "https://bitbucket.org/acme/widgets/pull-requests", KindBitbucketRepo, "acme/widgets", "", "bitbucket.org"},
@@ -79,12 +78,6 @@ func TestBitbucketCanonicalURL(t *testing.T) {
 			"https://bitbucket.org",
 			Resource{Kind: KindBitbucketPullRequest, Key: "acme/widgets", ID: "42"},
 			"https://bitbucket.org/acme/widgets/pull-requests/42",
-		},
-		{
-			"issue",
-			"https://bitbucket.org",
-			Resource{Kind: KindBitbucketIssue, Key: "acme/widgets", ID: "7"},
-			"https://bitbucket.org/acme/widgets/issues/7",
 		},
 		{
 			"commit",

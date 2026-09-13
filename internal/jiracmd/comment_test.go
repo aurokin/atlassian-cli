@@ -324,7 +324,7 @@ func TestCommentDeleteHumanOutput(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	loginJiraSite(t, srv.URL)
 
-	out, err := execJira(t, "issue", "comment", "delete", "PROJ-1", "10", "--site", "work")
+	out, err := execJira(t, "issue", "comment", "delete", "PROJ-1", "10", "--site", "work", "--yes")
 	if err != nil {
 		t.Fatalf("comment delete: %v", err)
 	}
@@ -344,7 +344,7 @@ func TestCommentDeleteJSON(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	loginJiraSite(t, srv.URL)
 
-	out, err := execJira(t, "issue", "comment", "delete", "PROJ-1", "10", "--site", "work", "--json")
+	out, err := execJira(t, "issue", "comment", "delete", "PROJ-1", "10", "--site", "work", "--json", "--yes")
 	if err != nil {
 		t.Fatalf("comment delete --json: %v", err)
 	}
@@ -366,12 +366,22 @@ func TestCommentDeleteMapsNotFound(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	loginJiraSite(t, srv.URL)
 
-	_, err := execJira(t, "issue", "comment", "delete", "PROJ-1", "404", "--site", "work")
+	_, err := execJira(t, "issue", "comment", "delete", "PROJ-1", "404", "--site", "work", "--yes")
 	if err == nil {
 		t.Fatal("comment delete of a missing comment returned no error")
 	}
 	var ae *apperr.Error
 	if !errors.As(err, &ae) || ae.Code != apperr.CodeNotFoundOrNotVisible {
 		t.Fatalf("error = %v, want a not_found_or_not_visible *apperr.Error", err)
+	}
+}
+
+func TestCommentDeleteRequiresConfirmation(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	_, err := execJira(t, "issue", "comment", "delete", "PROJ-1", "10", "--site", "work")
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput ||
+		!strings.Contains(ae.Error(), "pass --yes") {
+		t.Fatalf("error = %v, want an invalid_input confirmation error", err)
 	}
 }

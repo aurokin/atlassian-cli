@@ -15,20 +15,20 @@ posture, see [consuming.md](consuming.md).)
 
 ### Shared foundation (every binary)
 
-Global flags (`--json`, `--jq`, `--site`, `--no-prompt`, `--trace`), config and
-site selection (`--site` → `ATL_SITE` → `default_site`), keychain-first token
-storage, structured output and the per-category error model, the `auth`
-subtree, the raw `api` escape hatch, offline `resolve`/`browse`, `alias`,
-`extension`, shell `completion`, and `version`. List/search commands take
-`--limit` and `--all`.
+Global flags (`--json`, `--jq`, `--site`, `--no-prompt`, `--trace`,
+`--timeout`), config and site selection (`--site` → `ATL_SITE` →
+`default_site`), keychain-first token storage, structured output and the
+per-category error model, the `auth` subtree, the raw `api` escape hatch,
+offline `resolve`/`browse`, `alias`, `extension`, shell `completion`, and
+`version`. List/search commands take `--limit` and `--all`.
 
 ### Capability matrix
 
 | Area | `atl-jira` | `atl-conf` | `atl-bb` |
 |---|---|---|---|
-| Read / list | `project`, `issue` (view/list), `issue comment`, `field list`, `search issues` (JQL), `status` | `space`, `page` (view/list/children/ancestors/versions), `page comment`, `page label`, `blogpost` (list/view), `attachment` (list/download), `search` (CQL + text), `status` | `repo`, `pr`, `pipeline` (+ steps/log), `issue`, `workspace`, `project`, `commit`, `src`/`file`, `branch`, `tag`, `deployment`/`environment`, `search`, `status` |
-| Create / edit | `issue` create/edit/transition, `assign`, `watch`/`unwatch`, `link`, `worklog` add, `comment` create/edit/delete | `page` create/edit, `blogpost` create/edit, `page comment`/`label` writes, `attachment` upload | `repo create`, `issue update`, `pr` approve/decline/merge, `pipeline stop` |
-| Delete (guarded by `--yes`) | `comment delete` | `page delete` (trash; `--purge` to remove permanently) | `repo delete`, `project delete`, `branch`/`tag` delete |
+| Read / list | `project`, `issue` (view/list), `issue comment`, `field list`, `search issues` (JQL), `status` | `space`, `page` (view/list/children/ancestors/versions), `page comment`, `page label`, `blogpost` (list/view), `attachment` (list/download), `search` (CQL + text), `status` | `repo`, `pr`, `pipeline` (+ steps/log), `workspace`, `project`, `commit`, `src`/`file`, `branch`, `tag`, `deployment`/`environment`, `search`, `status` |
+| Create / edit | `issue` create/edit/transition, `assign`, `watch`/`unwatch`, `link`, `worklog` add, `comment` create/edit/delete | `page` create/edit, `blogpost` create/edit, `page comment`/`label` writes, `attachment` upload | `repo create`, `pr` approve/decline/merge, `pipeline stop` |
+| Delete (guarded by `--yes`) | `comment delete` | `page delete --purge` (a plain `page delete` only trashes and needs no flag), `page comment delete` | `repo delete`, `project delete`, `branch`/`tag` delete |
 
 Destructive verbs require `--yes` (see
 [ADR 0003](adr/0003-destructive-verbs-require-yes.md)). The matrix is a summary;
@@ -40,8 +40,8 @@ sections below.
 - `atl-jira` — Jira CLI (`product: jira`)
 - `atl-conf` — Confluence CLI (`product: confluence`)
 - `atl-bb` — Bitbucket Cloud CLI (`product: bitbucket`); product command groups:
-  `repo`, `pr`, `pipeline`, `issue`, `workspace`, `project`, `commit`, `branch`,
-  `tag`, `deployment`, `environment`, `search`, and `status`. Git-checkout
+  `repo`, `pr`, `pipeline`, `workspace`, `project`, `commit`, `branch`, `tag`,
+  `deployment`, `environment`, `search`, and `status`. Git-checkout
   repository inference is built in (a Bitbucket-only affordance, since Jira and
   Confluence are not repo-scoped).
 
@@ -61,12 +61,22 @@ gh-style external subcommands.)
 | `--site` | string | Names the configured site profile a command targets. When omitted, the site is resolved from the `ATL_SITE` environment variable, then the `default_site` config key (see [Site selection](#site-selection)). |
 | `--no-prompt` | bool | Forces non-interactive behavior. `browse` treats it as `--no-browser` (print the URL, never open one). No other command prompts yet. |
 | `--trace` | bool | Emit verbose request tracing to **stderr**: one `[trace] > METHOD URL` line plus request headers (credential-bearing headers redacted), and a `[trace] < STATUS (elapsed, bytes)` line per request. Stdout stays pure, so it does not disturb `--json`/`--jq` consumers. |
+| `--timeout` | string | Per-request HTTP timeout as a Go duration string (`30s`, `2m`). Precedence is `--timeout` → the `ATL_TIMEOUT` environment variable → the `30s` default; `0` disables the timeout entirely, which is what long attachment uploads/downloads want. A malformed or negative value is an `invalid_input` error naming the source it came from. |
 
 `--json` takes an *optional* value, so a value must be attached with `=`
 (`--json=field1,field2`) — passing it space-separated (`--json field1`) leaves
 `field1` as a stray argument. Bare `--json` already means "all fields"; the
 explicit all-fields form is `--json=*`, which must be quoted in shells that
 expand globs (`--json='*'` in zsh/bash).
+
+Field selection applies to an **object-shaped** response, and element by
+element to an **array of objects** — `atl-jira field list --json=id` yields an
+array of `{"id"}` objects. A response that is neither (a scalar, `null`, or an
+array of scalars) has nothing to select and fails with a structured
+`invalid_input` error (exit `8`) that points at `--jq`
+(`atl-jira field list --jq '.[].id'`), the same category a failing `--jq`
+filter uses; note the request has already been made by then. Bare `--json` and
+`--json='*'` are unaffected.
 
 `--jq` runs a full [jq](https://jqlang.github.io/jq/) expression — via the
 embedded `gojq` engine — against the JSON value a command would emit, and
@@ -123,8 +133,14 @@ with a `result_truncated` error rather than returning a partial set that looks
 complete. Raise `--limit` (larger pages) or narrow the query to stay under it.
 
 For Bitbucket, an `--all` request with no explicit `--limit` defaults the page
-size to the API maximum (100), so the follow makes the fewest round-trips and
-is least likely to hit the cap. An explicit `--limit` still wins.
+size to the endpoint's maximum, so the follow makes the fewest round-trips and
+is least likely to hit the cap. That maximum is 100 for every listing except
+`pr list` and `search prs`, which default to **50**: Bitbucket's pull-requests
+endpoint rejects a `pagelen` above 50 with a 400 `Invalid pagelen`. An explicit
+`--limit` still wins and is sent as-is — it is never clamped, so `--limit 100`
+on a pull request listing surfaces the API's own 400. Combined with the
+100-page follow cap, `--all` therefore covers at most 5,000 pull requests on
+those two commands (10,000 on the other listings).
 
 ## Commands
 
@@ -351,8 +367,12 @@ executable named `<binary>-<name>` on `PATH` is an extension of that binary, so
 the discovery prefix is per-binary: `atl-jira-<name>` for `atl-jira`,
 `atl-conf-<name>` for `atl-conf`, `atl-bb-<name>` for `atl-bb`. `extension list`
 discovers them (the first match per name on `PATH` wins, mirroring shell
-resolution; non-executable and non-prefixed files are skipped). `extension exec
-<name>` runs `<binary>-<name>` with the remaining arguments forwarded verbatim
+resolution; files without the prefix are skipped, as are non-executable ones on
+macOS/Linux). On **Windows**, where Go reports no execute bit, discovery
+instead accepts the suffixes listed in `PATHEXT` (by default `.com`, `.exe`,
+`.bat`, `.cmd` — the same set `exec.LookPath` resolves), and strips the suffix
+from the listed name so it is the name `extension exec <name>` accepts. `extension exec <name>` runs
+`<binary>-<name>` with the remaining arguments forwarded verbatim
 (flag parsing is disabled so the extension sees its own flags), wiring the
 child's stdin/stdout/stderr to the CLI's. As a convenience, an **unknown**
 top-level command falls back to the matching extension (`atl-bb deploy-helper …`
@@ -443,8 +463,10 @@ Under `--json`/`--jq` `watch`/`unwatch` emit a synthesized
 `link` creates a directional link between two issues. The first positional
 is the inward issue and the second is the outward issue, matching the Jira
 API field names: with `--type Blocks`, `issue link A B --type Blocks` means
-A is blocked by B and B blocks A. `issue link types` lists the link types
-configured on the site with their inward and outward phrases.
+A is blocked by B and B blocks A. The link API returns no body, so under
+`--json`/`--jq` `link` emits a synthesized
+`{"type","inward","outward","created"}` result object. `issue link types` lists
+the link types configured on the site with their inward and outward phrases.
 
 `worklog list` returns the worklog entries on an issue (each rendered with its
 comment); pagination is controlled by `--limit` and `--all`. `--since` filters
@@ -495,7 +517,7 @@ atl-jira issue comment list <issue> [--order asc|desc] [--limit N]
 atl-jira issue comment view <issue> <comment-id>
 atl-jira issue comment create <issue> --body <text>
 atl-jira issue comment edit <issue> <comment-id> --body <text>
-atl-jira issue comment delete <issue> <comment-id>
+atl-jira issue comment delete <issue> <comment-id> --yes
 ```
 
 Lists, views, and manages comments on an issue. Comment bodies are stored as
@@ -503,7 +525,10 @@ Atlassian Document Format; human output renders a best-effort plain-text
 extraction, while `--json` preserves the raw ADF body. `list --order asc`
 sorts oldest-first and `--order desc` newest-first (the API's `orderBy`
 parameter); omitting it uses the API default. `create` and `edit` take a
-plain-text `--body` that is wrapped as an ADF document.
+plain-text `--body` that is wrapped as an ADF document. `delete` removes a
+comment; it is irreversible, so it requires `--yes`, and because the API
+returns no body it emits a synthesized `{"issue","comment","deleted"}` result
+object under `--json`/`--jq`.
 
 ### `status`
 
@@ -557,7 +582,7 @@ id first.
 ```
 atl-conf page list --space <key> [--limit N]
 atl-conf page view <id>
-atl-conf page children <id> [--limit N]
+atl-conf page children <id> [--limit N] [--all]
 atl-conf page ancestors <id> [--limit N] [--all]
 atl-conf page versions <id> [--limit N] [--all]
 atl-conf page create --space <key> --title <text> --body <text> --body-format <fmt>
@@ -567,7 +592,12 @@ atl-conf page delete <id> [--purge] [--yes]
 
 `list` returns the pages in a space — `--space` is required and is resolved
 from key to id. `view` returns one page by id, including its storage-format
-body under `--json`. `children` lists a page's direct child pages.
+body under `--json`. `children` lists the page's direct children of any
+hierarchical content type — page, folder, whiteboard, database, or embed —
+via `GET /pages/{id}/direct-children` (the older `GET /pages/{id}/children` is
+deprecated in the v2 spec). Human output is an `id`/`type`/`status`/`title`
+table, so the `type` column says what each child is, and an empty result prints
+`No children found.`; the JSON body is passed through verbatim as usual.
 `ancestors` lists the page's ancestor chain top-to-bottom (the v2 API returns
 minimal `{id, type}` entries, so resolve a title with `page view`).
 `versions` lists the page's version history oldest-first, showing each
@@ -605,7 +635,7 @@ atl-conf page comment list <page-id> [--limit N]
 atl-conf page comment view <comment-id>
 atl-conf page comment create <page-id> --body <text> --body-format <fmt>
 atl-conf page comment edit <comment-id> --body <text> --body-format <fmt>
-atl-conf page comment delete <comment-id>
+atl-conf page comment delete <comment-id> --yes
 ```
 
 Operates on a page's **footer** comments. `list` returns the footer comments
@@ -613,9 +643,11 @@ on a page. `view` returns one comment by id with its storage-format body.
 `create` adds a footer comment; `--body` and `--body-format` are required.
 `edit` replaces a comment's body — like `page edit`, Confluence v2 treats the
 update as a full replacement, so `edit` first GETs the comment for its version
-and PUTs the body with the version incremented by one. `delete` removes a
-comment. `--body-format` is one of `storage`, `atlas_doc_format`, or `wiki`,
-and the body is sent verbatim. Inline comments are out of scope.
+and PUTs the body with the version incremented by one. `delete` permanently
+removes a comment, so it requires `--yes`; the API returns no body, so under
+`--json`/`--jq` it emits a synthesized `{"id","deleted"}` result object. `--body-format` is one of
+`storage`, `atlas_doc_format`, or `wiki`, and the body is sent verbatim.
+Inline comments are out of scope.
 
 ### `page label`
 
@@ -627,7 +659,9 @@ atl-conf page label remove <page-id> <label>
 
 `list` returns a page's content labels. `add` attaches a label and `remove`
 detaches one. Confluence v2 has no page-label write endpoint, so `add` and
-`remove` use the REST **v1** content-label surface.
+`remove` use the REST **v1** content-label surface. `add` renders the v1
+response verbatim; `remove` gets no response body, so under `--json`/`--jq` it
+emits a synthesized `{"page","label","removed"}` result object.
 
 ### `blogpost`
 
@@ -701,6 +735,17 @@ These commands exist only on `atl-bb` (`product: bitbucket`). Each needs
 auth (account email + API token, the `cloud-classic` style) against the fixed
 `https://api.bitbucket.org/2.0` base.
 
+> **Removed: the repository issue tracker.** Bitbucket Cloud removed its
+> native issue tracker and wiki — including their REST endpoints — on
+> 2026-08-20
+> ([changelog CHANGE-3401](https://developer.atlassian.com/cloud/bitbucket/changelog));
+> `/repositories/{ws}/{repo}/issues` now returns HTTP 410. There is no
+> replacement API, so `atl-bb issue …`, `atl-bb search issues`, the
+> `bitbucket_issue` resolve kind, and the `feature_disabled` error category
+> were dropped rather than emulated
+> (see [ADR 0008](adr/0008-retire-bitbucket-issue-tracker.md) and
+> [ADR 0006](adr/0006-verbatim-json-no-fake-parity.md)).
+
 > **JSON shape — intentional change from legacy `bb`.** Under `--json`/`--jq`,
 > `atl-bb` emits the **verbatim Bitbucket REST API body** (e.g. `full_name`,
 > `is_private`, `project.key`, `mainbranch.name`), exactly like `atl-jira` and
@@ -718,11 +763,17 @@ that conflicts with the workspace in a qualified target is rejected.
 
 When **no** target is supplied — no positional, no `--repo`, no `--workspace` —
 the command infers the `<workspace>/<repo>` from the local git checkout's
-Bitbucket remote (the current branch's upstream, else `origin`, else the first
-remote). Inference is best-effort and offline: outside a git repository, with
-no usable remote, or when the remote is not a `bitbucket.org` host, the command
-reports that a repository is required instead. Passing `--workspace` alone (a
-deliberate partial target) skips inference rather than guessing the repository.
+Bitbucket remote. The remote is picked in order: the current branch's upstream
+when it names a real remote (a `.` upstream tracks a *local* branch and is
+skipped), else `origin`, else the first configured remote. Both `https://` and
+scp-style (`git@host:workspace/repo.git`) URLs are parsed, a trailing slash
+after `.git` is tolerated, and the host is matched case-insensitively against
+`bitbucket.org` and `altssh.bitbucket.org` (the port-443 SSH alternative for
+firewalled networks). Inference is best-effort and offline: outside a git
+repository, with no usable remote, or when the remote is on some other host,
+the command reports that a repository is required instead. Passing
+`--workspace` alone (a deliberate partial target) skips inference rather than
+guessing the repository.
 
 Workspace-scoped commands (`repo list`, `project list`, `search repos`) take a
 workspace as a positional argument or `--workspace`. When neither is given they
@@ -815,34 +866,6 @@ log` writes a step's raw log output to stdout (`GET
 references for `pipeline log` are the step UUIDs shown by `pipeline steps`.
 Schedules, runners, caches, and variables are later slices.
 
-### `issue`
-
-```
-atl-bb issue list [--repo <workspace>/<repo>] [--workspace <slug>] [--state <name>] [--limit N] [--all]
-atl-bb issue view <id> [--repo <workspace>/<repo>] [--workspace <slug>]
-atl-bb issue create [--repo <workspace>/<repo>] [--workspace <slug>] \
-  --title <text> [--body <raw>] [--kind <kind>] [--priority <priority>]
-atl-bb issue update <id> [--repo <workspace>/<repo>] [--workspace <slug>] \
-  [--state <name>] [--title <text>] [--body <raw>] [--kind <kind>] [--priority <priority>]
-```
-
-`issue list`/`view`/`create`/`update` operate on a repository's issue tracker.
-Issue states are lower-case (`new`, `open`, `resolved`, `on hold`, `invalid`,
-`duplicate`, `wontfix`, `closed`); `--state` is passed through verbatim and
-`ALL` lists every state. `issue create` requires `--title`; `--kind`
-(`bug`/`enhancement`/`proposal`/`task`) and `--priority`
-(`trivial`/`minor`/`major`/`critical`/`blocker`) are passed through for the API
-to validate, and human output prints `created issue #<id>: <title>`. `issue
-update` (`PUT …/issues/{id}`) changes one or more fields and requires at least
-one flag; use `--state` to transition the issue (e.g. `new` → `resolved`) and
-human output prints `updated issue #<id> (state: <state>)`.
-
-If a repository's **issue tracker is disabled**, Bitbucket returns 404 with a
-recognizable message; `atl-bb` surfaces this as the `feature_disabled` error
-code (distinct from `not_found_or_not_visible`) so an agent can tell "enable
-the tracker" from "the repo or issue is missing". Issue comments, attachments,
-and taxonomy (milestones/components/versions) are later slices.
-
 ### `workspace`
 
 ```
@@ -912,14 +935,15 @@ repo-scoped commands.
 atl-bb branch list [--repo <workspace>/<repo>] [--workspace <slug>] [--limit N] [--all]
 atl-bb branch view <name> [--repo <workspace>/<repo>] [--workspace <slug>]
 atl-bb branch create [--repo <workspace>/<repo>] [--workspace <slug>] --name <branch> --target <hash|branch>
-atl-bb branch delete <name> [--repo <workspace>/<repo>] [--workspace <slug>]
+atl-bb branch delete <name> [--repo <workspace>/<repo>] [--workspace <slug>] --yes
 ```
 
 Branch refs live under `GET/POST/DELETE /repositories/{ws}/{repo}/refs/branches`.
 `branch create` requires `--name` and `--target` (the commit hash or existing
 branch the new branch points at); the request body is
-`{"name":…, "target":{"hash":…}}`. `branch delete` returns no content on
-success.
+`{"name":…, "target":{"hash":…}}`. `branch delete` is irreversible, so it
+requires `--yes`; the API returns no content, so under `--json`/`--jq` it emits
+a synthesized `{"resource","id","deleted"}` result object.
 
 ### `tag`
 
@@ -927,13 +951,15 @@ success.
 atl-bb tag list [--repo <workspace>/<repo>] [--workspace <slug>] [--limit N] [--all]
 atl-bb tag view <name> [--repo <workspace>/<repo>] [--workspace <slug>]
 atl-bb tag create [--repo <workspace>/<repo>] [--workspace <slug>] --name <tag> --target <hash> [--message <text>]
-atl-bb tag delete <name> [--repo <workspace>/<repo>] [--workspace <slug>]
+atl-bb tag delete <name> [--repo <workspace>/<repo>] [--workspace <slug>] --yes
 ```
 
 Tag refs live under `GET/POST/DELETE /repositories/{ws}/{repo}/refs/tags`.
 `tag create` requires `--name` and `--target`; `--message` is forwarded only
-when set (an annotated tag) and omitted otherwise. `tag delete` returns no
-content on success.
+when set (an annotated tag) and omitted otherwise. `tag delete` is
+irreversible, so it requires `--yes`; the API returns no content, so under
+`--json`/`--jq` it emits a synthesized `{"resource","id","deleted"}` result
+object.
 
 ### `deployment` / `environment`
 
@@ -958,17 +984,16 @@ out of scope.
 ```
 atl-bb search repos  <query> --workspace <slug> [--sort <field>] [--limit N] [--all]
 atl-bb search prs    <query> [--repo <workspace>/<repo>] [--workspace <slug>] [--sort <field>] [--limit N] [--all]
-atl-bb search issues <query> [--repo <workspace>/<repo>] [--workspace <slug>] [--sort <field>] [--limit N] [--all]
 ```
 
 Each subcommand takes a **raw Bitbucket query expression** (the `q` filter)
 as its positional argument and passes it through verbatim — the same raw-API
 philosophy as `atl-jira search issues <jql>`. `search repos` is workspace-scoped
-(`GET /repositories/{workspace}?q=…`); `search prs`/`search issues` are
-repo-scoped and render with the same human/JSON output as `pr list`/`issue
-list`. `--sort` (e.g. `-updated_on`) is optional and omitted by default, leaving
-the Bitbucket API's own ordering. `search issues` on a repository with its
-issue tracker disabled surfaces the `feature_disabled` error.
+(`GET /repositories/{workspace}?q=…`); `search prs` is repo-scoped and renders
+with the same human/JSON output as `pr list`. `--sort` (e.g. `-updated_on`) is
+optional and omitted by default, leaving the Bitbucket API's own ordering.
+There is no `search issues`: Bitbucket removed the issue tracker (see the note
+at the top of this section).
 
 ### `status`
 
@@ -989,7 +1014,6 @@ The shared `resolve` and `browse` commands recognize Bitbucket inputs via the
 - bare `workspace/repo` → repository
 - `https://bitbucket.org/{ws}/{repo}` → repository
 - `.../pull-requests/{id}` → pull request
-- `.../issues/{id}` → issue
 - `.../commits/{hash}` → commit
 - any other repository sub-page (`/src/…`, `/branches`, …) falls back to the
   repository
@@ -1099,9 +1123,11 @@ plain `Error: <code>: <message>` line.
   title-only `page edit` re-sends the page's current body, preferring storage
   and falling back to `atlas_doc_format` for modern-editor pages; only if the
   page has neither representation is the edit refused, so pass `--body` then.
-- Confluence page delete, move, and restore are not implemented; the page
-  surface is list/view/children, create/edit, and the comment/label
-  sub-groups.
+- Confluence page move and restore are not implemented. `page delete` trashes
+  a page (and `--purge --yes` permanently removes one already in the trash),
+  but there is no un-trash; the page surface is
+  list/view/children/ancestors/versions, create/edit/delete, and the
+  comment/label sub-groups.
 - Jira `issue assign` does not set a project's default assignee (the `-1`
   sentinel is not exposed); pass `-` to unassign, or an account id, email, or
   `@me` to assign. Email resolution requires exactly one matching user.
@@ -1113,8 +1139,8 @@ plain `Error: <code>: <message>` line.
   wrapped as ADF.
 - Confluence comment support is footer comments only — inline comments need
   text-anchor properties unsuited to a flag-based CLI. Attachment support is
-  list and download only; attachment upload (a multipart write) is not
-  implemented.
+  list, download, and upload (a v1 multipart write); deleting an attachment is
+  not implemented.
 - Without `--all`, list and search commands fetch a single page bounded by
   `--limit`. `--all` follows every page but caps at 100 pages.
 - Jira and Confluence commands target the Atlassian **Cloud** REST APIs (Jira

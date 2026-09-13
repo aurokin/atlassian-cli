@@ -20,6 +20,10 @@ Different users and tokens have different access levels. The CLI should work wel
 - `429`: rate limited, include retry guidance when headers are present.
 - Timeout / transport failure: the request never completed (deadline, connection refused, DNS).
 - Product unavailable: a Jira/Confluence/Bitbucket feature not licensed or not enabled.
+  Where Atlassian withdraws a feature's API outright — as it did for the Bitbucket
+  issue tracker on 2026-08-20 — the CLI drops the affected commands rather than
+  reporting them as disabled (see
+  [adr/0008](adr/0008-retire-bitbucket-issue-tracker.md)).
 
 ## Error code catalog
 
@@ -31,14 +35,13 @@ The full set the CLI emits:
 | `unauthorized` | bad/expired token, wrong style or base URL | HTTP 401 |
 | `forbidden` | authenticated but missing permission/scope/license | HTTP 403 |
 | `not_found_or_not_visible` | resource absent or hidden from this account | HTTP 404 |
-| `feature_disabled` | capability exists but is switched off for the resource | e.g. Bitbucket 404 for a disabled issue tracker |
 | `gone` | endpoint removed; upgrade the CLI | HTTP 410 |
 | `rate_limited` | throttled by Atlassian | HTTP 429 |
 | `http_error` | a non-2xx status no more specific category claimed | any other 4xx/5xx |
-| `timeout` | request exceeded the deadline (retryable) | context deadline or client timeout, including one that fires mid-body-read |
+| `timeout` | request exceeded the deadline (retryable) | context deadline or the resolved per-request timeout (`--timeout`/`ATL_TIMEOUT`, 30s by default), including one that fires mid-body-read |
 | `request_failed` | non-timeout transport failure with no usable HTTP response | connection refused, DNS failure, non-deadline body-read error |
 | `request_encode_failed` | the request body could not be marshaled to JSON before sending | client-side payload encoding |
-| `invalid_input` | malformed or missing command input (no request made) | argument/flag validation |
+| `invalid_input` | malformed or missing command input, validated before any request; also an output projection (`--jq`, `--json=field`) that does not fit the response, which is only known after it | argument/flag validation, output rendering |
 | `untrusted_url` | absolute URL whose origin is neither the site nor the API gateway | `api` escape hatch guard |
 | `response_decode_failed` | a response or aggregated page set could not be decoded | client decode / `--all` aggregation |
 | `result_truncated` | `--all` hit the page-follow cap with more pages remaining | pagination cap |
@@ -51,7 +54,7 @@ without parsing output. Categories without a dedicated code exit `1`.
 | Exit | Category |
 |------|----------|
 | `0` | success |
-| `1` | generic / uncategorized error (`http_error`, `request_failed`, `gone`, `feature_disabled`, `untrusted_url`, `response_decode_failed`, `result_truncated`) |
+| `1` | generic / uncategorized error (`http_error`, `request_failed`, `gone`, `untrusted_url`, `response_decode_failed`, `result_truncated`) |
 | `4` | `unauthorized` |
 | `5` | `forbidden` |
 | `6` | `not_found_or_not_visible` |

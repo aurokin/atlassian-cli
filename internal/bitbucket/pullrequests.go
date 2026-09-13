@@ -9,6 +9,13 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/restutil"
 )
 
+// MaxPullRequestPageLen is the largest "pagelen" the pull-requests listing
+// accepts. Unlike the other collection endpoints, which take MaxPageLen, it
+// rejects anything above 50 with 400 "Invalid pagelen". The cap is specific
+// to that listing: its comments sub-collection accepts MaxPageLen (both
+// verified against the live API, 2026-09-12).
+const MaxPullRequestPageLen = 50
+
 // prBase returns the pull-requests collection path for a repository.
 func prBase(workspace, repo string) string {
 	return "/repositories/" + url.PathEscape(workspace) + "/" + url.PathEscape(repo) + "/pullrequests"

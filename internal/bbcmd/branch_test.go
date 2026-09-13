@@ -119,7 +119,7 @@ func TestBranchDelete(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	loginBBSite(t, srv.URL)
 
-	out, err := execBB(t, "branch", "delete", "stale", "--repo", "acme/widgets", "--site", "work")
+	out, err := execBB(t, "branch", "delete", "stale", "--repo", "acme/widgets", "--site", "work", "--yes")
 	if err != nil {
 		t.Fatalf("branch delete: %v\n%s", err, out)
 	}
@@ -137,7 +137,7 @@ func TestBranchDeleteJSON(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	loginBBSite(t, srv.URL)
 
-	out, err := execBB(t, "branch", "delete", "stale", "--repo", "acme/widgets", "--site", "work", "--json")
+	out, err := execBB(t, "branch", "delete", "stale", "--repo", "acme/widgets", "--site", "work", "--json", "--yes")
 	if err != nil {
 		t.Fatalf("branch delete --json: %v\n%s", err, out)
 	}

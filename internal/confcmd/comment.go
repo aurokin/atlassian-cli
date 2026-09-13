@@ -165,11 +165,17 @@ func newPageCommentEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 }
 
 func newPageCommentDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
-	return &cobra.Command{
+	var yes bool
+	cmd := &cobra.Command{
 		Use:   "delete <comment-id>",
-		Short: "Delete a footer comment",
+		Short: "Delete a footer comment (irreversible)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Confluence deletes a footer comment permanently, so the
+			// ADR 0003 guard applies; it runs before the client is built.
+			if err := cli.RequireYes(yes, "deleting a comment"); err != nil {
+				return err
+			}
 			cc, err := confClient(info, g)
 			if err != nil {
 				return err
@@ -177,10 +183,22 @@ func newPageCommentDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.C
 			if err := cc.DeleteFooterComment(cmd.Context(), args[0]); err != nil {
 				return err
 			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, commentDeleteResult{ID: args[0], Deleted: true})
+			}
 			fmt.Fprintf(cmd.OutOrStdout(), "deleted comment %s\n", args[0])
 			return nil
 		},
 	}
+	cli.AddYesFlag(cmd, &yes)
+	return cmd
+}
+
+// commentDeleteResult is the synthesized outcome of a footer comment deletion,
+// whose API call returns no body, so --json has a stable object to render.
+type commentDeleteResult struct {
+	ID      string `json:"id"`
+	Deleted bool   `json:"deleted"`
 }
 
 // writeCommentList prints footer comments as aligned id/status/title rows.

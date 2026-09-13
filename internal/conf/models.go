@@ -65,6 +65,23 @@ type PageList struct {
 	Results []Page `json:"results"`
 }
 
+// PageChild is one entry in a page's direct-children list. The v2
+// direct-children endpoint returns any hierarchical content under a page —
+// page, folder, whiteboard, database, or embed — so each entry carries a type
+// alongside the page-like id/title/status/spaceId fields.
+type PageChild struct {
+	ID      string `json:"id"`
+	Type    string `json:"type"`
+	Title   string `json:"title"`
+	Status  string `json:"status"`
+	SpaceID string `json:"spaceId"`
+}
+
+// PageChildList is a page of direct-children results.
+type PageChildList struct {
+	Results []PageChild `json:"results"`
+}
+
 // Blogpost is the subset of a Confluence blogpost that human output renders,
 // plus the fields a versioned edit needs. A v2 blogpost shares the page field
 // shape (id, title, status, spaceId, version, body), differing only in the

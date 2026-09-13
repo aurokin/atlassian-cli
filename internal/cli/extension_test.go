@@ -51,19 +51,35 @@ func TestExtensionListHuman(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, prefix+"plain"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// A directory, a symlink to a directory, and a symlink to a non-executable
+	// are not extensions; a symlink to an executable is.
+	if err := os.Mkdir(filepath.Join(dir, prefix+"subdir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for link, target := range map[string]string{
+		prefix + "linkdir":   filepath.Join(dir, prefix+"subdir"),
+		prefix + "linkplain": filepath.Join(dir, prefix+"plain"),
+		prefix + "alias":     filepath.Join(dir, prefix+"hello"),
+	} {
+		if err := os.Symlink(target, filepath.Join(dir, link)); err != nil {
+			t.Fatal(err)
+		}
+	}
 	t.Setenv("PATH", dir)
 
 	out, err := execRoot(t, bbInfo(), "extension", "list")
 	if err != nil {
 		t.Fatalf("extension list: %v\n%s", err, out)
 	}
-	for _, want := range []string{"hello", "world"} {
+	for _, want := range []string{"hello", "world", "alias"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("output missing %q:\n%s", want, out)
 		}
 	}
-	if strings.Contains(out, "plain") || strings.Contains(out, "unrelated") {
-		t.Fatalf("output should exclude non-executable / non-extension files:\n%s", out)
+	for _, unwanted := range []string{"plain", "unrelated", "subdir", "linkdir"} {
+		if strings.Contains(out, unwanted) {
+			t.Fatalf("output should exclude %q (non-executable, non-extension, or directory):\n%s", unwanted, out)
+		}
 	}
 }
 
@@ -186,5 +202,60 @@ func TestDispatchExtensionFallback(t *testing.T) {
 		errors.New(`unknown command "ghost" for "atl-bb"`), []string{"ghost"})
 	if handled {
 		t.Fatal("dispatchExtensionFallback should not handle a missing extension")
+	}
+}
+
+func TestExtensionCandidateSupersedes(t *testing.T) {
+	// Collisions resolve like exec.LookPath: the earliest PATH directory wins,
+	// and within one directory the lowest-ranked PATHEXT suffix wins.
+	exe := extensionCandidate{executable: `C:\a\atl-bb-hello.exe`, dir: `C:\a`, rank: 1}
+	bat := extensionCandidate{executable: `C:\a\atl-bb-hello.bat`, dir: `C:\a`, rank: 2}
+	later := extensionCandidate{executable: `C:\b\atl-bb-hello.com`, dir: `C:\b`, rank: 0}
+	cases := []struct {
+		name       string
+		prev, next extensionCandidate
+		want       bool
+	}{
+		{"new name", extensionCandidate{}, bat, true},
+		{"same dir, better suffix replaces", bat, exe, true},
+		{"same dir, worse suffix kept out", exe, bat, false},
+		{"later dir never replaces", exe, later, false},
+	}
+	for _, c := range cases {
+		if got := c.next.supersedes(c.prev); got != c.want {
+			t.Errorf("%s: supersedes = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+func TestExtensionName(t *testing.T) {
+	const prefix = "atl-bb-"
+	cases := []struct {
+		goos, pathext, name string
+		want                string
+		ok                  bool
+	}{
+		{"darwin", "", "atl-bb-hello", "hello", true},
+		{"darwin", "", "unrelated", "", false}, // missing prefix
+		{"darwin", "", "atl-bb-", "", false},   // nothing after the prefix
+		{"darwin", "", "atl-bb-hello.exe", "hello.exe", true},
+		{"windows", "", "atl-bb-hello.exe", "hello", true}, // default PATHEXT
+		{"windows", "", "atl-bb-hello.EXE", "hello", true}, // suffix match is case-insensitive
+		{"windows", "", "atl-bb-hello.cmd", "hello", true},
+		{"windows", "", "atl-bb-hello.bat", "hello", true},
+		{"windows", "", "atl-bb-hello.com", "hello", true},
+		{"windows", "", "atl-bb-hello", "", false},                        // no runnable suffix
+		{"windows", "", "atl-bb-hello.txt", "", false},                    // not a runnable suffix
+		{"windows", "", "atl-bb-.exe", "", false},                         // empty name after stripping
+		{"windows", ".EXE", "atl-bb-hello.bat", "", false},                // trimmed PATHEXT
+		{"windows", ".EXE;.PS1", "atl-bb-hello.ps1", "hello", true},       // extended PATHEXT
+		{"windows", ".EXE;.PS1", "atl-bb-hello.v2.exe", "hello.v2", true}, // only the suffix is stripped
+	}
+	for _, c := range cases {
+		got, _, ok := extensionName(c.goos, windowsExecSuffixes(c.pathext), prefix, c.name)
+		if got != c.want || ok != c.ok {
+			t.Errorf("extensionName(%q, %q, %q, %q) = %q, %v; want %q, %v",
+				c.goos, c.pathext, prefix, c.name, got, ok, c.want, c.ok)
+		}
 	}
 }

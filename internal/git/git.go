@@ -14,9 +14,12 @@ import (
 	"strings"
 )
 
-// bitbucketHost is the git remote host that identifies a Bitbucket Cloud
-// repository.
-const bitbucketHost = "bitbucket.org"
+// Git remote hosts that identify a Bitbucket Cloud repository. altssh is the
+// port-443 SSH alternative Bitbucket documents for firewalled networks.
+const (
+	bitbucketHost       = "bitbucket.org"
+	bitbucketAltSSHHost = "altssh.bitbucket.org"
+)
 
 // RemoteTarget is a workspace/repo parsed from a git remote URL.
 type RemoteTarget struct {
@@ -40,7 +43,8 @@ var runner = func(ctx context.Context, dir string, args ...string) (string, erro
 // InferBitbucketRepo resolves dir's git remote into a Bitbucket workspace/repo.
 // It returns ok=false (and no error) whenever inference is not possible — no
 // git binary, dir is not a repository, no usable remote, an unparseable remote
-// URL, or a remote whose host is not Bitbucket Cloud.
+// URL, or a remote whose host is not Bitbucket Cloud (bitbucket.org or
+// altssh.bitbucket.org).
 func InferBitbucketRepo(ctx context.Context, dir string) (RemoteTarget, bool) {
 	remote, ok := detectRemoteName(ctx, dir)
 	if !ok {
@@ -51,17 +55,18 @@ func InferBitbucketRepo(ctx context.Context, dir string) (RemoteTarget, bool) {
 		return RemoteTarget{}, false
 	}
 	parsed, err := ParseRemoteURL(cloneURL)
-	if err != nil || parsed.Host != bitbucketHost {
+	if err != nil || (parsed.Host != bitbucketHost && parsed.Host != bitbucketAltSSHHost) {
 		return RemoteTarget{}, false
 	}
 	return parsed, true
 }
 
 // detectRemoteName picks the remote to infer from: the upstream of the current
-// branch when set, otherwise "origin", otherwise the first configured remote.
+// branch when it names a real remote (a "." upstream tracks a local branch and
+// is skipped), otherwise "origin", otherwise the first configured remote.
 func detectRemoteName(ctx context.Context, dir string) (string, bool) {
 	if branch, err := runner(ctx, dir, "branch", "--show-current"); err == nil && branch != "" {
-		if remote, err := runner(ctx, dir, "config", "--get", "branch."+branch+".remote"); err == nil && remote != "" {
+		if remote, err := runner(ctx, dir, "config", "--get", "branch."+branch+".remote"); err == nil && remote != "" && remote != "." {
 			return remote, true
 		}
 	}
@@ -104,14 +109,15 @@ func ParseRemoteURL(raw string) (RemoteTarget, error) {
 	return RemoteTarget{}, fmt.Errorf("unsupported remote URL format %q", raw)
 }
 
-// remoteFromParts assembles a RemoteTarget from a host and the repository path,
-// stripping a leading slash and a trailing ".git".
+// remoteFromParts assembles a RemoteTarget from a host and the repository path.
+// The host is lowercased (DNS names are case-insensitive); the path has
+// surrounding slashes and a trailing ".git" stripped.
 func remoteFromParts(host, path string) (RemoteTarget, error) {
-	host = strings.TrimSpace(host)
+	host = strings.ToLower(strings.TrimSpace(host))
 	if host == "" {
 		return RemoteTarget{}, fmt.Errorf("remote host is empty")
 	}
-	path = strings.TrimPrefix(path, "/")
+	path = strings.Trim(path, "/")
 	path = strings.TrimSuffix(path, ".git")
 	parts := strings.Split(path, "/")
 	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {

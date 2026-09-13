@@ -116,12 +116,13 @@ func (c *Client) getContentWithFormat(ctx context.Context, kind, id, bodyFormat 
 	return c.Get(ctx, restutil.WithQuery("/"+kind+"/"+url.PathEscape(id), q))
 }
 
-// GetChildPages returns a page of a page's direct children
-// (GET /pages/{id}/children).
-func (c *Client) GetChildPages(ctx context.Context, id string, limit int) (json.RawMessage, error) {
+// GetPageChildren returns a page of a page's direct children
+// (GET /pages/{id}/direct-children). Children may be pages, folders,
+// whiteboards, databases, or embeds; each entry carries a type.
+func (c *Client) GetPageChildren(ctx context.Context, id string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.Get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/children", q))
+	return c.Get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/direct-children", q))
 }
 
 // GetPageAncestors returns a page of a page's ancestor chain, top-to-bottom
@@ -355,11 +356,11 @@ func (c *Client) ListPagesAll(ctx context.Context, spaceID string, limit int) (j
 	return c.followList(ctx, restutil.WithQuery("/pages", q))
 }
 
-// GetChildPagesAll follows a page's children list to completion.
-func (c *Client) GetChildPagesAll(ctx context.Context, id string, limit int) (json.RawMessage, error) {
+// GetPageChildrenAll follows GET /pages/{id}/direct-children to completion.
+func (c *Client) GetPageChildrenAll(ctx context.Context, id string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.followList(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/children", q))
+	return c.followList(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/direct-children", q))
 }
 
 // SearchCQLAll follows the v1 CQL search to completion.

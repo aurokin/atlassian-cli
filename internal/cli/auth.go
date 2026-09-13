@@ -531,6 +531,10 @@ func runOAuthLogin(cmd *cobra.Command, g *GlobalFlags, p oauthLoginParams) error
 		return err
 	}
 
+	hc, err := httpClientFor(g)
+	if err != nil {
+		return err
+	}
 	listeners, err := listenLoopback(p.callbackPort)
 	if err != nil {
 		return err
@@ -544,7 +548,7 @@ func runOAuthLogin(cmd *cobra.Command, g *GlobalFlags, p oauthLoginParams) error
 	}
 	defer func() { _ = srv.Close() }()
 
-	client := oauth.New(p.clientID, p.clientSecret, oauth.Options{Endpoints: oauthEndpoints, Now: oauthNow})
+	client := newOAuthClient(p.clientID, p.clientSecret, hc)
 	authURL := client.AuthorizeURL(oauth.AuthorizeParams{
 		RedirectURI:   redirectURI,
 		Scopes:        scopes,

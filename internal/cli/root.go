@@ -37,6 +37,9 @@ type GlobalFlags struct {
 	NoPrompt bool
 	// Trace emits verbose request and diagnostic tracing to stderr.
 	Trace bool
+	// Timeout is the raw --timeout value; resolveTimeout applies the
+	// precedence and the "0 disables" rule.
+	Timeout string
 }
 
 // WantsStructured reports whether the caller selected machine-readable output:
@@ -89,6 +92,7 @@ func NewRoot(info appinfo.Info, short string) (*cobra.Command, *GlobalFlags) {
 	pf.StringVar(&g.Site, "site", "", "named site profile to target")
 	pf.BoolVar(&g.NoPrompt, "no-prompt", false, "never prompt interactively; fail instead")
 	pf.BoolVar(&g.Trace, "trace", false, "emit verbose request tracing to stderr")
+	pf.StringVar(&g.Timeout, "timeout", "", "per-request HTTP timeout as a duration such as 30s or 2m (default 30s, or ATL_TIMEOUT); 0 disables it")
 	// Offer configured site names when completing --site.
 	_ = root.RegisterFlagCompletionFunc("site", completeSiteNames)
 

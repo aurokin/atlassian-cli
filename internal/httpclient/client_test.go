@@ -449,7 +449,7 @@ func TestDoClassifiesTimeout(t *testing.T) {
 	if ae.Code != apperr.CodeTimeout {
 		t.Fatalf("Code = %q, want %q", ae.Code, apperr.CodeTimeout)
 	}
-	if ae.Next == "" {
-		t.Error("timeout error missing retry guidance")
+	if !strings.Contains(ae.Next, "--timeout") {
+		t.Errorf("Next = %q, want it to name --timeout", ae.Next)
 	}
 }

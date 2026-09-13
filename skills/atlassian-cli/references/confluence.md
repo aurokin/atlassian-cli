@@ -50,7 +50,7 @@ atl-conf page comment list 123456 --site work --json='*'
 atl-conf page comment view 999 --site work --json='*'
 atl-conf page comment create 123456 --body '<p>Looks good.</p>' --body-format storage --site work --json='*'
 atl-conf page comment edit 999 --body '<p>Updated.</p>' --body-format storage --site work --json='*'
-atl-conf page comment delete 999 --site work --json='*'
+atl-conf page comment delete 999 --yes --site work --json='*'
 
 atl-conf page label list 123456 --site work --json='*'
 atl-conf page label add 123456 release-notes --site work --json='*'

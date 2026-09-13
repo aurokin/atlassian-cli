@@ -8,7 +8,7 @@ Center.
 - Repository targeting
 - Repositories, workspaces, and projects
 - Pull requests
-- Pipelines, issues, and source
+- Pipelines and source
 - Branches, tags, deployments, and search
 - Status and API fallback
 
@@ -58,7 +58,7 @@ atl-bb pr comments add 7 --repo workspace/repo --site work --body "Looks good." 
 
 `pr diff` is raw text, so `--json` and `--jq` do not apply.
 
-## Pipelines, Issues, Source
+## Pipelines And Source
 
 ```bash
 atl-bb pipeline list --repo workspace/repo --site work --limit 20 --json='*'
@@ -67,11 +67,6 @@ atl-bb pipeline run --repo workspace/repo --site work --ref main --ref-type bran
 atl-bb pipeline stop 1 --repo workspace/repo --site work --json='*'
 atl-bb pipeline steps 1 --repo workspace/repo --site work --json='*'
 atl-bb pipeline log 1 "{step-uuid}" --repo workspace/repo --site work
-
-atl-bb issue list --repo workspace/repo --site work --state open --json='*'
-atl-bb issue view 12 --repo workspace/repo --site work --json='*'
-atl-bb issue create --repo workspace/repo --site work --title "Bug" --kind bug --json='*'
-atl-bb issue update 12 --repo workspace/repo --site work --state resolved --json='*'
 
 atl-bb src --repo workspace/repo --site work --ref main --json='*'
 atl-bb file README.md --repo workspace/repo --site work --ref main
@@ -84,19 +79,20 @@ File contents and pipeline logs are raw output; do not expect JSON there.
 ```bash
 atl-bb branch list --repo workspace/repo --site work --json='*'
 atl-bb branch create --repo workspace/repo --site work --name feature --target main --json='*'
-atl-bb branch delete feature --repo workspace/repo --site work
+atl-bb branch delete feature --repo workspace/repo --site work --yes
 
 atl-bb tag list --repo workspace/repo --site work --json='*'
 atl-bb tag create --repo workspace/repo --site work --name v1.0.0 --target abc123 --json='*'
-atl-bb tag delete v1.0.0 --repo workspace/repo --site work
+atl-bb tag delete v1.0.0 --repo workspace/repo --site work --yes
 
 atl-bb deployment list --repo workspace/repo --site work --json='*'
 atl-bb environment list --repo workspace/repo --site work --json='*'
 
 atl-bb search repos cli --workspace workspace --site work --json='*'
 atl-bb search prs bugfix --repo workspace/repo --site work --json='*'
-atl-bb search issues crash --repo workspace/repo --site work --json='*'
 ```
+
+Branch and tag deletion require `--yes`.
 
 ## Status And API Fallback
 
