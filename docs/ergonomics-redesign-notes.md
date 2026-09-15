@@ -29,3 +29,9 @@ retries. A later redesign should measure completion of common agent workflows
 from a fresh configuration, including recovery from wrong or missing settings.
 Keep explicit targeting and non-interactive operation as constraints; do not
 silently choose an arbitrary personal site to reduce the number of flags.
+
+Live read-only-token tests also returned HTTP 401 with `Unauthorized; scope does
+not match` from Jira/Confluence despite successful identity and content reads.
+Consider explicit scope-recovery guidance in errors so agents can distinguish
+a valid token missing write scope from an invalid token. Preserve the documented
+upstream status and exit-code contract when evaluating that redesign.

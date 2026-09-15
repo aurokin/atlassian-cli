@@ -191,7 +191,7 @@ the Go harness; the matrix runner intentionally requires stored profiles.
 ## Delivered live coverage and limits
 
 The base families contain eight Jira, thirteen Confluence and ten Bitbucket
-tests. Two optional Bitbucket capabilities, OAuth product/refresh cells, and
+tests. Three optional Bitbucket capabilities, OAuth product/refresh cells, and
 three restricted-scope cells extend the matrix. The runner discovers selected
 names from the compiled suite; test count does not prove completeness.
 
