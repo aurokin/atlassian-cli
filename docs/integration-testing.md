@@ -102,6 +102,20 @@ transport. This tests token scopes, not a different user's resource permissions
 or independent PR approval. Never supply a full-access token as the read-only
 profile.
 
+### Confluence search readiness
+
+Newly published content is not immediately visible to the Search API. The live
+suite keeps exact owned-ID and text-marker assertions, but allows up to eight
+minutes for index visibility, polling reads every ten seconds and logging the
+observed delay. HTTP/authentication errors fail immediately. Two bounded search
+waits fit the default 20-minute cell deadline with room for the other workflows.
+
+A controlled test in this tenant observed visibility only after roughly five
+and a half minutes across classic, scoped and OAuth credentials. Atlassian
+[describes minute-scale index propagation](https://jira.atlassian.com/browse/CONFCLOUD-80582),
+without promising an upper bound. Readiness expiry remains a failed test; do not
+exclude search or accept empty results to force a passing matrix.
+
 ## Results, deadlines and recovery
 
 The runner writes `summary.json` incrementally, plus each cell's complete Go

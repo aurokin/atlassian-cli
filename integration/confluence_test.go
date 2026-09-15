@@ -147,11 +147,17 @@ func TestConfSpaceView(t *testing.T) {
 		t.Fatal("wrong space", space)
 	}
 }
-func TestConfSearchCQL(t *testing.T) {
-	s := confSession(t)
-	p := confCreate(t, s, "page", "<p>search fixture</p>", "storage")
-	deadline := time.Now().Add(45 * time.Second)
-	for {
+
+// Confluence Cloud search propagates asynchronously. A controlled tenant probe
+// took over five minutes; eight minutes bounds readiness within the matrix's
+// twenty-minute cell budget for two search cases. See CONFCLOUD-80582.
+func confWaitForSearch(t *testing.T, s *session, id string, args ...string) {
+	t.Helper()
+	started := time.Now()
+	deadline := started.Add(8 * time.Minute)
+	queryArgs := append([]string{}, args...)
+	queryArgs = append(queryArgs, "--timeout", "10s")
+	for attempt := 1; ; attempt++ {
 		var list struct {
 			Results []struct {
 				Content struct {
@@ -159,18 +165,29 @@ func TestConfSearchCQL(t *testing.T) {
 				} `json:"content"`
 			} `json:"results"`
 		}
-		s.mustJSON(&list, "search", "cql", fmt.Sprintf("id = %s", p.ID), "--all", "--limit", "1")
+		// Command/auth/HTTP failures remain fatal; only empty search results wait
+		// for indexing. Resource creation is never retried.
+		s.mustJSON(&list, queryArgs...)
+		elapsed := time.Since(started).Round(time.Second)
 		if len(list.Results) > 0 {
-			if len(list.Results) != 1 || list.Results[0].Content.ID != p.ID {
-				t.Fatalf("CQL returned wrong fixture: %+v", list)
+			if len(list.Results) != 1 || list.Results[0].Content.ID != id {
+				t.Fatalf("search returned wrong fixture %s: %+v", id, list)
 			}
-			break
+			t.Logf("search indexed owned page %s after %s (%d read attempts)", id, elapsed, attempt)
+			return
 		}
-		if time.Now().After(deadline) {
-			t.Fatal("owned page not indexed within deadline")
+		if !time.Now().Before(deadline) {
+			t.Fatalf("owned page %s not searchable after %s (%d read attempts)", id, elapsed, attempt)
 		}
-		time.Sleep(time.Second)
+		t.Logf("waiting for search index: page=%s elapsed=%s attempt=%d", id, elapsed, attempt)
+		time.Sleep(min(10*time.Second, time.Until(deadline)))
 	}
+}
+
+func TestConfSearchCQL(t *testing.T) {
+	s := confSession(t)
+	p := confCreate(t, s, "page", "<p>search fixture</p>", "storage")
+	confWaitForSearch(t, s, p.ID, "search", "cql", fmt.Sprintf("id = %s", p.ID), "--all", "--limit", "1")
 }
 func TestConfPageListAndView(t *testing.T) {
 	s := confSession(t)
@@ -428,22 +445,5 @@ func TestConfSearchText(t *testing.T) {
 	s := confSession(t)
 	marker := fmt.Sprintf("atle2esearch%d", time.Now().UnixNano())
 	p := confCreate(t, s, "page", "<p>"+marker+"</p>", "storage")
-	deadline := time.Now().Add(time.Minute)
-	for {
-		var result struct {
-			Results []struct {
-				Content struct {
-					ID string `json:"id"`
-				} `json:"content"`
-			} `json:"results"`
-		}
-		s.mustJSON(&result, "search", "text", marker, "--space", confSpace(t), "--type", "page", "--all", "--limit", "1")
-		if len(result.Results) == 1 && result.Results[0].Content.ID == p.ID {
-			return
-		}
-		if time.Now().After(deadline) {
-			t.Fatalf("text search did not return exact owned page: %+v", result)
-		}
-		time.Sleep(time.Second)
-	}
+	confWaitForSearch(t, s, p.ID, "search", "text", marker, "--space", confSpace(t), "--type", "page", "--all", "--limit", "1")
 }
