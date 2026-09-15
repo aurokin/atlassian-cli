@@ -9,6 +9,9 @@ are green. Nothing has been merged and auto-merge is disabled.
 
 The optional independent-user denial/approval workflow is implemented but was
 explicitly excluded before execution because a second account is unavailable.
+The owner confirmed on 2026-09-15 that no second disposable account is available
+and instructed that these cases be reported as blocked. This is not a waiver
+or permission to merge.
 It is not part of the 80 selected executions and is not certified. Supplying
 another token for the same account does not satisfy this gate.
 
@@ -120,8 +123,9 @@ the task browser session was closed.
 
 ## Remaining acceptance
 
-Provide a second disposable Bitbucket workspace member without inherited access
-to new private repositories. `--bb-reviewer PROFILE` verifies denied access
+**Blocked: no second disposable account is available.** Resuming this gate
+requires a Bitbucket workspace member without inherited access to new private
+repositories. `--bb-reviewer PROFILE` verifies denied access
 before an owned-repository grant, then independent approval/unapproval and
 cleanup. The owner's token also needs `write:permission:bitbucket`. These live
 prerequisites and the workflow itself remain unverified; do not mark them passed.
