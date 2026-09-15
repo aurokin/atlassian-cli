@@ -29,6 +29,16 @@ func TestNativeCredentialLifecycle(t *testing.T) {
 	for _, product := range []string{"jira", "conf", "bb"} {
 		t.Run(product, func(t *testing.T) {
 			p := isolated(t)
+			if runtime.GOOS == "darwin" {
+				// The opted-in ephemeral worker's Keychain preferences belong to
+				// its real home. Keep that OS context while CLI config remains
+				// isolated through XDG_CONFIG_HOME. Ordinary tests never do this.
+				home, err := os.UserHomeDir()
+				if err != nil {
+					t.Fatal("locate native worker home")
+				}
+				p.env = append(p.env, "HOME="+home)
+			}
 			var random [16]byte
 			if _, err := rand.Read(random[:]); err != nil {
 				t.Fatal(err)

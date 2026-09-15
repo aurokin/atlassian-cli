@@ -59,11 +59,24 @@ jobs:
       - name: Install Unix completion shells (macOS)
         if: runner.os == 'macOS'
         run: command -v fish >/dev/null || brew install fish
+      - name: Prepare isolated native credential store (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          test_keychain="$RUNNER_TEMP/atl-e2e.keychain-db"
+          test_keychain_password="$(openssl rand -hex 16)"
+          security create-keychain -p "$test_keychain_password" "$test_keychain"
+          security set-keychain-settings -lut 21600 "$test_keychain"
+          security unlock-keychain -p "$test_keychain_password" "$test_keychain"
+          security list-keychains -d user -s "$test_keychain"
+          security default-keychain -d user -s "$test_keychain"
       - name: Run hermetic CLI subprocess tests
         env:
           ATL_E2E_REQUIRED_SHELLS: ${{ runner.os == 'Windows' && 'powershell' || 'bash,zsh,fish' }}
           ATL_E2E_NATIVE_CREDENTIALS: ${{ runner.os != 'Linux' && '1' || '' }}
         run: go test ./e2e -count=1
+      - name: Remove isolated native credential store (macOS)
+        if: always() && runner.os == 'macOS'
+        run: security delete-keychain "$RUNNER_TEMP/atl-e2e.keychain-db"
 
   lint:
     name: golangci-lint
