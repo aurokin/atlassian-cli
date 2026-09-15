@@ -116,6 +116,9 @@ func TestInferBitbucketRepoHosts(t *testing.T) {
 		wantOK   bool
 	}{
 		{"scp bitbucket", "git@bitbucket.org:acme/widgets.git", true},
+		{"current ssh scp", "git@ssh.bitbucket.org:acme/widgets.git", true},
+		{"current ssh URL", "ssh://git@ssh.bitbucket.org/acme/widgets.git", true},
+		{"ssh lookalike", "git@ssh.bitbucket.org.example:acme/widgets.git", false},
 		{"altssh", "ssh://git@altssh.bitbucket.org:443/acme/widgets.git", true},
 		{"mixed-case host", "git@Bitbucket.org:acme/widgets.git", true},
 		{"https trailing slash", "https://bitbucket.org/acme/widgets.git/", true},

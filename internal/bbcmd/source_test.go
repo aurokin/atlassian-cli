@@ -58,7 +58,7 @@ func TestSrcResolvesDefaultBranchWhenRefOmitted(t *testing.T) {
 	if !hitRepo || !hitSrc {
 		t.Fatalf("expected repo + src calls; hitRepo=%v hitSrc=%v", hitRepo, hitSrc)
 	}
-	if srcPath != "/repositories/acme/widgets/src/develop" {
+	if srcPath != "/repositories/acme/widgets/src/develop/" {
 		t.Errorf("src path = %q, want default branch develop", srcPath)
 	}
 }

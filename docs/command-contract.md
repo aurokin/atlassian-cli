@@ -225,7 +225,10 @@ records only `client_id`, `scopes`, `cloud_id`, and `token_ref`. On macOS the
 bundle exceeds the keychain CLI's per-item size limit (the access token is a
 multi-kilobyte JWT), so it is stored in the `0600` `credentials.json` fallback
 and `auth login` prints an accurate notice. The access
-token is refreshed automatically at request time. Because it needs a browser,
+token is refreshed automatically at request time. OAuth HTTP timeouts, including
+refresh failures, return `timeout` (exit `9`). Refresh calls have an additional
+30-second cap to keep token rotation within the refresh lock lifetime, even
+when `--timeout` is larger or disabled. Because login needs a browser,
 `oauth-3lo` login fails under `--no-prompt`; use an API-token style for CI. See
 [auth-runbook.md](auth-runbook.md) for an end-to-end walkthrough.
 
@@ -484,7 +487,9 @@ field — so the command fetches the issue scoped to that field and, under
 `--json`/`--jq`, emits the attachment array (with every upstream field) rather
 than the enclosing issue. `attachment download` writes an attachment's bytes to
 `--out <path>` (or `--out -` to stream to stdout); with `--json`/`--jq` it
-prints the attachment metadata and downloads nothing. `attachment add` uploads
+prints the attachment metadata and downloads nothing. Metadata IDs may be
+JSON numbers or strings; downloads accept both without rounding large IDs,
+while structured output preserves the original API JSON. `attachment add` uploads
 `--file <path>` to the issue as multipart form data, reporting the created
 attachment's filename and id. Deleting an attachment is intentionally out of
 scope.
@@ -768,8 +773,8 @@ when it names a real remote (a `.` upstream tracks a *local* branch and is
 skipped), else `origin`, else the first configured remote. Both `https://` and
 scp-style (`git@host:workspace/repo.git`) URLs are parsed, a trailing slash
 after `.git` is tolerated, and the host is matched case-insensitively against
-`bitbucket.org` and `altssh.bitbucket.org` (the port-443 SSH alternative for
-firewalled networks). Inference is best-effort and offline: outside a git
+`bitbucket.org`, `ssh.bitbucket.org`, and `altssh.bitbucket.org` (the port-443
+SSH alternative for firewalled networks). Inference is best-effort and offline: outside a git
 repository, with no usable remote, or when the remote is on some other host,
 the command reports that a repository is required instead. Passing
 `--workspace` alone (a deliberate partial target) skips inference rather than
@@ -921,7 +926,8 @@ atl-bb file <path> [--repo <workspace>/<repo>] [--workspace <slug>] [--ref <bran
 ```
 
 `src` lists a repository directory at `--ref` (`GET .../src/{ref}/{path}`),
-paged with `--limit`/`--all`; with no path it lists the root, and each row
+paged with `--limit`/`--all`; with no path it lists the root using the required
+trailing slash (`GET .../src/{ref}/`), and each row
 shows the entry kind (`dir`/`file`), size, and path. `file` writes a file's
 contents to stdout verbatim (`GET .../src/{ref}/{path}` on a file) — the bytes
 are raw, so `--json`/`--jq` do not apply. When `--ref` is omitted, both resolve

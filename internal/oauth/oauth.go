@@ -20,8 +20,10 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -240,12 +242,12 @@ func (c *Client) postToken(ctx context.Context, form url.Values) (TokenBundle, e
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		// err can embed the request URL but never the form body.
-		return TokenBundle{}, apperr.New("oauth_request_failed", fmt.Sprintf("OAuth token request failed: %v", err))
+		return TokenBundle{}, transportError("OAuth token request failed", err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return TokenBundle{}, apperr.New("oauth_request_failed", fmt.Sprintf("read OAuth token response: %v", err))
+		return TokenBundle{}, transportError("read OAuth token response", err)
 	}
 
 	if resp.StatusCode >= 400 {
@@ -322,12 +324,12 @@ func (c *Client) AccessibleResources(ctx context.Context, accessToken string) ([
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, apperr.New("oauth_request_failed", fmt.Sprintf("accessible-resources request failed: %v", err))
+		return nil, transportError("accessible-resources request failed", err)
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, apperr.New("oauth_request_failed", fmt.Sprintf("read accessible-resources response: %v", err))
+		return nil, transportError("read accessible-resources response", err)
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
 		e := apperr.Unauthorized("the OAuth access token was rejected by accessible-resources")
@@ -399,4 +401,20 @@ func orDefault(s, fallback string) string {
 		return s
 	}
 	return fallback
+}
+
+// transportError keeps OAuth failures distinct while giving deadlines the
+// same retryable category as product requests. Only the operation and transport
+// error are included; credential-bearing request bodies are never inspected.
+func transportError(operation string, err error) *apperr.Error {
+	code := "oauth_request_failed"
+	var netErr net.Error
+	if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &netErr) && netErr.Timeout()) {
+		code = apperr.CodeTimeout
+	}
+	e := apperr.New(code, fmt.Sprintf("%s: %v", operation, err))
+	if code == apperr.CodeTimeout {
+		e.Next = "Retry the request."
+	}
+	return e
 }

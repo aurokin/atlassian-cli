@@ -67,10 +67,10 @@ vet: ## Run go vet
 	go vet ./...
 
 fmt: ## Format all Go sources in place
-	gofmt -w internal/ cmd/ integration/
+	gofmt -w internal/ cmd/ integration/ e2e/
 
 fmt-check: ## Fail if any Go source needs formatting
-	@unformatted=$$(gofmt -l internal/ cmd/ integration/); \
+	@unformatted=$$(gofmt -l internal/ cmd/ integration/ e2e/); \
 	if [ -n "$$unformatted" ]; then \
 		echo "gofmt needed on:"; echo "$$unformatted"; exit 1; \
 	fi

@@ -321,3 +321,61 @@ func TestGenerateStateIsRandom(t *testing.T) {
 		t.Errorf("state not random: %q vs %q", a, b)
 	}
 }
+
+func TestHTTPTimeoutsUseRetryableCategory(t *testing.T) {
+	operations := []struct {
+		name string
+		run  func(*Client) error
+	}{
+		{"refresh", func(c *Client) error {
+			_, err := c.Refresh(context.Background(), "fake-refresh")
+			return err
+		}},
+		{"resources", func(c *Client) error {
+			_, err := c.AccessibleResources(context.Background(), "fake-access")
+			return err
+		}},
+	}
+	for _, op := range operations {
+		for _, stage := range []string{"headers", "body"} {
+			t.Run(op.name+"/"+stage, func(t *testing.T) {
+				release := make(chan struct{})
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					_, _ = io.Copy(io.Discard, r.Body)
+					if stage == "body" {
+						w.WriteHeader(http.StatusOK)
+						w.(http.Flusher).Flush()
+					}
+					<-release
+				}))
+				defer srv.Close()
+				defer close(release)
+				c := New("fake-client", "fake-secret", Options{
+					Endpoints:  Endpoints{Token: srv.URL, Resources: srv.URL},
+					HTTPClient: &http.Client{Timeout: 50 * time.Millisecond},
+				})
+				err := op.run(c)
+				var ae *apperr.Error
+				if !errors.As(err, &ae) || ae.Code != apperr.CodeTimeout || ae.ExitCode() != 9 {
+					t.Fatalf("error = %v, want timeout with exit 9", err)
+				}
+				for _, secret := range []string{"fake-secret", "fake-refresh", "fake-access"} {
+					if strings.Contains(err.Error(), secret) {
+						t.Fatal("timeout error exposed a credential")
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestCanceledRequestIsNotTimeout(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	c := New("fake-client", "fake-secret", Options{Endpoints: Endpoints{Token: "http://127.0.0.1:1"}})
+	_, err := c.Refresh(ctx, "fake-refresh")
+	var ae *apperr.Error
+	if !errors.As(err, &ae) || ae.Code != "oauth_request_failed" {
+		t.Fatalf("error = %v, want oauth_request_failed", err)
+	}
+}

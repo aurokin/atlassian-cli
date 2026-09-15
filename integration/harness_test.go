@@ -28,14 +28,21 @@
 package integration
 
 import (
+	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/aurokin/atlassian-cli/internal/config"
 )
 
 // requireIntegration gates every test in this package. Tests run only when the
@@ -97,12 +104,13 @@ type session struct {
 	// Empty means "use the real config dir" (stored-profile mode).
 	configHome string
 	site       string
+	target     map[string]string
 }
 
 // newSession builds (once) the product's binary, then either reuses a stored
 // profile or provisions a throwaway one from environment-variable credentials.
-// It calls t.Skip when the required configuration for this product is absent,
-// so a developer can exercise just one product without configuring the others.
+// Missing configuration fails selected tests; use -run to
+// select a subset of products explicitly.
 func newSession(t *testing.T, p product) *session {
 	t.Helper()
 	requireIntegration(t)
@@ -112,9 +120,11 @@ func newSession(t *testing.T, p product) *session {
 	if useStoredProfiles() {
 		site := p.env("SITE")
 		if site == "" {
-			t.Skipf("set ATL_IT_%s_SITE to run %s integration tests against a stored profile", p.envPrefix, p.binary)
+			t.Fatalf("set ATL_IT_%s_SITE to run %s integration tests against a stored profile", p.envPrefix, p.binary)
 		}
-		return &session{t: t, binaryPath: bin, configHome: "", site: site}
+		s := &session{t: t, binaryPath: bin, configHome: "", site: site}
+		s.preflight(p)
+		return s
 	}
 
 	baseURL := p.env("BASE_URL")
@@ -127,7 +137,7 @@ func newSession(t *testing.T, p product) *session {
 		username = p.env("EMAIL")
 	}
 	if baseURL == "" || token == "" || (p.needsUsername && username == "") {
-		t.Skipf("set ATL_IT_%s_BASE_URL, ATL_IT_%s_TOKEN%s (or ATL_IT_USE_STORED_PROFILES=1) to run %s integration tests",
+		t.Fatalf("set ATL_IT_%s_BASE_URL, ATL_IT_%s_TOKEN%s (or ATL_IT_USE_STORED_PROFILES=1) to run %s integration tests",
 			p.envPrefix, p.envPrefix,
 			map[bool]string{true: " and ATL_IT_" + p.envPrefix + "_USERNAME/EMAIL", false: ""}[p.needsUsername],
 			p.binary)
@@ -165,7 +175,46 @@ func newSession(t *testing.T, p product) *session {
 	if res.err != nil {
 		t.Fatalf("auth login (%s) failed: %v\nstdout:\n%s\nstderr:\n%s", p.binary, res.err, res.stdout, res.stderr)
 	}
+	s.preflight(p)
 	return s
+}
+
+// preflight checks the exact profile and positive account identity before any
+// fixture writes. Only nonsecret targeting metadata enters the recovery ledger.
+func (s *session) preflight(p product) {
+	s.t.Helper()
+	path, err := config.DefaultPath()
+	if s.configHome != "" {
+		path = filepath.Join(s.configHome, "atlassian-cli", "config.json")
+	}
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	cfg, err := config.Load(path)
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	profile, ok := cfg.Sites[s.site]
+	if !ok || profile.Product != map[string]string{"JIRA": "jira", "CONF": "confluence", "BB": "bitbucket"}[p.envPrefix] {
+		s.t.Fatalf("profile %q missing or wrong product", s.site)
+	}
+	var identity struct {
+		AccountID string `json:"accountId"`
+		UUID      string `json:"uuid"`
+	}
+	s.mustJSON(&identity, "status")
+	account := identity.AccountID
+	if account == "" {
+		account = identity.UUID
+	}
+	if account == "" {
+		s.t.Fatal("preflight status omitted account identity")
+	}
+	if expected := p.env("EXPECTED_ACCOUNT_ID"); expected != "" && account != expected {
+		s.t.Fatalf("preflight identity %q, expected %q", account, expected)
+	}
+	s.target = map[string]string{"config_path": path, "base_url": profile.BaseURL, "api_base_url": profile.APIBaseURL, "cloud_id": profile.CloudID, "token_style": profile.TokenStyle, "account_id": account}
+	s.t.Logf("preflight product=%s site=%s base_url=%s token_style=%s account=%s", profile.Product, s.site, profile.BaseURL, profile.TokenStyle, account)
 }
 
 // cmdResult captures one command invocation.
@@ -181,10 +230,25 @@ type cmdResult struct {
 func (s *session) run(args ...string) cmdResult {
 	s.t.Helper()
 	full := append([]string{}, args...)
-	full = append(full, "--site", s.site)
+	full = append(full, "--site", s.site, "--no-prompt")
 
-	cmd := exec.Command(s.binaryPath, full...)
-	cmd.Env = os.Environ()
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, s.binaryPath, full...)
+	boundProcess(cmd)
+	cmd.WaitDelay = 2 * time.Second
+	for _, entry := range os.Environ() {
+		name, _, _ := strings.Cut(entry, "=")
+		// Isolate CLI selectors, but preserve arbitrary --token-env references
+		// such as ATL_API_TOKEN used by existing stored profiles.
+		if name == "ATL_SITE" || name == "ATL_TIMEOUT" {
+			continue
+		}
+		if name == "XDG_CONFIG_HOME" && s.configHome != "" {
+			continue
+		}
+		cmd.Env = append(cmd.Env, entry)
+	}
 	if s.configHome != "" {
 		cmd.Env = append(cmd.Env, "XDG_CONFIG_HOME="+s.configHome)
 	}
@@ -205,13 +269,11 @@ func (s *session) mustRun(args ...string) cmdResult {
 	return res
 }
 
-// mustWrite runs a mutating command: a scope/permission failure skips the test
-// (a tenant/app gap, not a CLI defect); any other failure is fatal. It is a
-// shared primitive used by every product's lifecycle test.
+// mustWrite requires the selected mutation to succeed, including permissions.
 func (s *session) mustWrite(op string, args ...string) cmdResult {
 	s.t.Helper()
 	res := s.run(args...)
-	s.skipIfScopeOrPermission(res, op)
+	s.failIfScopeOrPermission(res, op)
 	if res.err != nil {
 		s.t.Fatalf("%s failed: %v\nstdout:\n%s\nstderr:\n%s", op, res.err, res.stdout, res.stderr)
 	}
@@ -227,11 +289,8 @@ func (s *session) mustJSON(v any, args ...string) {
 	}
 }
 
-// skipIfScopeOrPermission skips (rather than fails) when a command failed only
-// because the credential lacks the scope or permission for that endpoint —
-// that is a tenant/app configuration gap, not a CLI defect. Anything else is a
-// real failure and is returned for the caller to assert on.
-func (s *session) skipIfScopeOrPermission(res cmdResult, op string) {
+// failIfScopeOrPermission reports missing permissions as a selected capability failure.
+func (s *session) failIfScopeOrPermission(res cmdResult, op string) {
 	s.t.Helper()
 	if res.err == nil {
 		return
@@ -247,7 +306,7 @@ func (s *session) skipIfScopeOrPermission(res cmdResult, op string) {
 		"not permitted",
 	} {
 		if strings.Contains(strings.ToLower(msg), strings.ToLower(marker)) {
-			s.t.Skipf("%s requires a scope/permission this credential lacks; skipping:\n%s", op, msg)
+			s.t.Fatalf("%s blocked: selected capability requires missing scope/permission:\n%s", op, msg)
 		}
 	}
 }
@@ -294,11 +353,150 @@ func buildBinary(t *testing.T, name string) string {
 		return p
 	}
 	out := filepath.Join(buildOut, name)
-	cmd := exec.Command("go", "build", "-o", out, "./cmd/"+name)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "go", "build", "-o", out, "./cmd/"+name)
+	boundProcess(cmd)
+	cmd.WaitDelay = 2 * time.Second
 	cmd.Dir = repoRoot(t)
 	if combined, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build %s: %v\n%s", name, err, combined)
 	}
+	data, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gitOutput := func(args ...string) []byte {
+		cmd := exec.CommandContext(ctx, "git", args...)
+		cmd.Dir = repoRoot(t)
+		output, err := cmd.Output()
+		if err != nil {
+			t.Fatalf("build identity git %v: %v", args, err)
+		}
+		return output
+	}
+	t.Logf("build identity: binary=%s sha256=%x git=%s tracked-diff-sha256=%x go=%s platform=%s/%s", name, sha256.Sum256(data), strings.TrimSpace(string(gitOutput("rev-parse", "HEAD"))), sha256.Sum256(gitOutput("diff", "HEAD", "--")), runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	sourceHash, err := goSourceDigest(repoRoot(t), gitOutput("ls-files", "--cached", "--others", "--exclude-standard", "-z"))
+	if err != nil {
+		t.Fatalf("source tree digest: %v", err)
+	}
+	t.Logf("Go source tree sha256=%x (tracked/untracked .go, go.mod, go.sum; temporary reauth excluded)", sourceHash)
+	t.Logf("working tree (includes untracked files):\n%s", gitOutput("status", "--short"))
 	builtBins[name] = out
 	return out
+}
+
+// goSourceDigest includes untracked Go source without opening unrelated local
+// credential files. Symlinks are hashed as links, never followed outside the tree.
+func goSourceDigest(root string, paths []byte) ([32]byte, error) {
+	unique := map[string]bool{}
+	for _, path := range strings.Split(string(paths), "\x00") {
+		if strings.Contains(path, ".tmp-reauth") || (filepath.Ext(path) != ".go" && path != "go.mod" && path != "go.sum") {
+			continue
+		}
+		unique[path] = true
+	}
+	names := make([]string, 0, len(unique))
+	for name := range unique {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	digest := sha256.New()
+	for _, name := range names {
+		full := filepath.Join(root, name)
+		info, err := os.Lstat(full)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return [32]byte{}, err
+		}
+		var data []byte
+		kind := "file"
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, err := os.Readlink(full)
+			if err != nil {
+				return [32]byte{}, err
+			}
+			kind, data = "symlink", []byte(target)
+		} else {
+			data, err = os.ReadFile(full)
+			if err != nil {
+				return [32]byte{}, err
+			}
+		}
+		fmt.Fprintf(digest, "%s\x00%s\x00%d\x00", name, kind, len(data))
+		digest.Write(data)
+	}
+	var result [32]byte
+	copy(result[:], digest.Sum(nil))
+	return result, nil
+}
+
+// cleanupOwned records ownership while allowing product-specific trash/purge
+// semantics. The callback must verify removal and report useful diagnostics.
+func (s *session) cleanupOwned(kind, id string, cleanup func() bool) {
+	s.t.Helper()
+	record := func(state string) {
+		cleanupMu.Lock()
+		defer cleanupMu.Unlock()
+		if cleanupLedger == "" {
+			f, err := os.CreateTemp("", "atl-integration-cleanup-*.jsonl")
+			if err != nil {
+				s.t.Fatalf("create cleanup ledger: %v", err)
+			}
+			cleanupLedger = f.Name()
+			if err := f.Close(); err != nil {
+				s.t.Fatal(err)
+			}
+		}
+		f, err := os.OpenFile(cleanupLedger, os.O_APPEND|os.O_WRONLY, 0600)
+		if err != nil {
+			s.t.Errorf("open cleanup ledger: %v", err)
+			return
+		}
+		entry := map[string]any{"test": s.t.Name(), "binary": filepath.Base(s.binaryPath), "site": s.site, "kind": kind, "id": id, "state": state, "target": s.target}
+		if err := json.NewEncoder(f).Encode(entry); err != nil {
+			s.t.Errorf("write cleanup ledger: %v", err)
+		}
+		if err := f.Close(); err != nil {
+			s.t.Errorf("close cleanup ledger: %v", err)
+		}
+	}
+	s.t.Cleanup(func() {
+		if cleanup() {
+			record("deleted")
+		} else {
+			s.t.Errorf("cleanup incomplete for %s %s; see %s", kind, id, cleanupLedger)
+		}
+	})
+	record("pending")
+	s.t.Logf("owned %s %s; cleanup ledger %s", kind, id, cleanupLedger)
+}
+
+var cleanupMu sync.Mutex
+var cleanupLedger string
+
+func (s *session) assertMissing(args ...string) bool {
+	s.t.Helper()
+	res := s.run(append(args, "--json")...)
+	var envelope struct {
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal([]byte(res.stdout+res.stderr), &envelope); err != nil || res.err == nil || envelope.Error != "not_found_or_not_visible" {
+		s.t.Errorf("expected missing resource for %v: %v\n%s", args, res.err, res.stdout+res.stderr)
+		return false
+	}
+	return true
+}
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if buildOut != "" {
+		if err := os.RemoveAll(buildOut); err != nil {
+			fmt.Fprintln(os.Stderr, "remove test binaries:", err)
+			code = 1
+		}
+	}
+	os.Exit(code)
 }

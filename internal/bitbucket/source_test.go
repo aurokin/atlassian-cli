@@ -2,6 +2,7 @@ package bitbucket
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -77,5 +78,36 @@ func TestGetFileContent(t *testing.T) {
 	}
 	if string(data) != "package main\n" {
 		t.Errorf("content = %q", data)
+	}
+}
+
+func TestListSourceRootRetainsTrailingSlash(t *testing.T) {
+	for _, all := range []bool{false, true} {
+		t.Run(fmt.Sprint("all=", all), func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/repositories/acme/widgets/src/main/" {
+					http.NotFound(w, r)
+					return
+				}
+				if r.URL.Query().Get("pagelen") != "1" {
+					t.Errorf("pagelen=%q", r.URL.Query().Get("pagelen"))
+				}
+				_, _ = w.Write([]byte(`{"values":[{"path":"README.md","type":"commit_file"}]}`))
+			}))
+			defer srv.Close()
+			client := newTestClient(srv)
+			list := client.ListSource
+			if all {
+				list = client.ListSourceAll
+			}
+			raw, err := list(context.Background(), "acme", "widgets", "main", "", 1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			page, err := Decode[SourcePage](raw)
+			if err != nil || len(page.Values) != 1 || page.Values[0].Path != "README.md" {
+				t.Fatalf("root listing: %s err=%v", raw, err)
+			}
+		})
 	}
 }

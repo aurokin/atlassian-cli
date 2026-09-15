@@ -18,6 +18,7 @@ import (
 // port-443 SSH alternative Bitbucket documents for firewalled networks.
 const (
 	bitbucketHost       = "bitbucket.org"
+	bitbucketSSHHost    = "ssh.bitbucket.org"
 	bitbucketAltSSHHost = "altssh.bitbucket.org"
 )
 
@@ -44,7 +45,7 @@ var runner = func(ctx context.Context, dir string, args ...string) (string, erro
 // It returns ok=false (and no error) whenever inference is not possible — no
 // git binary, dir is not a repository, no usable remote, an unparseable remote
 // URL, or a remote whose host is not Bitbucket Cloud (bitbucket.org or
-// altssh.bitbucket.org).
+// ssh.bitbucket.org or altssh.bitbucket.org).
 func InferBitbucketRepo(ctx context.Context, dir string) (RemoteTarget, bool) {
 	remote, ok := detectRemoteName(ctx, dir)
 	if !ok {
@@ -55,7 +56,7 @@ func InferBitbucketRepo(ctx context.Context, dir string) (RemoteTarget, bool) {
 		return RemoteTarget{}, false
 	}
 	parsed, err := ParseRemoteURL(cloneURL)
-	if err != nil || (parsed.Host != bitbucketHost && parsed.Host != bitbucketAltSSHHost) {
+	if err != nil || (parsed.Host != bitbucketHost && parsed.Host != bitbucketSSHHost && parsed.Host != bitbucketAltSSHHost) {
 		return RemoteTarget{}, false
 	}
 	return parsed, true

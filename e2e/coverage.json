@@ -1,0 +1,1568 @@
+{
+  "description": "Evidence pointers for 152 canonical runnable commands, not proof of every flag, auth mode, platform or capability. Live pointers indicate implemented cases, not a current run result. Aliases share their canonical command. Optional capabilities and uncovered workflows remain explicit.",
+  "commands": [
+    {
+      "command": "atl-bb alias delete",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/alias_test.go",
+          "test": "TestAliasSetListDelete"
+        }
+      ],
+      "unverified": "No shipped-binary alias workflow test yet."
+    },
+    {
+      "command": "atl-bb alias list",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/alias_test.go",
+          "test": "TestAliasSetListDelete"
+        }
+      ],
+      "unverified": "No shipped-binary alias workflow test yet."
+    },
+    {
+      "command": "atl-bb alias set",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/alias_test.go",
+          "test": "TestAliasSetListDelete"
+        }
+      ],
+      "unverified": "No shipped-binary alias workflow test yet."
+    },
+    {
+      "command": "atl-bb api",
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestRawAPIErrorBodyAndOriginBoundary"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestTimeoutAndTrace"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb auth default",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/auth_test.go",
+          "test": "TestAuthDefaultSetShowClear"
+        }
+      ],
+      "unverified": "No shipped-binary default targeting lifecycle yet."
+    },
+    {
+      "command": "atl-bb auth login",
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestEnvironmentTokenLoginPersistsOnlyReference"
+        },
+        {
+          "kind": "package",
+          "file": "internal/cli/auth_oauth_test.go",
+          "test": "TestAuthLoginOAuth3LOFullFlow"
+        }
+      ],
+      "unverified": "Interactive grant and native keychain acceptance are separately recorded; process fixture only covers env-token login."
+    },
+    {
+      "command": "atl-bb auth logout",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/auth_test.go",
+          "test": "TestAuthLogoutRemovesOnlyRequestedSite"
+        }
+      ],
+      "unverified": "No shipped-binary logout lifecycle yet."
+    },
+    {
+      "command": "atl-bb auth status",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/auth_test.go",
+          "test": "TestAuthStatusDoesNotExposeTokenValue"
+        }
+      ],
+      "unverified": "No shipped-binary auth status test yet."
+    },
+    {
+      "command": "atl-bb branch create",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb branch delete",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb branch list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb branch view",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb browse",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/browse_test.go",
+          "test": "TestBrowseNoPromptImpliesNoBrowser"
+        }
+      ],
+      "unverified": "No shipped-binary browser suppression test yet."
+    },
+    {
+      "command": "atl-bb commit list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb commit view",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb completion bash",
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestDiscovery"
+        }
+      ],
+      "unverified": "Generated text is checked; execution in a Bash shell is not tested."
+    },
+    {
+      "command": "atl-bb completion fish",
+      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+    },
+    {
+      "command": "atl-bb completion powershell",
+      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+    },
+    {
+      "command": "atl-bb completion zsh",
+      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+    },
+    {
+      "command": "atl-bb deployment list",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/bbcmd/deployment_test.go",
+          "test": "TestDeploymentListHuman"
+        }
+      ],
+      "unverified": "No live environment/deployment fixtures; requires harmless enabled deployment pipeline."
+    },
+    {
+      "command": "atl-bb deployment view",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/bbcmd/deployment_test.go",
+          "test": "TestDeploymentViewHumanAndJSON"
+        }
+      ],
+      "unverified": "No live environment/deployment fixtures; requires harmless enabled deployment pipeline."
+    },
+    {
+      "command": "atl-bb environment list",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/bbcmd/deployment_test.go",
+          "test": "TestEnvironmentListHuman"
+        }
+      ],
+      "unverified": "No live environment/deployment fixtures; requires harmless enabled deployment pipeline."
+    },
+    {
+      "command": "atl-bb environment view",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/bbcmd/deployment_test.go",
+          "test": "TestEnvironmentViewHumanAndJSON"
+        }
+      ],
+      "unverified": "No live environment/deployment fixtures; requires harmless enabled deployment pipeline."
+    },
+    {
+      "command": "atl-bb extension exec",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/extension_test.go",
+          "test": "TestExtensionExecRunsBinary"
+        }
+      ],
+      "unverified": "No shipped-binary extension execution/native platform matrix yet."
+    },
+    {
+      "command": "atl-bb extension list",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/extension_test.go",
+          "test": "TestExtensionListHuman"
+        }
+      ],
+      "unverified": "No shipped-binary extension discovery/native platform matrix yet."
+    },
+    {
+      "command": "atl-bb file",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb help",
+      "unverified": "Root --help is checked by TestDiscovery; explicit help subcommand is not independently exercised."
+    },
+    {
+      "command": "atl-bb pipeline list",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/bbcmd/pipeline_test.go",
+          "test": "TestPipelineListHumanAndQuery"
+        }
+      ],
+      "unverified": "Live Pipelines requires explicitly enabled disposable repository and available free build budget; not part of core live acceptance."
+    },
+    {
+      "command": "atl-bb pipeline log",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/bbcmd/pipeline_test.go",
+          "test": "TestPipelineLogWritesRawLog"
+        }
+      ],
+      "unverified": "Live Pipelines requires explicitly enabled disposable repository and available free build budget; not part of core live acceptance."
+    },
+    {
+      "command": "atl-bb pipeline run",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/bbcmd/pipeline_test.go",
+          "test": "TestPipelineRunSendsTargetBody"
+        }
+      ],
+      "unverified": "Live Pipelines requires explicitly enabled disposable repository and available free build budget; not part of core live acceptance."
+    },
+    {
+      "command": "atl-bb pipeline steps",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/bbcmd/pipeline_test.go",
+          "test": "TestPipelineStepsList"
+        }
+      ],
+      "unverified": "Live Pipelines requires explicitly enabled disposable repository and available free build budget; not part of core live acceptance."
+    },
+    {
+      "command": "atl-bb pipeline stop",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/bbcmd/pipeline_test.go",
+          "test": "TestPipelineStopByUUID"
+        }
+      ],
+      "unverified": "Live Pipelines requires explicitly enabled disposable repository and available free build budget; not part of core live acceptance."
+    },
+    {
+      "command": "atl-bb pipeline view",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/bbcmd/pipeline_test.go",
+          "test": "TestPipelineViewByUUID"
+        }
+      ],
+      "unverified": "Live Pipelines requires explicitly enabled disposable repository and available free build budget; not part of core live acceptance."
+    },
+    {
+      "command": "atl-bb pr approve",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/bbcmd/pr_test.go",
+          "test": "TestPRApprove"
+        }
+      ],
+      "unverified": "Independent reviewer identity required for live approval; self-approval is not valid acceptance."
+    },
+    {
+      "command": "atl-bb pr comments add",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedPullRequests"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb pr comments list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedPullRequests"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb pr create",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedPullRequests"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb pr decline",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedPullRequests"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb pr diff",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedPullRequests"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb pr list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedPullRequests"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestPullRequestPagination"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb pr merge",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedPullRequests"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb pr unapprove",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/bbcmd/pr_test.go",
+          "test": "TestPRUnapproveJSON"
+        }
+      ],
+      "unverified": "Independent reviewer identity required for live approval; self-approval is not valid acceptance."
+    },
+    {
+      "command": "atl-bb pr view",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedPullRequests"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb project create",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/bbcmd/project_test.go",
+          "test": "TestProjectCreateSendsBodyAndOmitsUnsetPrivate"
+        }
+      ],
+      "unverified": "Project administration has package evidence; no live project creation/deletion fixture."
+    },
+    {
+      "command": "atl-bb project delete",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/bbcmd/project_test.go",
+          "test": "TestProjectDeleteWithConfirmation"
+        }
+      ],
+      "unverified": "Project administration has package evidence; no live project creation/deletion fixture."
+    },
+    {
+      "command": "atl-bb project list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb project view",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb repo create",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb repo delete",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb repo list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bitbucket_test.go",
+          "test": "TestBitbucketRepoList"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb repo view",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb resolve",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/resolve_test.go",
+          "test": "TestResolveCommandJSONEnvelope"
+        }
+      ],
+      "unverified": "No shipped-binary resolve test yet."
+    },
+    {
+      "command": "atl-bb search prs",
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestPullRequestPagination"
+        }
+      ],
+      "unverified": "Live PR list pagination is covered, but query-based PR search is not live-tested."
+    },
+    {
+      "command": "atl-bb search repos",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb src",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb status",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bitbucket_test.go",
+          "test": "TestBitbucketStatus"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestHTTPErrorExits"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb tag create",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb tag delete",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb tag list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb tag view",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedRefsAndContent"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb version",
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestDiscovery"
+        }
+      ]
+    },
+    {
+      "command": "atl-bb workspace view",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/bitbucket_test.go",
+          "test": "TestBitbucketWorkspaceView"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf alias delete",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/alias_test.go",
+          "test": "TestAliasSetListDelete"
+        }
+      ],
+      "unverified": "No shipped-binary alias workflow test yet."
+    },
+    {
+      "command": "atl-conf alias list",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/alias_test.go",
+          "test": "TestAliasSetListDelete"
+        }
+      ],
+      "unverified": "No shipped-binary alias workflow test yet."
+    },
+    {
+      "command": "atl-conf alias set",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/alias_test.go",
+          "test": "TestAliasSetListDelete"
+        }
+      ],
+      "unverified": "No shipped-binary alias workflow test yet."
+    },
+    {
+      "command": "atl-conf api",
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestRawAPIErrorBodyAndOriginBoundary"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestTimeoutAndTrace"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf attachment download",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfAttachmentRoundTrip"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf attachment list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfAttachmentRoundTrip"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf attachment upload",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfAttachmentRoundTrip"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf auth default",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/auth_test.go",
+          "test": "TestAuthDefaultSetShowClear"
+        }
+      ],
+      "unverified": "No shipped-binary default targeting lifecycle yet."
+    },
+    {
+      "command": "atl-conf auth login",
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestEnvironmentTokenLoginPersistsOnlyReference"
+        },
+        {
+          "kind": "package",
+          "file": "internal/cli/auth_oauth_test.go",
+          "test": "TestAuthLoginOAuth3LOFullFlow"
+        }
+      ],
+      "unverified": "Interactive grant and native keychain acceptance are separately recorded; process fixture only covers env-token login."
+    },
+    {
+      "command": "atl-conf auth logout",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/auth_test.go",
+          "test": "TestAuthLogoutRemovesOnlyRequestedSite"
+        }
+      ],
+      "unverified": "No shipped-binary logout lifecycle yet."
+    },
+    {
+      "command": "atl-conf auth status",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/auth_test.go",
+          "test": "TestAuthStatusDoesNotExposeTokenValue"
+        }
+      ],
+      "unverified": "No shipped-binary auth status test yet."
+    },
+    {
+      "command": "atl-conf blogpost create",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfBlogpostLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf blogpost edit",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfBlogpostLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf blogpost list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfBlogpostLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf blogpost view",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfBlogpostLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf browse",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/browse_test.go",
+          "test": "TestBrowseNoPromptImpliesNoBrowser"
+        }
+      ],
+      "unverified": "No shipped-binary browser suppression test yet."
+    },
+    {
+      "command": "atl-conf completion bash",
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestDiscovery"
+        }
+      ],
+      "unverified": "Generated text is checked; execution in a Bash shell is not tested."
+    },
+    {
+      "command": "atl-conf completion fish",
+      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+    },
+    {
+      "command": "atl-conf completion powershell",
+      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+    },
+    {
+      "command": "atl-conf completion zsh",
+      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+    },
+    {
+      "command": "atl-conf extension exec",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/extension_test.go",
+          "test": "TestExtensionExecRunsBinary"
+        }
+      ],
+      "unverified": "No shipped-binary extension execution/native platform matrix yet."
+    },
+    {
+      "command": "atl-conf extension list",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/extension_test.go",
+          "test": "TestExtensionListHuman"
+        }
+      ],
+      "unverified": "No shipped-binary extension discovery/native platform matrix yet."
+    },
+    {
+      "command": "atl-conf help",
+      "unverified": "Root --help is checked by TestDiscovery; explicit help subcommand is not independently exercised."
+    },
+    {
+      "command": "atl-conf page ancestors",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfChildren"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf page children",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfChildren"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestConfluenceDirectChildren"
+        }
+      ],
+      "unverified": "Live fixtures cover pages; non-page child types have process evidence only."
+    },
+    {
+      "command": "atl-conf page comment create",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfComments"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf page comment delete",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfComments"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf page comment edit",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfComments"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf page comment list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfComments"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf page comment view",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfComments"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf page create",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfPageLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf page delete",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfPageLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf page edit",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfPageLifecycle"
+        },
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfPageADFTitleEdit"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf page label add",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfLabelLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf page label list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfLabelLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf page label remove",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfLabelLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf page list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfPageListAndView"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf page versions",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfPageLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf page view",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfPageListAndView"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf resolve",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/resolve_test.go",
+          "test": "TestResolveCommandJSONEnvelope"
+        }
+      ],
+      "unverified": "No shipped-binary resolve test yet."
+    },
+    {
+      "command": "atl-conf search cql",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfSearchCQL"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf search text",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/confcmd/search_test.go",
+          "test": "TestSearchTextBuildsCQL"
+        }
+      ],
+      "unverified": "Known-ID live search covers CQL only; text search is not live-tested."
+    },
+    {
+      "command": "atl-conf space list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfSpaceList"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf space view",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfSpaceView"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf status",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfStatus"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestHTTPErrorExits"
+        }
+      ]
+    },
+    {
+      "command": "atl-conf version",
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestDiscovery"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira alias delete",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/alias_test.go",
+          "test": "TestAliasSetListDelete"
+        }
+      ],
+      "unverified": "No shipped-binary alias workflow test yet."
+    },
+    {
+      "command": "atl-jira alias list",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/alias_test.go",
+          "test": "TestAliasSetListDelete"
+        }
+      ],
+      "unverified": "No shipped-binary alias workflow test yet."
+    },
+    {
+      "command": "atl-jira alias set",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/alias_test.go",
+          "test": "TestAliasSetListDelete"
+        }
+      ],
+      "unverified": "No shipped-binary alias workflow test yet."
+    },
+    {
+      "command": "atl-jira api",
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestRawAPIErrorBodyAndOriginBoundary"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestTimeoutAndTrace"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira auth default",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/auth_test.go",
+          "test": "TestAuthDefaultSetShowClear"
+        }
+      ],
+      "unverified": "No shipped-binary default targeting lifecycle yet."
+    },
+    {
+      "command": "atl-jira auth login",
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestEnvironmentTokenLoginPersistsOnlyReference"
+        },
+        {
+          "kind": "package",
+          "file": "internal/cli/auth_oauth_test.go",
+          "test": "TestAuthLoginOAuth3LOFullFlow"
+        }
+      ],
+      "unverified": "Interactive grant and native keychain acceptance are separately recorded; process fixture only covers env-token login."
+    },
+    {
+      "command": "atl-jira auth logout",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/auth_test.go",
+          "test": "TestAuthLogoutRemovesOnlyRequestedSite"
+        }
+      ],
+      "unverified": "No shipped-binary logout lifecycle yet."
+    },
+    {
+      "command": "atl-jira auth status",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/auth_test.go",
+          "test": "TestAuthStatusDoesNotExposeTokenValue"
+        }
+      ],
+      "unverified": "No shipped-binary auth status test yet."
+    },
+    {
+      "command": "atl-jira browse",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/browse_test.go",
+          "test": "TestBrowseNoPromptImpliesNoBrowser"
+        }
+      ],
+      "unverified": "No shipped-binary browser suppression test yet."
+    },
+    {
+      "command": "atl-jira completion bash",
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestDiscovery"
+        }
+      ],
+      "unverified": "Generated text is checked; execution in a Bash shell is not tested."
+    },
+    {
+      "command": "atl-jira completion fish",
+      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+    },
+    {
+      "command": "atl-jira completion powershell",
+      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+    },
+    {
+      "command": "atl-jira completion zsh",
+      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+    },
+    {
+      "command": "atl-jira extension exec",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/extension_test.go",
+          "test": "TestExtensionExecRunsBinary"
+        }
+      ],
+      "unverified": "No shipped-binary extension execution/native platform matrix yet."
+    },
+    {
+      "command": "atl-jira extension list",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/extension_test.go",
+          "test": "TestExtensionListHuman"
+        }
+      ],
+      "unverified": "No shipped-binary extension discovery/native platform matrix yet."
+    },
+    {
+      "command": "atl-jira field list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraFields"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira help",
+      "unverified": "Root --help is checked by TestDiscovery; explicit help subcommand is not independently exercised."
+    },
+    {
+      "command": "atl-jira issue assign",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ],
+      "unverified": "Live covers account ID, @me and unassign; email lookup is not live-tested."
+    },
+    {
+      "command": "atl-jira issue attachment add",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue attachment download",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue attachment list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue comment create",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue comment delete",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue comment edit",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue comment list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue comment view",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue create",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue edit",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue link",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraOwnedPagination"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue link types",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraOwnedPagination"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraOwnedPagination"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue transition",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue unwatch",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue view",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue watch",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue watchers",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue worklog add",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira issue worklog list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraIssueLifecycle"
+        }
+      ],
+      "unverified": "Live verifies one worklog; forced worklog pagination is not yet covered."
+    },
+    {
+      "command": "atl-jira project list",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraProjectList"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira project view",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraProjectView"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira resolve",
+      "evidence": [
+        {
+          "kind": "package",
+          "file": "internal/cli/resolve_test.go",
+          "test": "TestResolveCommandJSONEnvelope"
+        }
+      ],
+      "unverified": "No shipped-binary resolve test yet."
+    },
+    {
+      "command": "atl-jira search issues",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraOwnedPagination"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira status",
+      "evidence": [
+        {
+          "kind": "live",
+          "file": "integration/jira_test.go",
+          "test": "TestJiraStatus"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestHTTPErrorExits"
+        }
+      ]
+    },
+    {
+      "command": "atl-jira version",
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/contracts_test.go",
+          "test": "TestDiscovery"
+        }
+      ]
+    }
+  ]
+}
