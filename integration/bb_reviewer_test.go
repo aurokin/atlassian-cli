@@ -3,8 +3,10 @@
 package integration
 
 import (
+	"errors"
 	"net/url"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"testing"
@@ -15,7 +17,9 @@ import (
 
 // TestBitbucketIndependentReviewer selects a second, stored Bitbucket identity
 // explicitly. Before any fixture mutation, both accounts must authenticate and
-// differ. The reviewer must already be a workspace member; the owner token needs
+// differ. The reviewer must be a workspace member without inherited access to
+// new private repositories (not an admin/default-access group member). The test
+// proves denied access before the explicit grant. The owner token needs
 // admin:repository:bitbucket and write:permission:bitbucket to grant access only
 // to the newly-created private repository. Repository cleanup removes that grant.
 // https://developer.atlassian.com/cloud/bitbucket/rest/api-group-repositories/
@@ -67,6 +71,32 @@ func TestBitbucketIndependentReviewer(t *testing.T) {
 	// account setting must not force the second identity to equal the author.
 	t.Logf("independent reviewer preflight owner=%s reviewer=%s reviewer_site=%s", authorID.UUID, reviewerID.UUID, site)
 	target := ownedBBRepo(t, owner)
+	var repository struct {
+		FullName string `json:"full_name"`
+		Private  bool   `json:"is_private"`
+	}
+	owner.mustJSON(&repository, "repo", "view", target)
+	if !strings.EqualFold(repository.FullName, target) || !repository.Private {
+		t.Fatalf("owner could not verify exact private fixture before denial check: %+v", repository)
+	}
+	denied := reviewer.run("repo", "view", target, "--json")
+	if denied.err == nil {
+		t.Fatal("reviewer already has inherited access; use a workspace member without initial access to new private repositories")
+	}
+	var exit *exec.ExitError
+	var envelope struct {
+		Error  string `json:"error"`
+		Status int    `json:"status"`
+	}
+	if denied.stdout != "" || !errors.As(denied.err, &exit) || jsonUnmarshal(denied.stderr, &envelope) != nil {
+		t.Fatalf("restricted reviewer denial did not preserve process/error contract: err=%v stdout=%s stderr=%s", denied.err, denied.stdout, denied.stderr)
+	}
+	forbidden := exit.ExitCode() == 5 && envelope.Status == 403 && envelope.Error == "forbidden"
+	concealed := exit.ExitCode() == 6 && envelope.Status == 404 && envelope.Error == "not_found_or_not_visible"
+	if !forbidden && !concealed {
+		t.Fatalf("restricted reviewer must receive 403/exit5 or concealed 404/exit6, got exit=%d stderr=%s", exit.ExitCode(), denied.stderr)
+	}
+	t.Logf("verified independent restricted reviewer denied private repository: status=%d exit=%d", envelope.Status, exit.ExitCode())
 	permissionsPath := "/repositories/" + target + "/permissions-config/users/" + url.PathEscape(reviewerID.UUID)
 	var permission struct {
 		Permission string   `json:"permission"`
@@ -79,10 +109,6 @@ func TestBitbucketIndependentReviewer(t *testing.T) {
 	owner.mustJSON(&permission, "api", permissionsPath)
 	if permission.Permission != "write" || permission.User.UUID != reviewerID.UUID {
 		t.Fatalf("owned repository permission readback differs: %+v", permission)
-	}
-	var repository struct {
-		FullName string `json:"full_name"`
-		Private  bool   `json:"is_private"`
 	}
 	reviewer.mustJSON(&repository, "repo", "view", target)
 	if !strings.EqualFold(repository.FullName, target) || !repository.Private {

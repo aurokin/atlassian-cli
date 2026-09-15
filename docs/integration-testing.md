@@ -67,8 +67,9 @@ or failed refresh does not disappear into a passing product result.
 ### Independent reviewer
 
 `--bb-reviewer PROFILE` selects live approval/unapproval by a distinct Bitbucket
-workspace member. The test grants that member write access only to its newly
-created private repository. The owner's token needs `write:permission:bitbucket`
+workspace member without inherited access to new private repositories. The
+test verifies that member cannot read an owner-verified private repository,
+then grants write access only to that newly created repository. The owner's token needs `write:permission:bitbucket`
 and repository administration; the reviewer's needs repository read and PR
 read/write. A missing profile, same identity, or failed permission grant fails
 the selected test. Without this option the report records the test as excluded,

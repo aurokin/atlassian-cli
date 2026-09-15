@@ -40,6 +40,11 @@ external deployment credentials or real deployments are involved. Cleanup stops
 remaining runs before deleting and verifying the repository. Do not purchase
 capacity, change subscriptions, or enable Pipelines on unrelated repositories.
 
+The optional independent-reviewer test first proves a distinct user cannot
+read an owner-verified private repository, then grants access only to that
+repository and verifies approval/unapproval. It requires a workspace member
+without inherited repository access; an unavailable identity remains excluded.
+
 Separate read-only token cells prove readable owned resources reject mutation
 without changing state. These use the same account and do not satisfy the
 separate restricted-user or independent-reviewer requirement.
