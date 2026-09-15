@@ -136,7 +136,8 @@ func TestJiraIssueLifecycle(t *testing.T) {
 
 	// Whoami, for self-assignment and watcher operations.
 	var me struct {
-		AccountID string `json:"accountId"`
+		AccountID    string `json:"accountId"`
+		EmailAddress string `json:"emailAddress"`
 	}
 	s.mustJSON(&me, "status")
 
@@ -253,6 +254,18 @@ func TestJiraIssueLifecycle(t *testing.T) {
 		t.Fatal("unassignment not persisted")
 	}
 	s.mustWrite("assign self", "issue", "assign", key, "@me")
+	s.mustJSON(&viewed, "issue", "view", key, "--fields", "assignee")
+	if viewed.Fields.Assignee == nil || viewed.Fields.Assignee.AccountID != me.AccountID {
+		t.Fatal("@me assignment not persisted")
+	}
+	if me.EmailAddress == "" {
+		t.Fatal("own email required to verify email-based assignment")
+	}
+	s.mustWrite("assign email", "issue", "assign", key, me.EmailAddress)
+	s.mustJSON(&viewed, "issue", "view", key, "--fields", "assignee")
+	if viewed.Fields.Assignee == nil || viewed.Fields.Assignee.AccountID != me.AccountID {
+		t.Fatal("email assignment resolved the wrong identity")
+	}
 
 	watchRes := s.mustWrite("issue watch", "issue", "watch", key)
 	if !strings.Contains(watchRes.stdout, "watching "+key) {
@@ -275,17 +288,34 @@ func TestJiraIssueLifecycle(t *testing.T) {
 		t.Fatal("unwatch not persisted")
 	}
 
-	// Log work, then read it back.
-	worklogRes := s.mustWrite("issue worklog add", "issue", "worklog", "add", key, "--time", "5m", "--comment", "integration worklog "+stamp, "--json")
-	var worklog struct {
-		ID string `json:"id"`
+	// Three independent worklogs force offset pagination and exact membership.
+	worklogIDs := map[string]bool{}
+	for i := 0; i < 3; i++ {
+		var worklog struct {
+			ID string `json:"id"`
+		}
+		s.mustJSON(&worklog, "issue", "worklog", "add", key, "--time", "5m", "--comment", fmt.Sprintf("integration worklog %s %d", stamp, i))
+		if worklog.ID == "" || worklogIDs[worklog.ID] {
+			t.Fatal("missing or duplicate created worklog ID")
+		}
+		worklogIDs[worklog.ID] = true
 	}
-	if err := jsonUnmarshal(worklogRes.stdout, &worklog); err != nil || worklog.ID == "" {
-		t.Fatalf("could not parse worklog id: %v\nstdout:\n%s", err, worklogRes.stdout)
+	var worklogs struct {
+		Worklogs []struct {
+			ID      string          `json:"id"`
+			Seconds int             `json:"timeSpentSeconds"`
+			Comment json.RawMessage `json:"comment"`
+		} `json:"worklogs"`
 	}
-	worklogList := s.mustRun("issue", "worklog", "list", key, "--json")
-	if !strings.Contains(worklogList.stdout, worklog.ID) {
-		t.Fatalf("worklog %s not found in worklog list:\n%s", worklog.ID, worklogList.stdout)
+	s.mustJSON(&worklogs, "issue", "worklog", "list", key, "--limit", "1", "--all", "--since", time.Now().UTC().Format("2006-01-02"))
+	if len(worklogs.Worklogs) != 3 {
+		t.Fatalf("worklog pagination returned %d, want 3", len(worklogs.Worklogs))
+	}
+	for _, entry := range worklogs.Worklogs {
+		if !worklogIDs[entry.ID] || entry.Seconds != 300 || !strings.Contains(string(entry.Comment), stamp) {
+			t.Fatalf("unexpected worklog: %+v", entry)
+		}
+		delete(worklogIDs, entry.ID)
 	}
 
 	// Apply an advertised transition and independently verify its target status.

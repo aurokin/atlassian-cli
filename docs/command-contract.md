@@ -374,7 +374,10 @@ resolution; files without the prefix are skipped, as are non-executable ones on
 macOS/Linux). On **Windows**, where Go reports no execute bit, discovery
 instead accepts the suffixes listed in `PATHEXT` (by default `.com`, `.exe`,
 `.bat`, `.cmd` — the same set `exec.LookPath` resolves), and strips the suffix
-from the listed name so it is the name `extension exec <name>` accepts. `extension exec <name>` runs
+from the listed name so it is the name `extension exec <name>` accepts.
+Windows prefix/name matching and deduplication are case-insensitive; listed names
+are normalized to lowercase while executable paths retain their original casing.
+`extension exec <name>` runs
 `<binary>-<name>` with the remaining arguments forwarded verbatim
 (flag parsing is disabled so the extension sees its own flags), wiring the
 child's stdin/stdout/stderr to the CLI's. As a convenience, an **unknown**
@@ -605,6 +608,10 @@ table, so the `type` column says what each child is, and an empty result prints
 `No children found.`; the JSON body is passed through verbatim as usual.
 `ancestors` lists the page's ancestor chain top-to-bottom (the v2 API returns
 minimal `{id, type}` entries, so resolve a title with `page view`).
+With `--all`, ancestor traversal requests the first ancestor of each batch until
+the root, following its content type (including folders) and preserving
+top-to-bottom order. This endpoint uses an ancestor walk rather than list cursors;
+repeated IDs fail instead of producing a silently incomplete chain.
 `versions` lists the page's version history oldest-first, showing each
 version's number, minor-edit flag, creation time, author account id, and
 change message. Both honor `--limit`/`--all`.

@@ -350,13 +350,30 @@ func TestConfChildren(t *testing.T) {
 		s.mustJSON(&ancestors, "page", "ancestors", child.ID, "--all", "--limit", "1")
 		confHas(t, ancestors, p.ID)
 	}
+	// A grandchild makes ancestor pagination cross a boundary and distinguishes
+	// direct children from all descendants.
+	body, _ := json.Marshal(map[string]any{"spaceId": space.ID, "parentId": ids[0], "status": "current", "title": confTitle(), "body": map[string]string{"representation": "storage", "value": "<p>grandchild</p>"}})
+	var grandchild confContent
+	s.mustJSON(&grandchild, "api", "/pages", "--method", "POST", "--data", string(body))
+	if grandchild.ID == "" {
+		t.Fatal("missing grandchild ID")
+	}
+	s.cleanupOwned("page", grandchild.ID, func() bool { return confDelete(t, s, "page", grandchild.ID) })
+	var ancestors confIDs
+	s.mustJSON(&ancestors, "page", "ancestors", grandchild.ID, "--all", "--limit", "1")
+	confHas(t, ancestors, p.ID)
+	confHas(t, ancestors, ids[0])
+
 	var children confIDs
 	s.mustJSON(&children, "page", "children", p.ID, "--all", "--limit", "1")
 	for _, id := range ids {
 		confHas(t, children, id)
 	}
+	if len(children.Results) != len(ids) {
+		t.Fatalf("direct children included unexpected descendants: %+v", children)
+	}
 	for _, v := range children.Results {
-		if v.Type != "page" {
+		if v.Type != "page" || v.ID == grandchild.ID {
 			t.Fatalf("wrong direct-child type: %+v", v)
 		}
 	}
@@ -405,4 +422,28 @@ func TestConfBlogpostLifecycle(t *testing.T) {
 	var list confIDs
 	s.mustJSON(&list, "blogpost", "list", "--space", confSpace(t), "--all", "--limit", "1")
 	confHas(t, list, p.ID)
+}
+
+func TestConfSearchText(t *testing.T) {
+	s := confSession(t)
+	marker := fmt.Sprintf("atle2esearch%d", time.Now().UnixNano())
+	p := confCreate(t, s, "page", "<p>"+marker+"</p>", "storage")
+	deadline := time.Now().Add(time.Minute)
+	for {
+		var result struct {
+			Results []struct {
+				Content struct {
+					ID string `json:"id"`
+				} `json:"content"`
+			} `json:"results"`
+		}
+		s.mustJSON(&result, "search", "text", marker, "--space", confSpace(t), "--type", "page", "--all", "--limit", "1")
+		if len(result.Results) == 1 && result.Results[0].Content.ID == p.ID {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("text search did not return exact owned page: %+v", result)
+		}
+		time.Sleep(time.Second)
+	}
 }

@@ -46,14 +46,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+      - name: Install Unix completion shells (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh fish
+      - name: Install Unix completion shells (macOS)
+        if: runner.os == 'macOS'
+        run: command -v fish >/dev/null || brew install fish
       - name: Run hermetic CLI subprocess tests
+        env:
+          ATL_E2E_REQUIRED_SHELLS: ${{ runner.os == 'Windows' && 'powershell' || 'bash,zsh,fish' }}
+          ATL_E2E_NATIVE_CREDENTIALS: ${{ runner.os != 'Linux' && '1' || '' }}
         run: go test ./e2e -count=1
 
   lint:

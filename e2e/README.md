@@ -24,18 +24,32 @@ Current assertions cover:
 - Bitbucket repository inference from real temporary Git checkouts using
   bitbucket.org, ssh.bitbucket.org (SCP and port-443 forms), and altssh.bitbucket.org.
 
-`coverage.json` inventories all 152 canonical runnable commands, with explicit
-process/live/package evidence or an unverified reason. The inventory test rejects
-missing commands and stale test pointers. This is focused behavioral coverage;
-inventory completeness is not full workflow coverage. The local suite does not prove
-live API compatibility, cloud gateway routing, OAuth login/refresh, native
-keychain behavior, attachments, all pagination families, extensions, or all
-mutation workflows. Data Center PAT profiles are only a local fixture-routing
-mechanism here. Generating Bash completion does not prove shell execution.
-Native platform results must be reported separately; these cases do not
-establish Windows-specific extension or process-tree termination behavior.
+`coverage.json` inventories all 152 canonical runnable commands. Every row now
+requires process or live evidence; package tests and an exclusion reason alone
+cannot satisfy the gate. Referenced files/test names are checked for staleness.
+This still does not prove every flag, authentication mode or live capability.
+
+Additional real-binary workflows cover auth defaults/logout and targeting
+precedence; aliases/quoting/cycles; offline resolve and browser suppression;
+extension arguments/exits/PATH/symlinks and Windows PATHEXT/case matching;
+generated completion callbacks; raw body methods and output shapes; download
+faults that preserve destination files; and Bitbucket pipelines, deployments,
+project administration and independent reviewer requests against local fixtures.
+
+Run required local shells with
+`ATL_E2E_REQUIRED_SHELLS=bash,zsh,fish go test ./e2e -count=1`.
+CI requires those shells on Unix and PowerShell on Windows. Missing required
+shells fail. Zsh captures callback candidates before interactive shell matching.
+
+`ATL_E2E_NATIVE_CREDENTIALS=1` enables native credential lifecycle tests only on
+ephemeral macOS/Windows CI hosts. Do not set it on a personal workstation.
+The test uses unique dummy credentials and verifies deletion and preservation
+of another test profile. Ordinary local tests isolate file-backed stdin storage
+on Unix and never touch the personal keychain. Native results must be recorded
+separately; default local skips do not certify that backend.
 
 For live tests, use the separately invoked
 [matrix runner](../docs/integration-testing.md). Its result-accounting tests run
 with `python3 -m unittest discover -s scripts -p '*_test.py'`; no live service is
-contacted by those checks.
+contacted by those checks. See [the merge gate](../docs/e2e-merge-gate.md) for
+required capabilities, explicit exclusions and final evidence expectations.

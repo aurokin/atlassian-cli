@@ -179,6 +179,8 @@ def run_matrix():
     parser.add_argument("--conf-space")
     parser.add_argument("--bb-workspace")
     parser.add_argument("--bb-repo")
+    parser.add_argument("--bb-project-admin", action="store_true", help="select owned live project administration")
+    parser.add_argument("--bb-pipelines", action="store_true", help="select bounded live Pipelines/deployments; requires verified free build quota")
     parser.add_argument("--jira-expected-account-id", help="require this Jira account ID in preflight")
     parser.add_argument("--conf-expected-account-id", help="require this Confluence account ID in preflight")
     parser.add_argument("--bb-expected-account-id", help="require this Bitbucket UUID in Bitbucket preflight")
@@ -194,6 +196,8 @@ def run_matrix():
             selected[product + "-oauth-refresh"] = selected[product + "-oauth"]
     if not selected:
         parser.error("select at least one explicit profile")
+    if (args.bb_project_admin or args.bb_pipelines) and not args.bb:
+        parser.error("Bitbucket capabilities require --bb PROFILE")
     if os.environ.get("CI"):
         parser.error("live integration is manual-only; CI must be unset")
     for prefix, flags in {"jira": ("jira_project",), "conf": ("conf_space",),
@@ -222,6 +226,10 @@ def run_matrix():
         env = {key: value for key, value in os.environ.items()
                if not key.startswith("ATL_IT_") and key not in ("ATL_RUN_INTEGRATION", "ATL_SITE", "ATL_TIMEOUT")}
         env.update(ATL_RUN_INTEGRATION="1", ATL_IT_USE_STORED_PROFILES="1")
+        if args.bb_project_admin:
+            env["ATL_IT_BB_PROJECT_ADMIN"] = "1"
+        if args.bb_pipelines:
+            env["ATL_IT_BB_PIPELINES"] = "1"
         fixtures = {"JIRA_PROJECT": args.jira_project, "JIRA_ISSUE_TYPE": args.jira_issue_type,
                     "CONF_SPACE": args.conf_space, "BB_WORKSPACE": args.bb_workspace, "BB_REPO": args.bb_repo}
         env.update({"ATL_IT_" + key: value for key, value in fixtures.items() if value})
@@ -243,14 +251,24 @@ def run_matrix():
         for cell, profile in selected.items():
             family, prefix = CELLS[cell][:2]
             expected = [test for test in inventory if test.startswith("Test" + family)]
-            report["cells"][cell] = {"status": "running", "profile": profile, "target": targets[cell]}
+            excluded = {}
+            for test, enabled, reason in (
+                ("TestBitbucketProjectAdministration", args.bb_project_admin, "requires --bb-project-admin"),
+                ("TestBitbucketPipelinesAndDeployments", args.bb_pipelines, "requires --bb-pipelines and verified free build quota"),
+            ):
+                if cell == "bb" and enabled and test not in expected:
+                    raise ValueError("selected capability missing from compiled test inventory: " + test)
+                if test in expected and not enabled:
+                    expected.remove(test)
+                    excluded[test] = reason
+            report["cells"][cell] = {"status": "running", "profile": profile, "target": targets[cell], "excluded_tests": excluded}
             write_report(directory, report)
             print(f"Running {cell}: {len(expected)} tests using {profile}", flush=True)
             cell_env = dict(env, **{"ATL_IT_" + prefix + "_SITE": profile})
             output, errors = directory / (cell + ".jsonl"), directory / (cell + ".stderr")
             code, timeout = run_command(
                 ["go", "test", "-tags=integration", "./integration", "-count=1", "-json",
-                 "-timeout", str(args.cell_timeout - 15) + "s", "-run", "^Test" + family],
+                 "-timeout", str(args.cell_timeout - 15) + "s", "-run", "^(" + "|".join(expected) + ")$"],
                 cell_env, output, errors, args.cell_timeout)
             outcome = account_events(output, expected, code, timeout)
             for digest in outcome["source_tree_sha256"]:

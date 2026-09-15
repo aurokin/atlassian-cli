@@ -1,5 +1,5 @@
 {
-  "description": "Evidence pointers for 152 canonical runnable commands, not proof of every flag, auth mode, platform or capability. Live pointers indicate implemented cases, not a current run result. Aliases share their canonical command. Optional capabilities and uncovered workflows remain explicit.",
+  "description": "All 152 canonical runnable commands require real-binary process or live evidence; package-only references and exclusions do not satisfy the inventory merge gate. Evidence pointers do not establish every flag, auth mode, platform or live capability. See docs/e2e-merge-gate.md for acceptance conditions.",
   "commands": [
     {
       "command": "atl-bb alias delete",
@@ -8,9 +8,13 @@
           "kind": "package",
           "file": "internal/cli/alias_test.go",
           "test": "TestAliasSetListDelete"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAliasLifecycleAndExpansion"
         }
-      ],
-      "unverified": "No shipped-binary alias workflow test yet."
+      ]
     },
     {
       "command": "atl-bb alias list",
@@ -19,9 +23,13 @@
           "kind": "package",
           "file": "internal/cli/alias_test.go",
           "test": "TestAliasSetListDelete"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAliasLifecycleAndExpansion"
         }
-      ],
-      "unverified": "No shipped-binary alias workflow test yet."
+      ]
     },
     {
       "command": "atl-bb alias set",
@@ -30,9 +38,13 @@
           "kind": "package",
           "file": "internal/cli/alias_test.go",
           "test": "TestAliasSetListDelete"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAliasLifecycleAndExpansion"
         }
-      ],
-      "unverified": "No shipped-binary alias workflow test yet."
+      ]
     },
     {
       "command": "atl-bb api",
@@ -46,6 +58,16 @@
           "kind": "process",
           "file": "e2e/contracts_test.go",
           "test": "TestTimeoutAndTrace"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/api_output_test.go",
+          "test": "TestRawAPIBodyMethods"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/api_output_test.go",
+          "test": "TestAPIObjectArrayAndEmptyOutput"
         }
       ]
     },
@@ -56,9 +78,13 @@
           "kind": "package",
           "file": "internal/cli/auth_test.go",
           "test": "TestAuthDefaultSetShowClear"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAuthLifecycleAndTargetPrecedence"
         }
-      ],
-      "unverified": "No shipped-binary default targeting lifecycle yet."
+      ]
     },
     {
       "command": "atl-bb auth login",
@@ -72,9 +98,28 @@
           "kind": "package",
           "file": "internal/cli/auth_oauth_test.go",
           "test": "TestAuthLoginOAuth3LOFullFlow"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAuthLifecycleAndTargetPrecedence"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedLoginStdinValidation"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedLoginStdinFileFallback"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/native_credentials_test.go",
+          "test": "TestNativeCredentialLifecycle"
         }
-      ],
-      "unverified": "Interactive grant and native keychain acceptance are separately recorded; process fixture only covers env-token login."
+      ]
     },
     {
       "command": "atl-bb auth logout",
@@ -83,9 +128,18 @@
           "kind": "package",
           "file": "internal/cli/auth_test.go",
           "test": "TestAuthLogoutRemovesOnlyRequestedSite"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAuthLifecycleAndTargetPrecedence"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/native_credentials_test.go",
+          "test": "TestNativeCredentialLifecycle"
         }
-      ],
-      "unverified": "No shipped-binary logout lifecycle yet."
+      ]
     },
     {
       "command": "atl-bb auth status",
@@ -94,9 +148,18 @@
           "kind": "package",
           "file": "internal/cli/auth_test.go",
           "test": "TestAuthStatusDoesNotExposeTokenValue"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAuthLifecycleAndTargetPrecedence"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/native_credentials_test.go",
+          "test": "TestNativeCredentialLifecycle"
         }
-      ],
-      "unverified": "No shipped-binary auth status test yet."
+      ]
     },
     {
       "command": "atl-bb branch create",
@@ -145,9 +208,13 @@
           "kind": "package",
           "file": "internal/cli/browse_test.go",
           "test": "TestBrowseNoPromptImpliesNoBrowser"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedResolveBrowseAndHelp"
         }
-      ],
-      "unverified": "No shipped-binary browser suppression test yet."
+      ]
     },
     {
       "command": "atl-bb commit list",
@@ -176,21 +243,43 @@
           "kind": "process",
           "file": "e2e/contracts_test.go",
           "test": "TestDiscovery"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestShellCompletionProcesses"
         }
-      ],
-      "unverified": "Generated text is checked; execution in a Bash shell is not tested."
+      ]
     },
     {
       "command": "atl-bb completion fish",
-      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestShellCompletionProcesses"
+        }
+      ]
     },
     {
       "command": "atl-bb completion powershell",
-      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestShellCompletionProcesses"
+        }
+      ]
     },
     {
       "command": "atl-bb completion zsh",
-      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestShellCompletionProcesses"
+        }
+      ]
     },
     {
       "command": "atl-bb deployment list",
@@ -199,9 +288,19 @@
           "kind": "package",
           "file": "internal/bbcmd/deployment_test.go",
           "test": "TestDeploymentListHuman"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketDeploymentEnvironmentProcess"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_capabilities_test.go",
+          "test": "TestBitbucketPipelinesAndDeployments"
         }
       ],
-      "unverified": "No live environment/deployment fixtures; requires harmless enabled deployment pipeline."
+      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
     },
     {
       "command": "atl-bb deployment view",
@@ -210,9 +309,19 @@
           "kind": "package",
           "file": "internal/bbcmd/deployment_test.go",
           "test": "TestDeploymentViewHumanAndJSON"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketDeploymentEnvironmentProcess"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_capabilities_test.go",
+          "test": "TestBitbucketPipelinesAndDeployments"
         }
       ],
-      "unverified": "No live environment/deployment fixtures; requires harmless enabled deployment pipeline."
+      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
     },
     {
       "command": "atl-bb environment list",
@@ -221,9 +330,19 @@
           "kind": "package",
           "file": "internal/bbcmd/deployment_test.go",
           "test": "TestEnvironmentListHuman"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketDeploymentEnvironmentProcess"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_capabilities_test.go",
+          "test": "TestBitbucketPipelinesAndDeployments"
         }
       ],
-      "unverified": "No live environment/deployment fixtures; requires harmless enabled deployment pipeline."
+      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
     },
     {
       "command": "atl-bb environment view",
@@ -232,9 +351,19 @@
           "kind": "package",
           "file": "internal/bbcmd/deployment_test.go",
           "test": "TestEnvironmentViewHumanAndJSON"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketDeploymentEnvironmentProcess"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_capabilities_test.go",
+          "test": "TestBitbucketPipelinesAndDeployments"
         }
       ],
-      "unverified": "No live environment/deployment fixtures; requires harmless enabled deployment pipeline."
+      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
     },
     {
       "command": "atl-bb extension exec",
@@ -243,9 +372,18 @@
           "kind": "package",
           "file": "internal/cli/extension_test.go",
           "test": "TestExtensionExecRunsBinary"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestExtensionProcesses"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestWindowsExtensionResolution"
         }
-      ],
-      "unverified": "No shipped-binary extension execution/native platform matrix yet."
+      ]
     },
     {
       "command": "atl-bb extension list",
@@ -254,9 +392,18 @@
           "kind": "package",
           "file": "internal/cli/extension_test.go",
           "test": "TestExtensionListHuman"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestExtensionProcesses"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestWindowsExtensionResolution"
         }
-      ],
-      "unverified": "No shipped-binary extension discovery/native platform matrix yet."
+      ]
     },
     {
       "command": "atl-bb file",
@@ -270,7 +417,13 @@
     },
     {
       "command": "atl-bb help",
-      "unverified": "Root --help is checked by TestDiscovery; explicit help subcommand is not independently exercised."
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedResolveBrowseAndHelp"
+        }
+      ]
     },
     {
       "command": "atl-bb pipeline list",
@@ -279,9 +432,19 @@
           "kind": "package",
           "file": "internal/bbcmd/pipeline_test.go",
           "test": "TestPipelineListHumanAndQuery"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketPipelineProcessLifecycle"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_capabilities_test.go",
+          "test": "TestBitbucketPipelinesAndDeployments"
         }
       ],
-      "unverified": "Live Pipelines requires explicitly enabled disposable repository and available free build budget; not part of core live acceptance."
+      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
     },
     {
       "command": "atl-bb pipeline log",
@@ -290,9 +453,19 @@
           "kind": "package",
           "file": "internal/bbcmd/pipeline_test.go",
           "test": "TestPipelineLogWritesRawLog"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketPipelineProcessLifecycle"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_capabilities_test.go",
+          "test": "TestBitbucketPipelinesAndDeployments"
         }
       ],
-      "unverified": "Live Pipelines requires explicitly enabled disposable repository and available free build budget; not part of core live acceptance."
+      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
     },
     {
       "command": "atl-bb pipeline run",
@@ -301,9 +474,19 @@
           "kind": "package",
           "file": "internal/bbcmd/pipeline_test.go",
           "test": "TestPipelineRunSendsTargetBody"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketPipelineProcessLifecycle"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_capabilities_test.go",
+          "test": "TestBitbucketPipelinesAndDeployments"
         }
       ],
-      "unverified": "Live Pipelines requires explicitly enabled disposable repository and available free build budget; not part of core live acceptance."
+      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
     },
     {
       "command": "atl-bb pipeline steps",
@@ -312,9 +495,19 @@
           "kind": "package",
           "file": "internal/bbcmd/pipeline_test.go",
           "test": "TestPipelineStepsList"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketPipelineProcessLifecycle"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_capabilities_test.go",
+          "test": "TestBitbucketPipelinesAndDeployments"
         }
       ],
-      "unverified": "Live Pipelines requires explicitly enabled disposable repository and available free build budget; not part of core live acceptance."
+      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
     },
     {
       "command": "atl-bb pipeline stop",
@@ -323,9 +516,19 @@
           "kind": "package",
           "file": "internal/bbcmd/pipeline_test.go",
           "test": "TestPipelineStopByUUID"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketPipelineProcessLifecycle"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_capabilities_test.go",
+          "test": "TestBitbucketPipelinesAndDeployments"
         }
       ],
-      "unverified": "Live Pipelines requires explicitly enabled disposable repository and available free build budget; not part of core live acceptance."
+      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
     },
     {
       "command": "atl-bb pipeline view",
@@ -334,9 +537,19 @@
           "kind": "package",
           "file": "internal/bbcmd/pipeline_test.go",
           "test": "TestPipelineViewByUUID"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketPipelineProcessLifecycle"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_capabilities_test.go",
+          "test": "TestBitbucketPipelinesAndDeployments"
         }
       ],
-      "unverified": "Live Pipelines requires explicitly enabled disposable repository and available free build budget; not part of core live acceptance."
+      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
     },
     {
       "command": "atl-bb pr approve",
@@ -345,6 +558,11 @@
           "kind": "package",
           "file": "internal/bbcmd/pr_test.go",
           "test": "TestPRApprove"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketIndependentApprovalProcess"
         }
       ],
       "unverified": "Independent reviewer identity required for live approval; self-approval is not valid acceptance."
@@ -431,6 +649,11 @@
           "kind": "package",
           "file": "internal/bbcmd/pr_test.go",
           "test": "TestPRUnapproveJSON"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketIndependentApprovalProcess"
         }
       ],
       "unverified": "Independent reviewer identity required for live approval; self-approval is not valid acceptance."
@@ -452,9 +675,18 @@
           "kind": "package",
           "file": "internal/bbcmd/project_test.go",
           "test": "TestProjectCreateSendsBodyAndOmitsUnsetPrivate"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketProjectProcessLifecycle"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_capabilities_test.go",
+          "test": "TestBitbucketProjectAdministration"
         }
-      ],
-      "unverified": "Project administration has package evidence; no live project creation/deletion fixture."
+      ]
     },
     {
       "command": "atl-bb project delete",
@@ -463,9 +695,18 @@
           "kind": "package",
           "file": "internal/bbcmd/project_test.go",
           "test": "TestProjectDeleteWithConfirmation"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketProjectProcessLifecycle"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_capabilities_test.go",
+          "test": "TestBitbucketProjectAdministration"
         }
-      ],
-      "unverified": "Project administration has package evidence; no live project creation/deletion fixture."
+      ]
     },
     {
       "command": "atl-bb project list",
@@ -484,6 +725,16 @@
           "kind": "live",
           "file": "integration/bb_owned_test.go",
           "test": "TestBitbucketOwnedRefsAndContent"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketProjectProcessLifecycle"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_capabilities_test.go",
+          "test": "TestBitbucketProjectAdministration"
         }
       ]
     },
@@ -534,9 +785,13 @@
           "kind": "package",
           "file": "internal/cli/resolve_test.go",
           "test": "TestResolveCommandJSONEnvelope"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedResolveBrowseAndHelp"
         }
-      ],
-      "unverified": "No shipped-binary resolve test yet."
+      ]
     },
     {
       "command": "atl-bb search prs",
@@ -545,9 +800,18 @@
           "kind": "process",
           "file": "e2e/contracts_test.go",
           "test": "TestPullRequestPagination"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/bitbucket_capabilities_test.go",
+          "test": "TestBitbucketPRSearchProcess"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_owned_test.go",
+          "test": "TestBitbucketOwnedPullRequests"
         }
-      ],
-      "unverified": "Live PR list pagination is covered, but query-based PR search is not live-tested."
+      ]
     },
     {
       "command": "atl-bb search repos",
@@ -651,9 +915,13 @@
           "kind": "package",
           "file": "internal/cli/alias_test.go",
           "test": "TestAliasSetListDelete"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAliasLifecycleAndExpansion"
         }
-      ],
-      "unverified": "No shipped-binary alias workflow test yet."
+      ]
     },
     {
       "command": "atl-conf alias list",
@@ -662,9 +930,13 @@
           "kind": "package",
           "file": "internal/cli/alias_test.go",
           "test": "TestAliasSetListDelete"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAliasLifecycleAndExpansion"
         }
-      ],
-      "unverified": "No shipped-binary alias workflow test yet."
+      ]
     },
     {
       "command": "atl-conf alias set",
@@ -673,9 +945,13 @@
           "kind": "package",
           "file": "internal/cli/alias_test.go",
           "test": "TestAliasSetListDelete"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAliasLifecycleAndExpansion"
         }
-      ],
-      "unverified": "No shipped-binary alias workflow test yet."
+      ]
     },
     {
       "command": "atl-conf api",
@@ -689,6 +965,16 @@
           "kind": "process",
           "file": "e2e/contracts_test.go",
           "test": "TestTimeoutAndTrace"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/api_output_test.go",
+          "test": "TestRawAPIBodyMethods"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/api_output_test.go",
+          "test": "TestAPIObjectArrayAndEmptyOutput"
         }
       ]
     },
@@ -699,6 +985,16 @@
           "kind": "live",
           "file": "integration/confluence_test.go",
           "test": "TestConfAttachmentRoundTrip"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/download_failures_test.go",
+          "test": "TestDownloadFailuresPreserveDestination"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/download_failures_test.go",
+          "test": "TestDownloadBinaryStdoutAndMetadataOnly"
         }
       ]
     },
@@ -729,9 +1025,13 @@
           "kind": "package",
           "file": "internal/cli/auth_test.go",
           "test": "TestAuthDefaultSetShowClear"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAuthLifecycleAndTargetPrecedence"
         }
-      ],
-      "unverified": "No shipped-binary default targeting lifecycle yet."
+      ]
     },
     {
       "command": "atl-conf auth login",
@@ -745,9 +1045,28 @@
           "kind": "package",
           "file": "internal/cli/auth_oauth_test.go",
           "test": "TestAuthLoginOAuth3LOFullFlow"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAuthLifecycleAndTargetPrecedence"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedLoginStdinValidation"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedLoginStdinFileFallback"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/native_credentials_test.go",
+          "test": "TestNativeCredentialLifecycle"
         }
-      ],
-      "unverified": "Interactive grant and native keychain acceptance are separately recorded; process fixture only covers env-token login."
+      ]
     },
     {
       "command": "atl-conf auth logout",
@@ -756,9 +1075,18 @@
           "kind": "package",
           "file": "internal/cli/auth_test.go",
           "test": "TestAuthLogoutRemovesOnlyRequestedSite"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAuthLifecycleAndTargetPrecedence"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/native_credentials_test.go",
+          "test": "TestNativeCredentialLifecycle"
         }
-      ],
-      "unverified": "No shipped-binary logout lifecycle yet."
+      ]
     },
     {
       "command": "atl-conf auth status",
@@ -767,9 +1095,18 @@
           "kind": "package",
           "file": "internal/cli/auth_test.go",
           "test": "TestAuthStatusDoesNotExposeTokenValue"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAuthLifecycleAndTargetPrecedence"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/native_credentials_test.go",
+          "test": "TestNativeCredentialLifecycle"
         }
-      ],
-      "unverified": "No shipped-binary auth status test yet."
+      ]
     },
     {
       "command": "atl-conf blogpost create",
@@ -818,9 +1155,13 @@
           "kind": "package",
           "file": "internal/cli/browse_test.go",
           "test": "TestBrowseNoPromptImpliesNoBrowser"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedResolveBrowseAndHelp"
         }
-      ],
-      "unverified": "No shipped-binary browser suppression test yet."
+      ]
     },
     {
       "command": "atl-conf completion bash",
@@ -829,21 +1170,43 @@
           "kind": "process",
           "file": "e2e/contracts_test.go",
           "test": "TestDiscovery"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestShellCompletionProcesses"
         }
-      ],
-      "unverified": "Generated text is checked; execution in a Bash shell is not tested."
+      ]
     },
     {
       "command": "atl-conf completion fish",
-      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestShellCompletionProcesses"
+        }
+      ]
     },
     {
       "command": "atl-conf completion powershell",
-      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestShellCompletionProcesses"
+        }
+      ]
     },
     {
       "command": "atl-conf completion zsh",
-      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestShellCompletionProcesses"
+        }
+      ]
     },
     {
       "command": "atl-conf extension exec",
@@ -852,9 +1215,18 @@
           "kind": "package",
           "file": "internal/cli/extension_test.go",
           "test": "TestExtensionExecRunsBinary"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestExtensionProcesses"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestWindowsExtensionResolution"
         }
-      ],
-      "unverified": "No shipped-binary extension execution/native platform matrix yet."
+      ]
     },
     {
       "command": "atl-conf extension list",
@@ -863,13 +1235,28 @@
           "kind": "package",
           "file": "internal/cli/extension_test.go",
           "test": "TestExtensionListHuman"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestExtensionProcesses"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestWindowsExtensionResolution"
         }
-      ],
-      "unverified": "No shipped-binary extension discovery/native platform matrix yet."
+      ]
     },
     {
       "command": "atl-conf help",
-      "unverified": "Root --help is checked by TestDiscovery; explicit help subcommand is not independently exercised."
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedResolveBrowseAndHelp"
+        }
+      ]
     },
     {
       "command": "atl-conf page ancestors",
@@ -878,6 +1265,11 @@
           "kind": "live",
           "file": "integration/confluence_test.go",
           "test": "TestConfChildren"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/ancestors_test.go",
+          "test": "TestConfluenceAncestorTraversal"
         }
       ]
     },
@@ -1049,9 +1441,13 @@
           "kind": "package",
           "file": "internal/cli/resolve_test.go",
           "test": "TestResolveCommandJSONEnvelope"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedResolveBrowseAndHelp"
         }
-      ],
-      "unverified": "No shipped-binary resolve test yet."
+      ]
     },
     {
       "command": "atl-conf search cql",
@@ -1070,9 +1466,13 @@
           "kind": "package",
           "file": "internal/confcmd/search_test.go",
           "test": "TestSearchTextBuildsCQL"
+        },
+        {
+          "kind": "live",
+          "file": "integration/confluence_test.go",
+          "test": "TestConfSearchText"
         }
-      ],
-      "unverified": "Known-ID live search covers CQL only; text search is not live-tested."
+      ]
     },
     {
       "command": "atl-conf space list",
@@ -1126,9 +1526,13 @@
           "kind": "package",
           "file": "internal/cli/alias_test.go",
           "test": "TestAliasSetListDelete"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAliasLifecycleAndExpansion"
         }
-      ],
-      "unverified": "No shipped-binary alias workflow test yet."
+      ]
     },
     {
       "command": "atl-jira alias list",
@@ -1137,9 +1541,13 @@
           "kind": "package",
           "file": "internal/cli/alias_test.go",
           "test": "TestAliasSetListDelete"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAliasLifecycleAndExpansion"
         }
-      ],
-      "unverified": "No shipped-binary alias workflow test yet."
+      ]
     },
     {
       "command": "atl-jira alias set",
@@ -1148,9 +1556,13 @@
           "kind": "package",
           "file": "internal/cli/alias_test.go",
           "test": "TestAliasSetListDelete"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAliasLifecycleAndExpansion"
         }
-      ],
-      "unverified": "No shipped-binary alias workflow test yet."
+      ]
     },
     {
       "command": "atl-jira api",
@@ -1164,6 +1576,16 @@
           "kind": "process",
           "file": "e2e/contracts_test.go",
           "test": "TestTimeoutAndTrace"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/api_output_test.go",
+          "test": "TestRawAPIBodyMethods"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/api_output_test.go",
+          "test": "TestAPIObjectArrayAndEmptyOutput"
         }
       ]
     },
@@ -1174,9 +1596,13 @@
           "kind": "package",
           "file": "internal/cli/auth_test.go",
           "test": "TestAuthDefaultSetShowClear"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAuthLifecycleAndTargetPrecedence"
         }
-      ],
-      "unverified": "No shipped-binary default targeting lifecycle yet."
+      ]
     },
     {
       "command": "atl-jira auth login",
@@ -1190,9 +1616,28 @@
           "kind": "package",
           "file": "internal/cli/auth_oauth_test.go",
           "test": "TestAuthLoginOAuth3LOFullFlow"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAuthLifecycleAndTargetPrecedence"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedLoginStdinValidation"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedLoginStdinFileFallback"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/native_credentials_test.go",
+          "test": "TestNativeCredentialLifecycle"
         }
-      ],
-      "unverified": "Interactive grant and native keychain acceptance are separately recorded; process fixture only covers env-token login."
+      ]
     },
     {
       "command": "atl-jira auth logout",
@@ -1201,9 +1646,18 @@
           "kind": "package",
           "file": "internal/cli/auth_test.go",
           "test": "TestAuthLogoutRemovesOnlyRequestedSite"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAuthLifecycleAndTargetPrecedence"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/native_credentials_test.go",
+          "test": "TestNativeCredentialLifecycle"
         }
-      ],
-      "unverified": "No shipped-binary logout lifecycle yet."
+      ]
     },
     {
       "command": "atl-jira auth status",
@@ -1212,9 +1666,18 @@
           "kind": "package",
           "file": "internal/cli/auth_test.go",
           "test": "TestAuthStatusDoesNotExposeTokenValue"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedAuthLifecycleAndTargetPrecedence"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/native_credentials_test.go",
+          "test": "TestNativeCredentialLifecycle"
         }
-      ],
-      "unverified": "No shipped-binary auth status test yet."
+      ]
     },
     {
       "command": "atl-jira browse",
@@ -1223,9 +1686,13 @@
           "kind": "package",
           "file": "internal/cli/browse_test.go",
           "test": "TestBrowseNoPromptImpliesNoBrowser"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedResolveBrowseAndHelp"
         }
-      ],
-      "unverified": "No shipped-binary browser suppression test yet."
+      ]
     },
     {
       "command": "atl-jira completion bash",
@@ -1234,21 +1701,43 @@
           "kind": "process",
           "file": "e2e/contracts_test.go",
           "test": "TestDiscovery"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestShellCompletionProcesses"
         }
-      ],
-      "unverified": "Generated text is checked; execution in a Bash shell is not tested."
+      ]
     },
     {
       "command": "atl-jira completion fish",
-      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestShellCompletionProcesses"
+        }
+      ]
     },
     {
       "command": "atl-jira completion powershell",
-      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestShellCompletionProcesses"
+        }
+      ]
     },
     {
       "command": "atl-jira completion zsh",
-      "unverified": "Generated completion and native shell execution not yet tested for this shell."
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestShellCompletionProcesses"
+        }
+      ]
     },
     {
       "command": "atl-jira extension exec",
@@ -1257,9 +1746,18 @@
           "kind": "package",
           "file": "internal/cli/extension_test.go",
           "test": "TestExtensionExecRunsBinary"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestExtensionProcesses"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestWindowsExtensionResolution"
         }
-      ],
-      "unverified": "No shipped-binary extension execution/native platform matrix yet."
+      ]
     },
     {
       "command": "atl-jira extension list",
@@ -1268,9 +1766,18 @@
           "kind": "package",
           "file": "internal/cli/extension_test.go",
           "test": "TestExtensionListHuman"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestExtensionProcesses"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/extensions_completion_test.go",
+          "test": "TestWindowsExtensionResolution"
         }
-      ],
-      "unverified": "No shipped-binary extension discovery/native platform matrix yet."
+      ]
     },
     {
       "command": "atl-jira field list",
@@ -1284,7 +1791,13 @@
     },
     {
       "command": "atl-jira help",
-      "unverified": "Root --help is checked by TestDiscovery; explicit help subcommand is not independently exercised."
+      "evidence": [
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedResolveBrowseAndHelp"
+        }
+      ]
     },
     {
       "command": "atl-jira issue assign",
@@ -1294,8 +1807,7 @@
           "file": "integration/jira_test.go",
           "test": "TestJiraIssueLifecycle"
         }
-      ],
-      "unverified": "Live covers account ID, @me and unassign; email lookup is not live-tested."
+      ]
     },
     {
       "command": "atl-jira issue attachment add",
@@ -1314,6 +1826,16 @@
           "kind": "live",
           "file": "integration/jira_test.go",
           "test": "TestJiraIssueLifecycle"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/download_failures_test.go",
+          "test": "TestDownloadFailuresPreserveDestination"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/download_failures_test.go",
+          "test": "TestDownloadBinaryStdoutAndMetadataOnly"
         }
       ]
     },
@@ -1495,8 +2017,7 @@
           "file": "integration/jira_test.go",
           "test": "TestJiraIssueLifecycle"
         }
-      ],
-      "unverified": "Live verifies one worklog; forced worklog pagination is not yet covered."
+      ]
     },
     {
       "command": "atl-jira project list",
@@ -1525,9 +2046,13 @@
           "kind": "package",
           "file": "internal/cli/resolve_test.go",
           "test": "TestResolveCommandJSONEnvelope"
+        },
+        {
+          "kind": "process",
+          "file": "e2e/shared_workflows_test.go",
+          "test": "TestSharedResolveBrowseAndHelp"
         }
-      ],
-      "unverified": "No shipped-binary resolve test yet."
+      ]
     },
     {
       "command": "atl-jira search issues",

@@ -285,6 +285,23 @@ func TestBitbucketOwnedPullRequests(t *testing.T) {
 			}
 		}
 	}
+
+	var searched struct {
+		Values []bbPR `json:"values"`
+	}
+	s.mustJSON(&searched, "search", "prs", `state="OPEN" AND title ~ "CLI E2E"`, "--repo", target, "--all", "--limit", "1")
+	matches := map[int]int{}
+	for _, pr := range searched.Values {
+		matches[pr.ID]++
+	}
+	if len(searched.Values) != len(ids) {
+		t.Fatalf("PR search returned %d, want %d", len(searched.Values), len(ids))
+	}
+	for _, id := range ids {
+		if matches[id] != 1 {
+			t.Fatalf("PR search missing/duplicated %d: %+v", id, searched)
+		}
+	}
 	for i, id := range ids {
 		var pr bbPR
 		s.mustJSON(&pr, "pr", "view", strconv.Itoa(id), "--repo", target)

@@ -133,11 +133,52 @@ func (c *Client) GetPageAncestors(ctx context.Context, id string, limit int) (js
 	return c.Get(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/ancestors", q))
 }
 
-// GetPageAncestorsAll follows a page's ancestor chain to completion.
+// GetPageAncestorsAll walks upward using the first ancestor of each batch,
+// as required by the ancestors endpoint (which does not provide cursor pages).
+// Each batch is top-to-bottom, so prepend higher batches to preserve that order.
 func (c *Client) GetPageAncestorsAll(ctx context.Context, id string, limit int) (json.RawMessage, error) {
 	q := url.Values{}
 	setLimit(q, limit)
-	return c.followList(ctx, restutil.WithQuery("/pages/"+url.PathEscape(id)+"/ancestors", q))
+	kind := "pages"
+	items := []json.RawMessage{}
+	seen := map[string]bool{id: true}
+	for page := 0; page < restutil.MaxFollowPages; page++ {
+		raw, err := c.Get(ctx, restutil.WithQuery("/"+kind+"/"+url.PathEscape(id)+"/ancestors", q))
+		if err != nil {
+			return nil, err
+		}
+		var batch struct {
+			Results []json.RawMessage `json:"results"`
+		}
+		if err := json.Unmarshal(raw, &batch); err != nil {
+			return nil, decodeError(err)
+		}
+		if len(batch.Results) == 0 {
+			return restutil.Aggregate(productName, "results", items)
+		}
+		for i, item := range batch.Results {
+			var ancestor struct {
+				ID   string `json:"id"`
+				Type string `json:"type"`
+			}
+			if err := json.Unmarshal(item, &ancestor); err != nil {
+				return nil, decodeError(err)
+			}
+			if ancestor.ID == "" || seen[ancestor.ID] {
+				return nil, decodeError(fmt.Errorf("ancestor chain contains an empty or repeated ID"))
+			}
+			seen[ancestor.ID] = true
+			if i == 0 {
+				id = ancestor.ID
+				kind = map[string]string{"page": "pages", "folder": "folders", "whiteboard": "whiteboards", "database": "databases", "embed": "embeds"}[ancestor.Type]
+				if kind == "" {
+					return nil, decodeError(fmt.Errorf("unsupported ancestor type %q", ancestor.Type))
+				}
+			}
+		}
+		items = append(batch.Results, items...)
+	}
+	return nil, restutil.TruncatedError()
 }
 
 // ListPageVersions returns a page of a page's version history

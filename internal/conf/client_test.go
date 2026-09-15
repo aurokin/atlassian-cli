@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
@@ -352,29 +353,51 @@ func TestClientListPageVersions(t *testing.T) {
 	}
 }
 
-func TestClientGetPageAncestorsAllFollowsCursor(t *testing.T) {
+func TestClientGetPageAncestorsAllWalksParents(t *testing.T) {
+	var paths []string
+	var mu sync.Mutex
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/pages/10/ancestors" {
-			t.Errorf("path = %q", r.URL.Path)
+		mu.Lock()
+		paths = append(paths, r.URL.Path)
+		mu.Unlock()
+		if r.URL.Query().Get("limit") != "2" {
+			t.Error("lost batch limit")
 		}
-		if r.URL.Query().Get("cursor") == "" {
-			_, _ = w.Write([]byte(`{"results":[{"id":"1","type":"page"}],"_links":{"next":"/wiki/api/v2/pages/10/ancestors?cursor=c2"}}`))
-		} else {
-			_, _ = w.Write([]byte(`{"results":[{"id":"2","type":"page"}]}`))
+		switch r.URL.Path {
+		case "/pages/10/ancestors":
+			_, _ = w.Write([]byte(`{"results":[{"id":"3","type":"folder","extra":"preserve"},{"id":"5","type":"page"}]}`))
+		case "/folders/3/ancestors":
+			_, _ = w.Write([]byte(`{"results":[{"id":"1","type":"page"}]}`))
+		case "/pages/1/ancestors":
+			_, _ = w.Write([]byte(`{"results":[]}`))
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+			w.WriteHeader(404)
 		}
 	}))
 	defer srv.Close()
-
-	raw, err := newTestClient(srv).GetPageAncestorsAll(context.Background(), "10", 0)
+	raw, err := newTestClient(srv).GetPageAncestorsAll(context.Background(), "10", 2)
 	if err != nil {
-		t.Fatalf("GetPageAncestorsAll: %v", err)
+		t.Fatal(err)
 	}
 	list, err := Decode[AncestorList](raw)
 	if err != nil {
-		t.Fatalf("Decode: %v", err)
+		t.Fatal(err)
 	}
-	if len(list.Results) != 2 {
-		t.Fatalf("ancestors = %+v, want 2 aggregated", list.Results)
+	mu.Lock()
+	defer mu.Unlock()
+	if len(paths) != 3 || len(list.Results) != 3 || list.Results[0].ID != "1" || list.Results[1].ID != "3" || list.Results[2].ID != "5" || !strings.Contains(string(raw), `"extra":"preserve"`) {
+		t.Fatalf("incomplete or reordered chain: %s paths=%v", raw, paths)
+	}
+}
+
+func TestClientGetPageAncestorsAllRejectsCycle(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"results":[{"id":"10","type":"page"}]}`))
+	}))
+	defer srv.Close()
+	if _, err := newTestClient(srv).GetPageAncestorsAll(context.Background(), "10", 1); err == nil {
+		t.Fatal("ancestor cycle accepted")
 	}
 }
 

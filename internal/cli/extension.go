@@ -173,6 +173,11 @@ func windowsExecSuffixes(pathext string) []string {
 // directory holds several candidates for a name, exec.LookPath runs the one
 // with the lowest-ranked suffix, so discovery prefers it too.
 func extensionName(goos string, suffixes []string, prefix, name string) (short string, rank int, ok bool) {
+	// Windows resolves names case-insensitively. Normalize the discovery key as
+	// well as the prefix so case variants cannot produce duplicate extensions.
+	if goos == "windows" {
+		prefix, name = strings.ToLower(prefix), strings.ToLower(name)
+	}
 	short = strings.TrimPrefix(name, prefix)
 	if short == name || short == "" {
 		return "", 0, false // missing the prefix, or nothing after it

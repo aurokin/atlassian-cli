@@ -240,6 +240,8 @@ func TestExtensionName(t *testing.T) {
 		{"darwin", "", "atl-bb-", "", false},   // nothing after the prefix
 		{"darwin", "", "atl-bb-hello.exe", "hello.exe", true},
 		{"windows", "", "atl-bb-hello.exe", "hello", true}, // default PATHEXT
+		{"windows", "", "ATL-BB-HeLLo.EXE", "hello", true},
+		{"darwin", "", "ATL-BB-hello", "", false},
 		{"windows", "", "atl-bb-hello.EXE", "hello", true}, // suffix match is case-insensitive
 		{"windows", "", "atl-bb-hello.cmd", "hello", true},
 		{"windows", "", "atl-bb-hello.bat", "hello", true},

@@ -70,8 +70,12 @@ func TestCommandCoverageInventory(t *testing.T) {
 		if !commands[row.Command] {
 			t.Errorf("manifest command no longer runnable: %s", row.Command)
 		}
-		if len(row.Evidence) == 0 && strings.TrimSpace(row.Unverified) == "" {
-			t.Errorf("%s needs evidence or an explicit unverified reason", row.Command)
+		actualBinary := false
+		for _, evidence := range row.Evidence {
+			actualBinary = actualBinary || evidence.Kind == "process" || evidence.Kind == "live"
+		}
+		if !actualBinary {
+			t.Errorf("%s needs actual-binary process or live evidence; package tests and exclusions alone do not satisfy the merge gate", row.Command)
 		}
 		for _, evidence := range row.Evidence {
 			prefix := map[string]string{"process": "e2e/", "live": "integration/", "package": "internal/"}[evidence.Kind]
