@@ -107,7 +107,7 @@ func seedBBCommit(t *testing.T, s *session, target, branch, parent, path, conten
 	}
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
-	fields := map[string]string{"branch": branch, "message": "CLI E2E fixture " + branch}
+	fields := map[string]string{"branch": branch, "message": "[skip ci] CLI E2E fixture " + branch}
 	if parent != "" {
 		fields["parents"] = parent
 	}
@@ -136,6 +136,9 @@ func seedBBCommit(t *testing.T, s *session, target, branch, parent, path, conten
 	s.mustJSON(&commit, "commit", "view", branch, "--repo", target)
 	if commit.Hash == "" {
 		t.Fatal("seeded commit has no hash")
+	}
+	if !strings.HasPrefix(commit.Message, "[skip ci]") {
+		t.Fatal("seeded commit lost automatic-pipeline suppression marker")
 	}
 	return commit.Hash
 }

@@ -64,6 +64,43 @@ obsolete refresh token. Browser authorization must already have succeeded.
 OAuth profile selection adds one refresh test per selected profile. A missing
 or failed refresh does not disappear into a passing product result.
 
+### Independent reviewer
+
+`--bb-reviewer PROFILE` selects live approval/unapproval by a distinct Bitbucket
+workspace member. The test grants that member write access only to its newly
+created private repository. The owner's token needs `write:permission:bitbucket`
+and repository administration; the reviewer's needs repository read and PR
+read/write. A missing profile, same identity, or failed permission grant fails
+the selected test. Without this option the report records the test as excluded,
+not passed. Do not substitute the author's token for independent approval.
+
+### Optional live capabilities and restricted scopes
+
+`--bb-project-admin` adds owned project create/read/delete. `--bb-pipelines`
+adds owned pipeline run/steps/log/stop and deployment/environment readback.
+Verify at least three free build minutes before selecting it. The token needs
+`admin:pipeline:bitbucket` for environment creation as well as pipeline read/write
+and the repository/project scopes used by the base suite. Fixtures use `[skip ci]`
+commits, one-minute size-1x steps, and stop-before-delete cleanup. No subscription
+changes or external deployment credentials are needed. Unselected capabilities
+are explicitly recorded as exclusions.
+
+To test a readable resource with a write-restricted token, add:
+
+```bash
+--jira-readonly jira-readonly --jira-readonly-owner jira-classic \
+--conf-readonly conf-readonly --conf-readonly-owner conf-classic \
+--bb-readonly bb-readonly --bb-readonly-owner bb
+```
+
+These cells require separate stored credentials for the same account and site.
+The owner creates and successfully edits a fixture; the read-only credential
+must read it, fail to edit it, and leave the independently read-back state
+unchanged. Jira/Confluence use scoped gateway tokens; Bitbucket uses Basic token
+transport. This tests token scopes, not a different user's resource permissions
+or independent PR approval. Never supply a full-access token as the read-only
+profile.
+
 ## Results, deadlines and recovery
 
 The runner writes `summary.json` incrementally, plus each cell's complete Go
@@ -80,8 +117,8 @@ a 90-second outer deadline and each build has a two-minute deadline. Cleanup
 commands get fresh deadlines. The Unix runner stops and terminates every member
 of its owned session after launcher exit, timeout, or interruption (including
 SIGTERM), including CLI subprocesses in separate process groups. The live matrix runner refuses Windows execution until
-equivalent process-tree cleanup is supported. Hermetic CLI contracts still run
-in the configured Windows CI job; those native results remain unverified locally.
+equivalent process-tree cleanup is supported. Hermetic CLI contracts run in native Linux, macOS and Windows CI jobs.
+Native credential persistence is enabled only on ephemeral macOS/Windows workers.
 
 Build logs record binary SHA-256, Git HEAD, tracked working-diff SHA-256,
 untracked file inventory, Go version and OS/architecture. A Go source-tree
@@ -123,6 +160,10 @@ skips unless explicitly configured). Use the matrix for strict acceptance.
 | `ATL_IT_CONF_SPACE` | Dedicated regular space key. |
 | `ATL_IT_BB_WORKSPACE` / `ATL_IT_BB_REPO` | Dedicated workspace and existing repository for read checks; writes use newly created private repositories. |
 | `ATL_IT_OAUTH_SITE` | Dedicated OAuth profile for explicit forced-refresh test. |
+| `ATL_IT_ACCESS_SITE` / `ATL_IT_ACCESS_OWNER_SITE` | Read-only and owner stored profiles for explicit `TestRestrictedAccess`. |
+| `ATL_IT_BB_REVIEWER=1` / `ATL_IT_BB_REVIEWER_SITE` | Select independent approval with a second workspace-member profile. |
+| `ATL_IT_BB_PROJECT_ADMIN=1` | Select owned project administration. |
+| `ATL_IT_BB_PIPELINES=1` | Select bounded pipeline/deployment workflows after verifying free quota. |
 
 Without stored-profile mode, tests provision temporary profiles using
 `auth login --token-env`. Supply `ATL_IT_<P>_BASE_URL`, `ATL_IT_<P>_TOKEN`, and
@@ -134,11 +175,10 @@ the Go harness; the matrix runner intentionally requires stored profiles.
 
 ## Delivered live coverage and limits
 
-There are 30 product top-level tests: eight Jira, twelve Confluence and ten
-Bitbucket. Running both Jira/Confluence API-token styles plus Bitbucket selects
-50 top-level test executions. OAuth adds the same product families and one
-forced-refresh test per selected grant. The runner discovers these names from
-the compiled suite rather than assuming that test count proves completeness.
+The base families contain eight Jira, thirteen Confluence and ten Bitbucket
+tests. Two optional Bitbucket capabilities, OAuth product/refresh cells, and
+three restricted-scope cells extend the matrix. The runner discovers selected
+names from the compiled suite; test count does not prove completeness.
 
 | Product | Delivered workflow assertions |
 |---|---|
@@ -150,9 +190,9 @@ the compiled suite rather than assuming that test count proves completeness.
 The [command inventory](../e2e/coverage.json) accounts for 152 canonical runnable
 commands and validates their evidence pointers. It does not claim complete
 workflow or flag coverage for every command. Remaining release-level gaps include
-restricted identities, independent-user PR approval/unapproval, mixed non-page
-Confluence child types, Bitbucket Pipelines/deployments, and native platform
-coverage. Browser OAuth authorization remains a separately performed setup
+restricted identities, independent-user PR approval/unapproval, and mixed
+non-page Confluence child types. Pipelines/deployments and native-platform
+coverage require their explicit live/CI execution evidence. Browser OAuth authorization remains a separately performed setup
 step. These capabilities are not silently counted as passed. See the broader
 [design](e2e-test-design.md) for the intended release suite and the
 [process coverage](../e2e/README.md) for local-only assertions.

@@ -65,8 +65,10 @@ func TestBitbucketProjectAdministration(t *testing.T) {
 // enable paid overages or start this test without confirming that allowance.
 //
 // The CLI has no custom selector, so both branch-specific default YAML files
-// are committed while Pipelines is explicitly disabled. No commits are made
-// after enablement; only the two explicit CLI triggers can start builds.
+// are committed while Pipelines is explicitly disabled, with [skip ci] commit
+// messages to suppress delayed push events when enablement becomes visible.
+// No commits are made after enablement. The marker permits manual triggers:
+// https://support.atlassian.com/bitbucket-cloud/kb/how-to-skip-triggering-an-automatic-pipeline-build-using-skip-ci-label/
 // Setup API references:
 // https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pipelines/
 // https://support.atlassian.com/bitbucket-cloud/kb/api-to-create-bitbucket-cloud-pipeline-deployment-environment/
@@ -113,6 +115,7 @@ func TestBitbucketPipelinesAndDeployments(t *testing.T) {
 		}
 		for _, run := range page.Values {
 			if run.State.Name == "COMPLETED" {
+				t.Logf("owned pipeline cleanup UUID=%s already terminal result=%s", run.UUID, run.State.Result.Name)
 				continue
 			}
 			if run.UUID == "" {
@@ -122,6 +125,25 @@ func TestBitbucketPipelinesAndDeployments(t *testing.T) {
 			stopped := s.run("pipeline", "stop", run.UUID, "--repo", target, "--timeout", "15s")
 			if stopped.err != nil {
 				t.Errorf("cannot stop owned pipeline %s: %s%s", run.UUID, stopped.stdout, stopped.stderr)
+				continue
+			}
+			terminal := false
+			for deadline := time.Now().Add(time.Minute); time.Now().Before(deadline); {
+				result := s.run("pipeline", "view", run.UUID, "--repo", target, "--json", "--timeout", "10s")
+				var current pipeline
+				if result.err != nil || jsonUnmarshal(result.stdout, &current) != nil {
+					t.Errorf("cannot verify owned pipeline %s stop: %s%s", run.UUID, result.stdout, result.stderr)
+					break
+				}
+				if current.State.Name == "COMPLETED" {
+					t.Logf("owned pipeline cleanup UUID=%s terminal result=%s", run.UUID, current.State.Result.Name)
+					terminal = true
+					break
+				}
+				time.Sleep(2 * time.Second)
+			}
+			if !terminal {
+				t.Errorf("owned pipeline %s did not reach terminal state before repository cleanup", run.UUID)
 			}
 		}
 	})
@@ -182,12 +204,23 @@ pipelines:
 	var environments struct {
 		Values []environment `json:"values"`
 	}
-	s.mustJSON(&environments, "environment", "list", "--repo", target, "--all", "--limit", "1")
+	// A successful environment view can precede its list-index visibility.
+	// Retry only the read membership assertion; never repeat the creation.
 	found := 0
-	for _, entry := range environments.Values {
-		if entry.UUID == env.UUID && entry.Name == environmentName {
-			found++
+	environmentDeadline := time.Now().Add(time.Minute)
+	for attempt := 1; time.Now().Before(environmentDeadline); attempt++ {
+		s.mustJSON(&environments, "environment", "list", "--repo", target, "--all", "--limit", "1", "--timeout", "10s")
+		found = 0
+		for _, entry := range environments.Values {
+			if entry.UUID == env.UUID && entry.Name == environmentName {
+				found++
+			}
 		}
+		if found != 0 {
+			t.Logf("owned environment visible in paginated list after %d read attempts", attempt)
+			break
+		}
+		time.Sleep(2 * time.Second)
 	}
 	if found != 1 {
 		t.Fatalf("owned environment not uniquely listed: %+v", environments)

@@ -68,6 +68,11 @@
           "kind": "process",
           "file": "e2e/api_output_test.go",
           "test": "TestAPIObjectArrayAndEmptyOutput"
+        },
+        {
+          "kind": "live",
+          "file": "integration/access_test.go",
+          "test": "TestRestrictedAccess"
         }
       ]
     },
@@ -299,8 +304,7 @@
           "file": "integration/bb_capabilities_test.go",
           "test": "TestBitbucketPipelinesAndDeployments"
         }
-      ],
-      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
+      ]
     },
     {
       "command": "atl-bb deployment view",
@@ -320,8 +324,7 @@
           "file": "integration/bb_capabilities_test.go",
           "test": "TestBitbucketPipelinesAndDeployments"
         }
-      ],
-      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
+      ]
     },
     {
       "command": "atl-bb environment list",
@@ -341,8 +344,7 @@
           "file": "integration/bb_capabilities_test.go",
           "test": "TestBitbucketPipelinesAndDeployments"
         }
-      ],
-      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
+      ]
     },
     {
       "command": "atl-bb environment view",
@@ -362,8 +364,7 @@
           "file": "integration/bb_capabilities_test.go",
           "test": "TestBitbucketPipelinesAndDeployments"
         }
-      ],
-      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
+      ]
     },
     {
       "command": "atl-bb extension exec",
@@ -443,8 +444,7 @@
           "file": "integration/bb_capabilities_test.go",
           "test": "TestBitbucketPipelinesAndDeployments"
         }
-      ],
-      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
+      ]
     },
     {
       "command": "atl-bb pipeline log",
@@ -464,8 +464,7 @@
           "file": "integration/bb_capabilities_test.go",
           "test": "TestBitbucketPipelinesAndDeployments"
         }
-      ],
-      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
+      ]
     },
     {
       "command": "atl-bb pipeline run",
@@ -485,8 +484,7 @@
           "file": "integration/bb_capabilities_test.go",
           "test": "TestBitbucketPipelinesAndDeployments"
         }
-      ],
-      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
+      ]
     },
     {
       "command": "atl-bb pipeline steps",
@@ -506,8 +504,7 @@
           "file": "integration/bb_capabilities_test.go",
           "test": "TestBitbucketPipelinesAndDeployments"
         }
-      ],
-      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
+      ]
     },
     {
       "command": "atl-bb pipeline stop",
@@ -527,8 +524,7 @@
           "file": "integration/bb_capabilities_test.go",
           "test": "TestBitbucketPipelinesAndDeployments"
         }
-      ],
-      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
+      ]
     },
     {
       "command": "atl-bb pipeline view",
@@ -548,8 +544,7 @@
           "file": "integration/bb_capabilities_test.go",
           "test": "TestBitbucketPipelinesAndDeployments"
         }
-      ],
-      "unverified": "Live capability is gated; requires available free build quota and enabled per-run fixtures. See final execution report."
+      ]
     },
     {
       "command": "atl-bb pr approve",
@@ -563,6 +558,11 @@
           "kind": "process",
           "file": "e2e/bitbucket_capabilities_test.go",
           "test": "TestBitbucketIndependentApprovalProcess"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_reviewer_test.go",
+          "test": "TestBitbucketIndependentReviewer"
         }
       ],
       "unverified": "Independent reviewer identity required for live approval; self-approval is not valid acceptance."
@@ -654,6 +654,11 @@
           "kind": "process",
           "file": "e2e/bitbucket_capabilities_test.go",
           "test": "TestBitbucketIndependentApprovalProcess"
+        },
+        {
+          "kind": "live",
+          "file": "integration/bb_reviewer_test.go",
+          "test": "TestBitbucketIndependentReviewer"
         }
       ],
       "unverified": "Independent reviewer identity required for live approval; self-approval is not valid acceptance."
@@ -1371,6 +1376,11 @@
           "kind": "live",
           "file": "integration/confluence_test.go",
           "test": "TestConfPageADFTitleEdit"
+        },
+        {
+          "kind": "live",
+          "file": "integration/access_test.go",
+          "test": "TestRestrictedAccess"
         }
       ]
     },
@@ -1916,6 +1926,11 @@
           "kind": "live",
           "file": "integration/jira_test.go",
           "test": "TestJiraIssueLifecycle"
+        },
+        {
+          "kind": "live",
+          "file": "integration/access_test.go",
+          "test": "TestRestrictedAccess"
         }
       ]
     },

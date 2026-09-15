@@ -25,6 +25,9 @@ CELLS = {
     "conf-oauth": ("Conf", "CONF", "confluence", "oauth-3lo"),
     "jira-oauth-refresh": ("OAuth", "OAUTH", "jira", "oauth-3lo"),
     "conf-oauth-refresh": ("OAuth", "OAUTH", "confluence", "oauth-3lo"),
+    "jira-readonly": ("Restricted", "ACCESS", "jira", "cloud-scoped"),
+    "conf-readonly": ("Restricted", "ACCESS", "confluence", "cloud-scoped"),
+    "bb-readonly": ("Restricted", "ACCESS", "bitbucket", "cloud-classic"),
 }
 
 
@@ -179,8 +182,11 @@ def run_matrix():
     parser.add_argument("--conf-space")
     parser.add_argument("--bb-workspace")
     parser.add_argument("--bb-repo")
+    parser.add_argument("--bb-reviewer", metavar="PROFILE", help="select independent live approval with a second workspace member")
     parser.add_argument("--bb-project-admin", action="store_true", help="select owned live project administration")
     parser.add_argument("--bb-pipelines", action="store_true", help="select bounded live Pipelines/deployments; requires verified free build quota")
+    for product in ("jira", "conf", "bb"):
+        parser.add_argument("--" + product + "-readonly-owner", help="full-access companion profile for the read-only scope test")
     parser.add_argument("--jira-expected-account-id", help="require this Jira account ID in preflight")
     parser.add_argument("--conf-expected-account-id", help="require this Confluence account ID in preflight")
     parser.add_argument("--bb-expected-account-id", help="require this Bitbucket UUID in Bitbucket preflight")
@@ -196,8 +202,11 @@ def run_matrix():
             selected[product + "-oauth-refresh"] = selected[product + "-oauth"]
     if not selected:
         parser.error("select at least one explicit profile")
-    if (args.bb_project_admin or args.bb_pipelines) and not args.bb:
+    if (args.bb_project_admin or args.bb_pipelines or args.bb_reviewer) and not args.bb:
         parser.error("Bitbucket capabilities require --bb PROFILE")
+    for product in ("jira", "conf", "bb"):
+        if product + "-readonly" in selected and not getattr(args, product + "_readonly_owner"):
+            parser.error("read-only scope test requires --" + product + "-readonly-owner")
     if os.environ.get("CI"):
         parser.error("live integration is manual-only; CI must be unset")
     for prefix, flags in {"jira": ("jira_project",), "conf": ("conf_space",),
@@ -226,6 +235,9 @@ def run_matrix():
         env = {key: value for key, value in os.environ.items()
                if not key.startswith("ATL_IT_") and key not in ("ATL_RUN_INTEGRATION", "ATL_SITE", "ATL_TIMEOUT")}
         env.update(ATL_RUN_INTEGRATION="1", ATL_IT_USE_STORED_PROFILES="1")
+        if args.bb_reviewer:
+            env["ATL_IT_BB_REVIEWER"] = "1"
+            env["ATL_IT_BB_REVIEWER_SITE"] = args.bb_reviewer
         if args.bb_project_admin:
             env["ATL_IT_BB_PROJECT_ADMIN"] = "1"
         if args.bb_pipelines:
@@ -239,12 +251,12 @@ def run_matrix():
                 env["ATL_IT_" + product.upper() + "_EXPECTED_ACCOUNT_ID"] = identity
 
         code, timeout = run_command(
-            ["go", "test", "-tags=integration", "./integration", "-list", "^Test(Jira|Conf|Bitbucket|OAuth)"],
+            ["go", "test", "-tags=integration", "./integration", "-list", "^Test(Jira|Conf|Bitbucket|OAuth|Restricted)"],
             env, directory / "inventory.txt", directory / "inventory.stderr", 120)
         if code != 0 or timeout:
             raise ValueError("test inventory failed; see inventory.stderr")
         inventory = [line.strip() for line in (directory / "inventory.txt").read_text().splitlines()
-                     if re.fullmatch(r"Test(?:Jira|Conf|Bitbucket|OAuth)\w+", line.strip())]
+                     if re.fullmatch(r"Test(?:Jira|Conf|Bitbucket|OAuth|Restricted)\w+", line.strip())]
         if not inventory:
             raise ValueError("compiled test inventory is empty")
 
@@ -253,6 +265,7 @@ def run_matrix():
             expected = [test for test in inventory if test.startswith("Test" + family)]
             excluded = {}
             for test, enabled, reason in (
+                ("TestBitbucketIndependentReviewer", bool(args.bb_reviewer), "requires --bb-reviewer with a distinct live workspace member"),
                 ("TestBitbucketProjectAdministration", args.bb_project_admin, "requires --bb-project-admin"),
                 ("TestBitbucketPipelinesAndDeployments", args.bb_pipelines, "requires --bb-pipelines and verified free build quota"),
             ):
@@ -265,6 +278,8 @@ def run_matrix():
             write_report(directory, report)
             print(f"Running {cell}: {len(expected)} tests using {profile}", flush=True)
             cell_env = dict(env, **{"ATL_IT_" + prefix + "_SITE": profile})
+            if cell.endswith("-readonly"):
+                cell_env["ATL_IT_ACCESS_OWNER_SITE"] = getattr(args, cell.split("-")[0] + "_readonly_owner")
             output, errors = directory / (cell + ".jsonl"), directory / (cell + ".stderr")
             code, timeout = run_command(
                 ["go", "test", "-tags=integration", "./integration", "-count=1", "-json",

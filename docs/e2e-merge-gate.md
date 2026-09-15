@@ -32,12 +32,17 @@ are listed in `excluded_tests` before the cell starts; an excluded capability is
 not certified and needs an explicit acceptance decision before merge.
 
 Pipeline fixtures are private, run-owned repositories. Pipelines is disabled
-while two branch fixtures are committed, then enabled after the last upload.
+while two branch fixtures with `[skip ci]` messages are committed, then enabled
+after the last upload. The messages also suppress delayed automatic triggers.
 Only explicit CLI runs follow; jobs use size 1x and one-minute step limits.
 One prints a marker in a test deployment; the other proves stop/readback. No
 external deployment credentials or real deployments are involved. Cleanup stops
 remaining runs before deleting and verifying the repository. Do not purchase
 capacity, change subscriptions, or enable Pipelines on unrelated repositories.
+
+Separate read-only token cells prove readable owned resources reject mutation
+without changing state. These use the same account and do not satisfy the
+separate restricted-user or independent-reviewer requirement.
 
 ## Additional scenarios delivered
 
