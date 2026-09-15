@@ -234,6 +234,9 @@ func TestShellCompletionProcesses(t *testing.T) {
 				shellPath := filepath.Dir(binaries[product]) + string(os.PathListSeparator) + "/usr/bin" + string(os.PathListSeparator) + "/bin"
 				if runtime.GOOS == "windows" {
 					shellPath = filepath.Dir(binaries[product]) + string(os.PathListSeparator) + filepath.Join(os.Getenv("SystemRoot"), "System32")
+					// PowerShell relies on PATHEXT when resolving the bare CLI
+					// name; the isolated fixture does not inherit user values.
+					p = processEnv(p, "PATHEXT", ".COM;.EXE;.BAT;.CMD")
 				}
 				p = processEnv(p, "PATH", shellPath)
 				p = processEnv(p, "ATL_COMPLETION_SCRIPT", script)
@@ -307,6 +310,7 @@ complete --do-complete "$ATL_COMPLETION_LINE"
 	case "powershell":
 		script = `$ErrorActionPreference = 'Stop'
 . $env:ATL_COMPLETION_SCRIPT
+Get-Command $env:ATL_COMPLETION_BINARY -CommandType Application -ErrorAction Stop | Out-Null
 [System.Management.Automation.CommandCompletion]::CompleteInput($env:ATL_COMPLETION_LINE, $env:ATL_COMPLETION_LINE.Length, $null).CompletionMatches | ForEach-Object { $_.CompletionText }
 `
 		args = []string{"-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script}
@@ -324,7 +328,14 @@ complete --do-complete "$ATL_COMPLETION_LINE"
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("%s completion failed: %v\nstdout=%s\nstderr=%s", shell, err, stdout.String(), stderr.String())
 	}
-	if stderr.Len() != 0 {
+	diagnostics := strings.TrimSpace(stderr.String())
+	// Cobra deliberately prints this diagnostic from __complete. PowerShell's
+	// native completer can forward it even though its generated script redirects
+	// the invocation. Accept only this documented successful directive.
+	if shell == "powershell" && diagnostics == "Completion ended with directive: ShellCompDirectiveNoFileComp" {
+		diagnostics = ""
+	}
+	if diagnostics != "" {
 		t.Fatalf("%s completion stderr: %s", shell, stderr.String())
 	}
 	return stdout.String()
