@@ -47,16 +47,3 @@ func (c *Client) SearchPullRequests(ctx context.Context, workspace, repo, query,
 func (c *Client) SearchPullRequestsAll(ctx context.Context, workspace, repo, query, sort string, limit int) (json.RawMessage, error) {
 	return c.followValues(ctx, restutil.WithQuery(prBase(workspace, repo), searchQuery(query, sort, limit)))
 }
-
-// SearchIssues lists a repository's issues filtered by a raw Bitbucket query
-// (GET /repositories/{ws}/{repo}/issues?q=…). A repository with its issue
-// tracker disabled surfaces as a feature_disabled error.
-func (c *Client) SearchIssues(ctx context.Context, workspace, repo, query, sort string, limit int) (json.RawMessage, error) {
-	return c.Get(ctx, restutil.WithQuery(issuesBase(workspace, repo), searchQuery(query, sort, limit)))
-}
-
-// SearchIssuesAll follows an issue search to completion and returns an
-// aggregated {"values": [...]} body.
-func (c *Client) SearchIssuesAll(ctx context.Context, workspace, repo, query, sort string, limit int) (json.RawMessage, error) {
-	return c.followValues(ctx, restutil.WithQuery(issuesBase(workspace, repo), searchQuery(query, sort, limit)))
-}

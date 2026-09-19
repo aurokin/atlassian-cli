@@ -34,12 +34,14 @@ exact command behavior and known limitations.
   for CQL search, the current-user lookup, label writes, and attachment upload —
   see [ADR 0004](docs/adr/0004-mixed-version-confluence-client.md)).
 - **`atl-bb`** — `repo` (incl. create/delete), `pr` (incl. approve/decline/merge),
-  `pipeline` (incl. stop/steps/log), `issue` (incl. update), `workspace`,
-  `project` (incl. delete), `commit`, `src`/`file`, `branch`, `tag`,
-  `deployment`, `environment`, `search`, and `status`, with built-in
-  git-checkout repository inference.
+  `pipeline` (incl. stop/steps/log), `workspace`, `project` (incl. delete),
+  `commit`, `src`/`file`, `branch`, `tag`, `deployment`, `environment`,
+  `search`, and `status`, with built-in git-checkout repository inference.
+  There are no Bitbucket issue commands: Atlassian removed the repository
+  issue tracker and its API on 2026-08-20 (see
+  [ADR 0008](docs/adr/0008-retire-bitbucket-issue-tracker.md)).
 
-Destructive verbs (`repo delete`, `project delete`, `page delete`, …) require an
+Destructive verbs (`repo delete`, `project delete`, `page delete --purge`, …) require an
 explicit `--yes` (see [ADR 0003](docs/adr/0003-destructive-verbs-require-yes.md)).
 
 Shared across **every** binary: `version`, `auth`, `api`, `resolve`, `browse`,

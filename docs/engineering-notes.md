@@ -59,6 +59,7 @@ specifically to avoid the duplication the review waves kept flagging:
 | Aligned `key value` human output | `output.NewLabelWriter` | `internal/output` |
 | Aligned tabular human output | `output.TabWriter` | `internal/output` |
 | `--limit` / `--all` flags on a list/search command | `cli.AddPaginationFlags` | `internal/cli` |
+| `--yes` guard on a destructive verb (ADR 0003) | `cli.AddYesFlag` + `cli.RequireYes` | `internal/cli` |
 | Structured error with a stable code | `apperr.Error` + the code helpers | `internal/apperr` |
 | A `{resource, id, deleted}` result for a delete verb | `deleteResult` | `internal/bbcmd` (pattern to mirror) |
 | Confluence page/blogpost edit (shared get → mutate → update) | `runContentEdit` / `contentEditOps` | `internal/confcmd` |
@@ -74,7 +75,8 @@ code rhymes.
 Any command that destroys or irreversibly mutates server state requires an
 explicit `--yes` confirmation, validated before the client is built. Confluence
 page delete additionally distinguishes trash (default) from permanent
-`--purge`, and `--purge` also requires `--yes`. The full rule and rationale are
+`--purge`, and `--purge` also requires `--yes`; Confluence `page comment
+delete` is permanent and requires it too. The full rule and rationale are
 in [ADR 0003](adr/0003-destructive-verbs-require-yes.md); follow it for every
 new destructive verb.
 

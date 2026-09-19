@@ -8,12 +8,8 @@ package bitbucket
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"net/http"
 	"net/url"
-	"strings"
 
-	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/httpclient"
 	"github.com/aurokin/atlassian-cli/internal/restutil"
 )
@@ -21,26 +17,23 @@ import (
 // productName labels this product in shared structured error messages.
 const productName = "Bitbucket"
 
-// MaxPageLen is Bitbucket Cloud's maximum page size (the "pagelen" parameter).
-// An --all request with no explicit --limit defaults to it, so the page follow
-// makes the fewest round-trips and is least likely to hit the page-follow cap.
+// MaxPageLen is the maximum page size (the "pagelen" parameter) for most
+// Bitbucket Cloud collection endpoints; the pull-requests listing caps lower
+// (see MaxPullRequestPageLen). An --all request with no explicit --limit
+// defaults to the endpoint's maximum, so the page follow makes the fewest
+// round-trips and is least likely to hit the page-follow cap.
 const MaxPageLen = 100
 
 // Client is a typed Bitbucket API client bound to one authenticated site. It
-// embeds restutil.Base for the shared request plumbing, with the base's
-// RemapError hook set to remapError so a disabled-capability response is
-// upgraded to feature_disabled on every GET and send.
+// embeds restutil.Base for the shared request plumbing. There is no
+// issue-tracker surface: Bitbucket removed it on 2026-08-20 (ADR 0008).
 type Client struct {
 	restutil.Base
 }
 
 // New wraps an authenticated httpclient.Client as a Bitbucket client.
 func New(c *httpclient.Client) *Client {
-	return &Client{Base: restutil.Base{
-		HTTP:       c,
-		Product:    productName,
-		RemapError: remapError,
-	}}
+	return &Client{Base: restutil.Base{HTTP: c, Product: productName}}
 }
 
 // CurrentUser returns the authenticated account (GET /user).
@@ -134,57 +127,6 @@ func (c *Client) followValues(ctx context.Context, firstPath string) (json.RawMe
 		return nil, err
 	}
 	return restutil.Aggregate(productName, "values", items)
-}
-
-// remapError upgrades a generic transport error to a Bitbucket-specific one
-// where the response body signals it. Today it recognizes a disabled
-// repository capability (issue tracker / wiki) and re-codes it as
-// feature_disabled so an agent can distinguish "enable the feature" from
-// "the resource is missing or hidden". Any other error is returned unchanged.
-func remapError(resp *httpclient.Response, err error) error {
-	var ae *apperr.Error
-	if resp == nil || !errors.As(err, &ae) {
-		return err
-	}
-	if !featureDisabledSignal(resp.Status, resp.Body) {
-		return err
-	}
-	fd := apperr.FeatureDisabled(ae.Message)
-	fd.Status = ae.Status
-	fd.Product = ae.Product
-	fd.Site = ae.Site
-	fd.TokenStyle = ae.TokenStyle
-	fd.APIBaseURL = ae.APIBaseURL
-	fd.Next = "Enable the feature in the repository settings, or target a repository that has it enabled."
-	return fd
-}
-
-// featureDisabledSignal reports whether a non-2xx Bitbucket response indicates
-// a switched-off repository capability rather than a genuinely missing or
-// hidden resource. Bitbucket reports a disabled issue tracker or wiki as a 404
-// (or 403) whose message names the feature; the check is intentionally narrow
-// to avoid recoding ordinary not-found responses.
-func featureDisabledSignal(status int, body []byte) bool {
-	if status != http.StatusNotFound && status != http.StatusForbidden {
-		return false
-	}
-	msg := strings.ToLower(errorMessage(body))
-	// Bitbucket phrases a disabled capability as "Repository has no issue
-	// tracker." / "Repository has no wiki." Matching the full "has no <feature>"
-	// phrase (rather than the bare feature word) avoids re-coding an ordinary
-	// not-found for a repository that merely happens to be named "wiki".
-	return strings.Contains(msg, "has no issue tracker") ||
-		strings.Contains(msg, "has no wiki")
-}
-
-// errorMessage pulls the human message out of a Bitbucket error body via the
-// shared apperr parser, falling back to the trimmed raw body when no message
-// field is populated.
-func errorMessage(body []byte) string {
-	if m := apperr.MessageFromBody(body); m != "" {
-		return m
-	}
-	return strings.TrimSpace(string(body))
 }
 
 // decodeError wraps a pagination-aggregation or decode failure as a structured

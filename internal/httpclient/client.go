@@ -30,9 +30,9 @@ const (
 // URL at a local server instead.
 const defaultBitbucketAPIBase = "https://api.bitbucket.org/2.0"
 
-// defaultTimeout bounds a request when the caller does not supply its own
-// *http.Client.
-const defaultTimeout = 30 * time.Second
+// DefaultTimeout bounds a request when the caller does not supply its own
+// *http.Client. The command layer uses it as the --timeout default.
+const DefaultTimeout = 30 * time.Second
 
 // Target describes where and how a product's API is reached. It is derived
 // from a configured site profile by the command layer.
@@ -232,7 +232,7 @@ func New(target Target, cred auth.Credential, hc *http.Client) *Client {
 // Client API nor any call site needs a refresh-aware signature.
 func NewWithProvider(target Target, provider CredentialProvider, hc *http.Client) *Client {
 	if hc == nil {
-		hc = &http.Client{Timeout: defaultTimeout}
+		hc = &http.Client{Timeout: DefaultTimeout}
 	}
 	return &Client{target: target, credentials: provider, http: hc}
 }
@@ -379,7 +379,7 @@ func transportError(target string, err error) *apperr.Error {
 	if errors.Is(err, context.DeadlineExceeded) || isTimeout(err) {
 		e := apperr.New(apperr.CodeTimeout,
 			fmt.Sprintf("request to %s timed out: %v", target, err))
-		e.Next = "Retry the request, or raise the client timeout if the operation is legitimately slow."
+		e.Next = "Retry the request, or raise the timeout with --timeout (or ATL_TIMEOUT) if the operation is legitimately slow; --timeout 0 disables it."
 		return e
 	}
 	return apperr.New(apperr.CodeRequestFailed, fmt.Sprintf("request to %s failed: %v", target, err))

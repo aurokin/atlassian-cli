@@ -162,11 +162,15 @@ func newCommentEditCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command
 }
 
 func newCommentDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
-	return &cobra.Command{
+	var yes bool
+	cmd := &cobra.Command{
 		Use:   "delete <issue> <comment-id>",
-		Short: "Delete a comment from an issue",
+		Short: "Delete a comment from an issue (irreversible)",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cli.RequireYes(yes, "deleting a comment"); err != nil {
+				return err
+			}
 			jc, err := jiraClient(info, g)
 			if err != nil {
 				return err
@@ -182,6 +186,8 @@ func newCommentDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comma
 			return nil
 		},
 	}
+	cli.AddYesFlag(cmd, &yes)
+	return cmd
 }
 
 // commentDeleteResult is the synthesized outcome of a comment deletion, whose

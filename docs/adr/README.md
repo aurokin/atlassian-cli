@@ -19,6 +19,7 @@ decision, add a new ADR that supersedes it rather than editing history.
 | [0005](0005-keychain-first-token-storage.md) | Keychain-first token storage; tokens never in config | Accepted |
 | [0006](0006-verbatim-json-no-fake-parity.md) | Verbatim upstream JSON; no fake parity | Accepted |
 | [0007](0007-generated-docs-as-release-asset.md) | Generated command reference: release asset, not committed | Accepted |
+| [0008](0008-retire-bitbucket-issue-tracker.md) | Retire the Bitbucket issue-tracker surface | Accepted |
 
 Several of these were referred to during the build as "D1/D2/D3" — D1 is
 [0001](0001-per-category-exit-codes.md), D2 is [0002](0002-shared-foundation.md),

@@ -33,7 +33,7 @@ names and JSON shapes follow Jira's API.
 atl-jira issue comment list PROJ-123 --site work --order desc --limit 20 --json='*'
 atl-jira issue comment create PROJ-123 --body "Investigating." --site work --json='*'
 atl-jira issue comment edit PROJ-123 10001 --body "Updated." --site work --json='*'
-atl-jira issue comment delete PROJ-123 10001 --site work --json='*'
+atl-jira issue comment delete PROJ-123 10001 --site work --yes --json='*'
 
 atl-jira issue worklog list PROJ-123 --site work --json='*'
 atl-jira issue worklog add PROJ-123 --time 1h --comment "Implementation" --site work --json='*'

@@ -33,7 +33,7 @@ var inferRepoTarget = func() (repoTarget, bool) {
 
 // parsePositiveInt parses a positive integer, returning an error for a
 // non-integer or non-positive value. Callers wrap it with a domain-specific
-// message (e.g. "invalid issue id").
+// message (e.g. "invalid pull request id").
 func parsePositiveInt(s string) (int, error) {
 	n, err := strconv.Atoi(strings.TrimSpace(s))
 	if err != nil || n <= 0 {
@@ -48,7 +48,6 @@ func AddCommands(root *cobra.Command, info appinfo.Info, g *cli.GlobalFlags) {
 		newRepoCommand(info, g),
 		newPRCommand(info, g),
 		newPipelineCommand(info, g),
-		newIssueCommand(info, g),
 		newWorkspaceCommand(info, g),
 		newProjectCommand(info, g),
 		newCommitCommand(info, g),
@@ -63,15 +62,22 @@ func AddCommands(root *cobra.Command, info appinfo.Info, g *cli.GlobalFlags) {
 	)
 }
 
-// allPageSize picks the per-page size for an --all request: the explicit
-// --limit when the caller set one, otherwise Bitbucket's maximum page size so
-// the page follow makes the fewest round-trips and is least likely to hit the
+// pageSize picks the per-page size for an --all request: the explicit --limit
+// when the caller set one, otherwise the endpoint's maximum page size so the
+// page follow makes the fewest round-trips and is least likely to hit the
 // page-follow cap. A non-positive limit means "unset" (the --limit default).
-func allPageSize(limit int) int {
+// An explicit --limit is passed through untouched so an out-of-range value
+// surfaces the API's own error.
+func pageSize(limit, maxLen int) int {
 	if limit > 0 {
 		return limit
 	}
-	return bitbucket.MaxPageLen
+	return maxLen
+}
+
+// allPageSize is pageSize with Bitbucket's general MaxPageLen.
+func allPageSize(limit int) int {
+	return pageSize(limit, bitbucket.MaxPageLen)
 }
 
 // bbClient builds a typed Bitbucket client for the profile named by --site.

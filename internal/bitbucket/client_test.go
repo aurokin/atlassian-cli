@@ -188,17 +188,6 @@ func TestErrorMapping(t *testing.T) {
 		{"rate limited", http.StatusTooManyRequests,
 			`{"type":"error","error":{"message":"slow down"}}`,
 			apperr.CodeRateLimited, "slow down"},
-		{"issue tracker disabled", http.StatusNotFound,
-			`{"type":"error","error":{"message":"Repository has no issue tracker."}}`,
-			apperr.CodeFeatureDisabled, "Repository has no issue tracker."},
-		{"wiki disabled", http.StatusNotFound,
-			`{"type":"error","error":{"message":"Repository has no wiki."}}`,
-			apperr.CodeFeatureDisabled, "Repository has no wiki."},
-		// An ordinary not-found for a repository that merely contains "wiki"
-		// in its name must NOT be re-coded as feature_disabled.
-		{"repo named wiki not found", http.StatusNotFound,
-			`{"type":"error","error":{"message":"Repository acme/wiki not found"}}`,
-			apperr.CodeNotFoundOrNotVisible, "Repository acme/wiki not found"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -256,7 +245,7 @@ func TestSendEncodesJSONBody(t *testing.T) {
 	defer srv.Close()
 
 	c := newTestClient(srv)
-	if _, err := c.Send(context.Background(), http.MethodPost, "/repositories/acme/widgets/issues",
+	if _, err := c.Send(context.Background(), http.MethodPost, "/repositories/acme/widgets/pullrequests",
 		map[string]string{"title": "hello"}); err != nil {
 		t.Fatalf("send: %v", err)
 	}

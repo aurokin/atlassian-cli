@@ -41,6 +41,10 @@ func newIssueLinkCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			if err := jc.CreateIssueLink(cmd.Context(), args[0], args[1], linkType); err != nil {
 				return err
 			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, linkResult{
+					Type: linkType, Inward: args[0], Outward: args[1], Created: true})
+			}
 			// Avoid an arrow here: the API field names ("inward"/"outward")
 			// don't match the natural arrow reading. Print them explicitly so
 			// it is unambiguous which issue carries which role.
@@ -52,6 +56,16 @@ func newIssueLinkCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	cmd.Flags().StringVar(&linkType, "type", "", "link type name, e.g. Blocks (required)")
 	cmd.AddCommand(newIssueLinkTypesCommand(info, g))
 	return cmd
+}
+
+// linkResult is the synthesized outcome of an issue link creation, whose API
+// call returns no body, so --json has a stable object to render. Inward and
+// Outward carry the Jira API role names, matching the positional order.
+type linkResult struct {
+	Type    string `json:"type"`
+	Inward  string `json:"inward"`
+	Outward string `json:"outward"`
+	Created bool   `json:"created"`
 }
 
 func newIssueLinkTypesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {

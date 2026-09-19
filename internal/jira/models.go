@@ -2,6 +2,7 @@ package jira
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/aurokin/atlassian-cli/internal/restutil"
 )
@@ -58,6 +59,37 @@ type Attachment struct {
 	Created  string `json:"created"`
 	Author   *User  `json:"author"`
 	Content  string `json:"content"`
+}
+
+// UnmarshalJSON accepts the numeric ID returned by attachment metadata and the
+// string ID returned by issue attachment lists and uploads. Keep the model ID a
+// string so callers can use it in URLs without losing integer precision.
+func (a *Attachment) UnmarshalJSON(data []byte) error {
+	type attachment Attachment
+	var decoded struct {
+		*attachment
+		ID json.RawMessage `json:"id"`
+	}
+	var value attachment
+	decoded.attachment = &value
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	if len(decoded.ID) != 0 && string(decoded.ID) != "null" {
+		if decoded.ID[0] == '"' {
+			if err := json.Unmarshal(decoded.ID, &value.ID); err != nil {
+				return err
+			}
+		} else {
+			var id uint64
+			if err := json.Unmarshal(decoded.ID, &id); err != nil {
+				return err
+			}
+			value.ID = strconv.FormatUint(id, 10)
+		}
+	}
+	*a = Attachment(value)
+	return nil
 }
 
 // Issue is the subset of a Jira issue that human output renders.

@@ -68,35 +68,6 @@ func TestSearchPRsHumanAndSort(t *testing.T) {
 	}
 }
 
-func TestSearchIssuesHumanAndJSON(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/repositories/acme/widgets/issues" {
-			t.Errorf("path = %q", r.URL.Path)
-		}
-		_, _ = w.Write([]byte(`{"values":[{"id":3,"title":"a bug","state":"open"}]}`))
-	}))
-	defer srv.Close()
-
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	loginBBSite(t, srv.URL)
-
-	out, err := execBB(t, "search", "issues", `title ~ "bug"`, "--repo", "acme/widgets", "--site", "work")
-	if err != nil {
-		t.Fatalf("search issues: %v\n%s", err, out)
-	}
-	if !strings.Contains(out, "a bug") {
-		t.Fatalf("output missing issue:\n%s", out)
-	}
-
-	jsonOut, err := execBB(t, "search", "issues", `title ~ "bug"`, "--repo", "acme/widgets", "--site", "work", "--jq", ".values[0].id")
-	if err != nil {
-		t.Fatalf("search issues --jq: %v\n%s", err, jsonOut)
-	}
-	if strings.TrimSpace(jsonOut) != "3" {
-		t.Fatalf("jq output = %q", jsonOut)
-	}
-}
-
 func TestSearchRequiresQuery(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	_, err := execBB(t, "search", "repos", "  ", "--workspace", "acme", "--site", "work")

@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/appinfo"
 	"github.com/aurokin/atlassian-cli/internal/bitbucket"
 	"github.com/aurokin/atlassian-cli/internal/cli"
@@ -85,8 +84,8 @@ func newRepoDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 		Short: "Delete a repository (irreversible)",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !yes {
-				return apperr.InvalidInput("deleting a repository is irreversible; pass --yes to confirm")
+			if err := cli.RequireYes(yes, "deleting a repository"); err != nil {
+				return err
 			}
 			target, err := resolveRepoTarget(args, repoFlag, workspaceFlag)
 			if err != nil {
@@ -108,7 +107,7 @@ func newRepoDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command 
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
-	cmd.Flags().BoolVar(&yes, "yes", false, "confirm the irreversible deletion")
+	cli.AddYesFlag(cmd, &yes)
 	return cmd
 }
 

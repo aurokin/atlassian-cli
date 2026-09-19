@@ -2,6 +2,7 @@ package bbcmd
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aurokin/atlassian-cli/internal/apperr"
 	"github.com/aurokin/atlassian-cli/internal/bitbucket"
 )
 
@@ -189,11 +191,28 @@ func TestRepoCreateOmitsUnsetPrivate(t *testing.T) {
 	}
 }
 
-func TestRepoDeleteRequiresConfirmation(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	_, err := execBB(t, "repo", "delete", "acme/widgets", "--site", "work")
-	if err == nil || !strings.Contains(err.Error(), "pass --yes") {
-		t.Fatalf("expected confirmation error, got %v", err)
+// TestDeleteVerbsRequireConfirmation covers every destructive atl-bb verb: the
+// --yes guard runs before any client construction, so a clean config never
+// reaches the network, and the refusal is a structured invalid_input.
+func TestDeleteVerbsRequireConfirmation(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{"repo delete", []string{"repo", "delete", "acme/widgets"}},
+		{"project delete", []string{"project", "delete", "WID", "--workspace", "acme"}},
+		{"branch delete", []string{"branch", "delete", "stale", "--repo", "acme/widgets"}},
+		{"tag delete", []string{"tag", "delete", "v0.1.0", "--repo", "acme/widgets"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+			_, err := execBB(t, append(c.args, "--site", "work")...)
+			var ae *apperr.Error
+			if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput || !strings.Contains(ae.Message, "pass --yes") {
+				t.Fatalf("%s without --yes: err = %v, want an invalid_input --yes refusal", c.name, err)
+			}
+		})
 	}
 }
 

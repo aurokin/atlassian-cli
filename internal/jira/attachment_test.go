@@ -2,6 +2,7 @@ package jira
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -129,5 +130,26 @@ func TestClientAddAttachment(t *testing.T) {
 	}
 	if len(atts) != 1 || atts[0].ID != "99" {
 		t.Fatalf("response = %+v", atts)
+	}
+}
+
+func TestAttachmentIDWireFormats(t *testing.T) {
+	for _, id := range []string{`"9007199254740993"`, `9007199254740993`} {
+		t.Run(id, func(t *testing.T) {
+			var attachment Attachment
+			err := json.Unmarshal([]byte(`{"id":`+id+`,"filename":"data.bin","size":3,"content":"https://example.test/content"}`), &attachment)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if attachment.ID != "9007199254740993" || attachment.Filename != "data.bin" || attachment.Size != 3 || attachment.Content != "https://example.test/content" {
+				t.Fatalf("metadata lost: %+v", attachment)
+			}
+		})
+	}
+	for _, id := range []string{`true`, `1.5`, `{}`} {
+		var attachment Attachment
+		if err := json.Unmarshal([]byte(`{"id":`+id+`}`), &attachment); err == nil {
+			t.Errorf("accepted invalid ID %s", id)
+		}
 	}
 }

@@ -95,10 +95,21 @@ func newPageLabelRemoveCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Com
 			if err := cc.RemoveLabel(cmd.Context(), args[0], args[1]); err != nil {
 				return err
 			}
+			if g.WantsStructured() {
+				return cli.Render(cmd, g, labelRemoveResult{Page: args[0], Label: args[1], Removed: true})
+			}
 			fmt.Fprintf(cmd.OutOrStdout(), "removed label %s from page %s\n", args[1], args[0])
 			return nil
 		},
 	}
+}
+
+// labelRemoveResult is the synthesized outcome of a label removal, whose API
+// call returns no body, so --json has a stable object to render.
+type labelRemoveResult struct {
+	Page    string `json:"page"`
+	Label   string `json:"label"`
+	Removed bool   `json:"removed"`
 }
 
 // writeLabelList prints labels as aligned prefix/name rows.

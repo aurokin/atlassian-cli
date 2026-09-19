@@ -149,12 +149,16 @@ func newBranchDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 	var (
 		repoFlag      string
 		workspaceFlag string
+		yes           bool
 	)
 	cmd := &cobra.Command{
 		Use:   "delete <name>",
-		Short: "Delete a branch",
+		Short: "Delete a branch (irreversible)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := cli.RequireYes(yes, "deleting a branch"); err != nil {
+				return err
+			}
 			name := strings.TrimSpace(args[0])
 			if name == "" {
 				return apperr.InvalidInput("a branch name is required")
@@ -178,6 +182,7 @@ func newBranchDeleteCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Comman
 		},
 	}
 	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
+	cli.AddYesFlag(cmd, &yes)
 	return cmd
 }
 

@@ -65,13 +65,13 @@ func TestPageListAllFollowsPages(t *testing.T) {
 
 func TestPageChildrenAllFollowsPages(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/pages/10/children" {
-			t.Errorf("path = %q, want /pages/10/children", r.URL.Path)
+		if r.URL.Path != "/pages/10/direct-children" {
+			t.Errorf("path = %q, want /pages/10/direct-children", r.URL.Path)
 		}
 		switch r.URL.Query().Get("cursor") {
 		case "":
 			_, _ = w.Write([]byte(`{"results":[{"id":"11"}],` +
-				`"_links":{"next":"/pages/10/children?cursor=c2"}}`))
+				`"_links":{"next":"/pages/10/direct-children?cursor=c2"}}`))
 		case "c2":
 			_, _ = w.Write([]byte(`{"results":[{"id":"12"}]}`))
 		default:

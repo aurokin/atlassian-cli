@@ -96,7 +96,7 @@ versioning posture and pipeline-maintenance constraints are in
   `output.TabWriter`.
 - **Structured errors.** Map failures to `internal/apperr` codes
   (`unauthorized`, `forbidden`, `not_found_or_not_visible`, `rate_limited`,
-  `invalid_input`, `feature_disabled`). Under `--json`, an `*apperr.Error` is
+  `invalid_input`, `timeout`). Under `--json`, an `*apperr.Error` is
   rendered as a machine-readable envelope.
 - **Agent paths.** Preserve `--json`, `--jq`, and `--no-prompt`; keep the raw
   `api` command as a first-class escape hatch.

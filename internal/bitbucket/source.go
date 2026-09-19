@@ -33,10 +33,9 @@ func srcPath(workspace, repo, ref, path string) string {
 	if ref == "" {
 		return p
 	}
-	p += "/" + escapePathSegments(ref)
-	if path != "" {
-		p += "/" + escapePathSegments(path)
-	}
+	// The root listing requires the separator after the ref even when the
+	// repository-relative path is empty; /src/{ref} is not an API route.
+	p += "/" + escapePathSegments(ref) + "/" + escapePathSegments(path)
 	return p
 }
 

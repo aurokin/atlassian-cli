@@ -238,32 +238,6 @@ type PipelineStepPage struct {
 	Next   string         `json:"next,omitempty"`
 }
 
-// IssueContent is an issue's body, reduced to its raw markup.
-type IssueContent struct {
-	Raw string `json:"raw,omitempty"`
-}
-
-// Issue is the subset of a Bitbucket repository issue that human output
-// renders.
-type Issue struct {
-	ID        int           `json:"id"`
-	Title     string        `json:"title"`
-	State     string        `json:"state,omitempty"`
-	Kind      string        `json:"kind,omitempty"`
-	Priority  string        `json:"priority,omitempty"`
-	Content   *IssueContent `json:"content,omitempty"`
-	Reporter  *Account      `json:"reporter,omitempty"`
-	Assignee  *Account      `json:"assignee,omitempty"`
-	CreatedOn string        `json:"created_on,omitempty"`
-}
-
-// IssuePage is one page of an issue listing. Bitbucket paginates with an
-// absolute "next" URL; an empty Next marks the last page.
-type IssuePage struct {
-	Values []Issue `json:"values"`
-	Next   string  `json:"next,omitempty"`
-}
-
 // DeploymentState is a deployment's lifecycle state.
 type DeploymentState struct {
 	Name string `json:"name,omitempty"`

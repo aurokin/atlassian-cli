@@ -217,35 +217,35 @@ reflection, see
 
 ## Bitbucket
 
-Recommended broad `atl-bb` token: 15 scopes total. Bitbucket Cloud API tokens
+Recommended broad `atl-bb` token: 13 scopes total. Bitbucket Cloud API tokens
 authenticate with Basic auth against `https://api.bitbucket.org/2.0`, using the
 Atlassian account email as the username. They do not use the Jira/Confluence
 `api.atlassian.com/ex/<product>/<cloudId>` gateway.
 
 This set covers `atl-bb` status, workspace/project/repository reads, repository
 create, branch/tag/source/commit reads and writes, pull request review/write
-flows, issue read/write flows, pipeline read/run/stop/log flows, and deployment
-and environment reads. It intentionally excludes repository deletion, workspace
-administration, account mutation, pipeline variables, runners, webhooks,
-snippets, SSH/GPG key management, and permission CRUD.
+flows, pipeline read/run/stop/log flows, and deployment and environment reads.
+Bitbucket removed the repository issue tracker (and its API) on 2026-08-20, so
+`read:issue:bitbucket` and `write:issue:bitbucket` are no longer part of this
+set. It intentionally excludes repository deletion, workspace administration,
+account mutation, pipeline variables, runners, webhooks, snippets, SSH/GPG key
+management, and permission CRUD.
 
 ### Core scopes
 
 1. `admin:project:bitbucket`
 2. `admin:repository:bitbucket`
 3. `read:account`
-4. `read:issue:bitbucket`
-5. `read:me`
-6. `read:pipeline:bitbucket`
-7. `read:project:bitbucket`
-8. `read:pullrequest:bitbucket`
-9. `read:repository:bitbucket`
-10. `read:user:bitbucket`
-11. `read:workspace:bitbucket`
-12. `write:issue:bitbucket`
-13. `write:pipeline:bitbucket`
-14. `write:pullrequest:bitbucket`
-15. `write:repository:bitbucket`
+4. `read:me`
+5. `read:pipeline:bitbucket`
+6. `read:project:bitbucket`
+7. `read:pullrequest:bitbucket`
+8. `read:repository:bitbucket`
+9. `read:user:bitbucket`
+10. `read:workspace:bitbucket`
+11. `write:pipeline:bitbucket`
+12. `write:pullrequest:bitbucket`
+13. `write:repository:bitbucket`
 
 ### Optional destructive scope
 
@@ -266,8 +266,7 @@ request workflows:
 1. `admin:project:bitbucket`
 2. `admin:repository:bitbucket`
 3. `write:pipeline:bitbucket`
-4. `write:issue:bitbucket`
-5. `write:repository:bitbucket`
+4. `write:repository:bitbucket`
 
 Do not remove the matching read scopes just because a write/admin scope is
 present. Bitbucket's API-token scopes are explicit; write/admin scopes do not

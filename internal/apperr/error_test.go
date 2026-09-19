@@ -96,7 +96,6 @@ func TestExitCode(t *testing.T) {
 		{CodeInvalidInput, 8},
 		{CodeTimeout, 9},
 		// Categories without a dedicated exit code fall through to 1.
-		{CodeFeatureDisabled, 1},
 		{CodeGone, 1},
 		{CodeHTTPError, 1},
 		{CodeRequestFailed, 1},

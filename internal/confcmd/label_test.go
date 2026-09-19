@@ -130,3 +130,27 @@ func TestPageLabelRemoveHumanOutput(t *testing.T) {
 		t.Errorf("remove output missing 'removed label needs-review from page 10':\n%s", out)
 	}
 }
+
+func TestPageLabelRemoveJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginConfSite(t, srv.URL)
+
+	out, err := execConf(t, "page", "label", "remove", "10", "needs-review", "--site", "work", "--json")
+	if err != nil {
+		t.Fatalf("page label remove --json: %v\n%s", err, out)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("label remove --json output is not valid JSON: %v\n%s", err, out)
+	}
+	if got["page"] != "10" || got["label"] != "needs-review" || got["removed"] != true {
+		t.Fatalf("unexpected label remove JSON: %v", got)
+	}
+	if strings.Contains(out, "removed label") {
+		t.Errorf("label remove --json printed human text:\n%s", out)
+	}
+}

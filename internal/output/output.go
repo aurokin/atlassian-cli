@@ -6,7 +6,6 @@ package output
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -27,10 +26,6 @@ type Options struct {
 	// filtered through jq instead of rendered as human text or selected JSON.
 	JQ string
 }
-
-// errNotObject is returned when field selection is requested for a value that
-// does not serialize to a JSON object.
-var errNotObject = errors.New("output: field selection requires a JSON object")
 
 // Render writes v to w according to opts. With --jq the value is filtered
 // through a jq expression; otherwise, with no JSON option it writes a minimal
@@ -131,42 +126,87 @@ func renderJSON(w io.Writer, v any) error {
 }
 
 // renderSelected writes only the requested top-level fields, preserving the
-// order they were requested in. Unknown fields are omitted silently.
+// order they were requested in. Unknown fields are omitted silently. An array
+// response is projected element by element, so a list command's --json=id
+// yields an array of {"id"} objects.
 func renderSelected(w io.Writer, v any, fields []string) error {
 	raw, err := json.Marshal(v)
 	if err != nil {
 		return fmt.Errorf("output: marshal JSON: %w", err)
 	}
-	var obj map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &obj); err != nil {
-		return errNotObject
+	keys := make([][]byte, len(fields))
+	for i, f := range fields {
+		keys[i], _ = json.Marshal(f)
 	}
-
 	var compact bytes.Buffer
-	compact.WriteByte('{')
-	first := true
-	for _, f := range fields {
-		val, ok := obj[f]
-		if !ok {
-			continue // unknown selected fields are omitted
-		}
-		if !first {
-			compact.WriteByte(',')
-		}
-		first = false
-		key, _ := json.Marshal(f)
-		compact.Write(key)
-		compact.WriteByte(':')
-		compact.Write(val)
+	if err := selectFields(&compact, raw, fields, keys); err != nil {
+		return err
 	}
-	compact.WriteByte('}')
-
 	var pretty bytes.Buffer
 	if err := json.Indent(&pretty, compact.Bytes(), "", "  "); err != nil {
 		return fmt.Errorf("output: indent JSON: %w", err)
 	}
 	_, err = fmt.Fprintln(w, pretty.String())
 	return err
+}
+
+// selectFields appends the projection of an object, or of each element of an
+// array of objects, to out as compact JSON. keys holds the fields already
+// JSON-encoded, so they are marshalled once rather than per element.
+func selectFields(out *bytes.Buffer, raw json.RawMessage, fields []string, keys [][]byte) error {
+	if len(raw) == 0 || raw[0] != '[' {
+		return selectObjectFields(out, raw, fields, keys)
+	}
+	var items []json.RawMessage
+	if err := json.Unmarshal(raw, &items); err != nil {
+		return errNotSelectable()
+	}
+	out.WriteByte('[')
+	for i, item := range items {
+		if i > 0 {
+			out.WriteByte(',')
+		}
+		if err := selectObjectFields(out, item, fields, keys); err != nil {
+			return err
+		}
+	}
+	out.WriteByte(']')
+	return nil
+}
+
+// selectObjectFields appends the projection of a single JSON object to out,
+// keeping the requested order and skipping unknown names.
+func selectObjectFields(out *bytes.Buffer, raw json.RawMessage, fields []string, keys [][]byte) error {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &obj); err != nil || obj == nil {
+		return errNotSelectable() // a scalar, a nested array, or null
+	}
+	out.WriteByte('{')
+	first := true
+	for i, f := range fields {
+		val, ok := obj[f]
+		if !ok {
+			continue // unknown selected fields are omitted
+		}
+		if !first {
+			out.WriteByte(',')
+		}
+		first = false
+		out.Write(keys[i])
+		out.WriteByte(':')
+		out.Write(val)
+	}
+	out.WriteByte('}')
+	return nil
+}
+
+// errNotSelectable reports a response with no fields to select: a scalar,
+// null, or an array holding non-objects. Like a failing --jq filter, this is
+// the caller's projection not fitting the response, so it shares the
+// invalid_input category even though the request has already been made.
+func errNotSelectable() error {
+	return apperr.InvalidInput(
+		"--json field selection needs an object or an array of objects, but this response is neither; use --jq to project it, such as --jq '.[].id'")
 }
 
 // splitFields parses a comma-separated field list, trimming spaces and

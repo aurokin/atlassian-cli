@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
+	"slices"
 	"sort"
 	"strings"
 
@@ -144,11 +146,93 @@ func runExternalProcess(executable string, args []string) error {
 	return cmd.Run()
 }
 
-// discoverExtensions scans PATH for executable <prefix><name> files, returning
-// one entry per name sorted alphabetically. The first match for a name on PATH
-// wins, mirroring how the shell resolves a command.
+// windowsExecSuffixes returns the lowercased executable suffixes Windows
+// resolves via PATHEXT — the same list exec.LookPath consults — falling back
+// to Go's default when the variable is unset.
+func windowsExecSuffixes(pathext string) []string {
+	if pathext == "" {
+		pathext = ".COM;.EXE;.BAT;.CMD"
+	}
+	var out []string
+	for _, e := range strings.Split(strings.ToLower(pathext), ";") {
+		if e = strings.TrimSpace(e); e != "" {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// extensionName reports whether a PATH entry name is a <prefix><name>
+// extension candidate and returns its short name; it is a pure name test so
+// only candidates are stat'd. On Windows, where files carry no execute bit, a
+// suffix from suffixes (see windowsExecSuffixes) decides and is stripped from
+// the name so `extension list` shows what `extension exec` accepts; elsewhere
+// isExecutable checks the execute bit afterwards.
+//
+// rank is the suffix's position in suffixes (always 0 off Windows): when one
+// directory holds several candidates for a name, exec.LookPath runs the one
+// with the lowest-ranked suffix, so discovery prefers it too.
+func extensionName(goos string, suffixes []string, prefix, name string) (short string, rank int, ok bool) {
+	// Windows resolves names case-insensitively. Normalize the discovery key as
+	// well as the prefix so case variants cannot produce duplicate extensions.
+	if goos == "windows" {
+		prefix, name = strings.ToLower(prefix), strings.ToLower(name)
+	}
+	short = strings.TrimPrefix(name, prefix)
+	if short == name || short == "" {
+		return "", 0, false // missing the prefix, or nothing after it
+	}
+	if goos != "windows" {
+		return short, 0, true
+	}
+	ext := strings.ToLower(filepath.Ext(short))
+	rank = slices.Index(suffixes, ext)
+	if ext == "" || rank < 0 {
+		return "", 0, false
+	}
+	if short = short[:len(short)-len(ext)]; short == "" {
+		return "", 0, false
+	}
+	return short, rank, true
+}
+
+// extensionCandidate is a discovered executable for one short name, with the
+// PATH directory it came from and its suffix rank, so collisions resolve the
+// way exec.LookPath does: the earliest PATH directory wins, and within one
+// directory the lowest-ranked suffix wins.
+type extensionCandidate struct {
+	executable string
+	dir        string
+	rank       int
+}
+
+// supersedes reports whether next should replace prev as the entry for a
+// short name. prev is the zero value when the name is new.
+func (next extensionCandidate) supersedes(prev extensionCandidate) bool {
+	if prev.executable == "" {
+		return true
+	}
+	return prev.dir == next.dir && next.rank < prev.rank
+}
+
+// isExecutable reports whether path is a regular executable file, following
+// symlinks so a link to a directory or to a non-executable is excluded. On
+// Windows the PATHEXT suffix has already decided, so only the directory check
+// applies.
+func isExecutable(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil || info.IsDir() {
+		return false
+	}
+	return runtime.GOOS == "windows" || info.Mode()&0o111 != 0
+}
+
+// discoverExtensions scans PATH for <prefix><name> files that extensionName
+// accepts, returning one entry per name sorted alphabetically. The first match
+// for a name on PATH wins, mirroring how the shell resolves a command.
 func discoverExtensions(prefix string) []extensionEntry {
-	seen := map[string]string{}
+	seen := map[string]extensionCandidate{}
+	suffixes := windowsExecSuffixes(os.Getenv("PATHEXT"))
 	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
 		if strings.TrimSpace(dir) == "" {
 			continue
@@ -159,17 +243,15 @@ func discoverExtensions(prefix string) []extensionEntry {
 		}
 		for _, entry := range entries {
 			name := entry.Name()
-			short := strings.TrimPrefix(name, prefix)
-			if short == name || short == "" {
-				continue // missing the prefix, or nothing after it
-			}
-			info, err := entry.Info()
-			if err != nil || info.IsDir() || info.Mode()&0o111 == 0 {
+			short, rank, ok := extensionName(runtime.GOOS, suffixes, prefix, name)
+			if !ok {
 				continue
 			}
-			if _, ok := seen[short]; !ok {
-				seen[short] = filepath.Join(dir, name)
+			next := extensionCandidate{executable: filepath.Join(dir, name), dir: dir, rank: rank}
+			if !next.supersedes(seen[short]) || !isExecutable(next.executable) {
+				continue
 			}
+			seen[short] = next
 		}
 	}
 	names := make([]string, 0, len(seen))
@@ -179,7 +261,7 @@ func discoverExtensions(prefix string) []extensionEntry {
 	sort.Strings(names)
 	out := make([]extensionEntry, 0, len(names))
 	for _, name := range names {
-		out = append(out, extensionEntry{Name: name, Executable: seen[name]})
+		out = append(out, extensionEntry{Name: name, Executable: seen[name].executable})
 	}
 	return out
 }

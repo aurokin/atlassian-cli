@@ -8,8 +8,8 @@ import (
 	"github.com/aurokin/atlassian-cli/internal/apperr"
 )
 
-// Bitbucket resolves Bitbucket Cloud repository, pull request, issue, and
-// commit URLs, plus the bare "workspace/repo" form.
+// Bitbucket resolves Bitbucket Cloud repository, pull request, and commit
+// URLs, plus the bare "workspace/repo" form.
 var Bitbucket Parser = bitbucketParser{}
 
 // bitbucketSlugRe matches a single workspace or repository slug: an
@@ -24,7 +24,7 @@ var bitbucketDigitsRe = regexp.MustCompile(`^[0-9]+$`)
 type bitbucketParser struct{}
 
 // Parse recognizes a bare "workspace/repo" target and a Bitbucket web URL for a
-// repository, pull request, issue, or commit.
+// repository, pull request, or commit.
 func (bitbucketParser) Parse(input string) (Resource, bool) {
 	if bitbucketRepoRe.MatchString(input) {
 		ws, repo, _ := strings.Cut(input, "/")
@@ -63,12 +63,6 @@ func parseBitbucketURL(input string) (Resource, bool) {
 			base.ID = segs[3]
 			return base, true
 		}
-	case "issues":
-		if len(segs) >= 4 && bitbucketDigitsRe.MatchString(segs[3]) {
-			base.Kind = KindBitbucketIssue
-			base.ID = segs[3]
-			return base, true
-		}
 	case "commits":
 		if len(segs) >= 4 && segs[3] != "" {
 			base.Kind = KindBitbucketCommit
@@ -100,11 +94,6 @@ func (bitbucketParser) CanonicalURL(baseURL string, r Resource) (string, error) 
 			return "", apperr.InvalidInput("cannot build a pull request URL without an id")
 		}
 		return repoURL + "/pull-requests/" + r.ID, nil
-	case KindBitbucketIssue:
-		if r.ID == "" {
-			return "", apperr.InvalidInput("cannot build an issue URL without an id")
-		}
-		return repoURL + "/issues/" + r.ID, nil
 	case KindBitbucketCommit:
 		if r.ID == "" {
 			return "", apperr.InvalidInput("cannot build a commit URL without a hash")

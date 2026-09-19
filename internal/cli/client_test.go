@@ -2,11 +2,16 @@ package cli
 
 import (
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/zalando/go-keyring"
 
 	"github.com/aurokin/atlassian-cli/internal/apperr"
+	"github.com/aurokin/atlassian-cli/internal/httpclient"
 	"github.com/aurokin/atlassian-cli/internal/secrets"
 )
 
@@ -178,5 +183,115 @@ func TestSiteClientReportsMissingStoredToken(t *testing.T) {
 	var ae *apperr.Error
 	if !errors.As(err, &ae) || ae.Code != "token_unavailable" {
 		t.Fatalf("error = %v, want a token_unavailable *apperr.Error", err)
+	}
+}
+
+func TestResolveTimeoutPrecedence(t *testing.T) {
+	cases := []struct {
+		name string
+		flag string
+		env  string
+		want time.Duration
+	}{
+		{"flag wins over env", "2m", "1m", 2 * time.Minute},
+		{"env wins over default", "", "45s", 45 * time.Second},
+		{"default is last resort", "", "", httpclient.DefaultTimeout},
+		{"zero disables the timeout", "0", "", 0},
+		{"env whitespace is trimmed like ATL_SITE", "", "  45s ", 45 * time.Second},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Setenv(timeoutEnvVar, c.env)
+			got, err := resolveTimeout(c.flag)
+			if err != nil {
+				t.Fatalf("resolveTimeout(%q) with %s=%q: %v", c.flag, timeoutEnvVar, c.env, err)
+			}
+			if got != c.want {
+				t.Fatalf("resolveTimeout(%q) with %s=%q = %v, want %v",
+					c.flag, timeoutEnvVar, c.env, got, c.want)
+			}
+		})
+	}
+}
+
+func TestResolveTimeoutRejectsInvalidValues(t *testing.T) {
+	cases := []struct {
+		name       string
+		flag       string
+		env        string
+		wantSource string
+	}{
+		{"malformed flag", "abc", "", "--timeout"},
+		{"negative flag", "-5s", "", "--timeout"},
+		{"malformed env", "", "nope", timeoutEnvVar},
+		{"whitespace-only flag", "  ", "", "--timeout"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Setenv(timeoutEnvVar, c.env)
+			_, err := resolveTimeout(c.flag)
+			var ae *apperr.Error
+			if !errors.As(err, &ae) || ae.Code != apperr.CodeInvalidInput {
+				t.Fatalf("error = %v, want an invalid_input *apperr.Error", err)
+			}
+			if !strings.Contains(ae.Message, c.wantSource) {
+				t.Fatalf("message = %q, want it to name %s", ae.Message, c.wantSource)
+			}
+		})
+	}
+}
+
+// TestAPICommandHonorsTimeout proves both timeout sources reach the
+// *http.Client SiteClient builds: against a server that never replies, the
+// request fails as a timeout well before the 30s default would fire.
+func TestAPICommandHonorsTimeout(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done() // never reply; let the client timeout fire
+	}))
+	defer srv.Close()
+
+	for _, tc := range []struct {
+		name string
+		env  string
+		args []string
+	}{
+		{name: "flag", args: []string{"--timeout", "50ms"}},
+		{name: "env", env: "50ms"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+			t.Setenv(timeoutEnvVar, tc.env)
+			loginDataCenter(t, srv.URL)
+
+			args := append([]string{"api", "/rest/api/2/myself", "--site", "work"}, tc.args...)
+			start := time.Now()
+			_, err := execRoot(t, jiraInfo(), args...)
+			var ae *apperr.Error
+			if !errors.As(err, &ae) || ae.Code != apperr.CodeTimeout {
+				t.Fatalf("error = %v, want a timeout *apperr.Error", err)
+			}
+			// The configured 50ms must be what fired, not the default.
+			if elapsed := time.Since(start); elapsed > time.Second {
+				t.Fatalf("timeout fired after %s, want the configured 50ms", elapsed)
+			}
+		})
+	}
+}
+
+// TestAPICommandTimeoutZeroDisablesTimeout proves ATL_TIMEOUT=0 builds an
+// unbounded client rather than one with an immediately expired deadline.
+func TestAPICommandTimeoutZeroDisablesTimeout(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(150 * time.Millisecond)
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	loginDataCenter(t, srv.URL)
+	t.Setenv(timeoutEnvVar, "0")
+
+	if _, err := execRoot(t, jiraInfo(), "api", "/rest/api/2/myself", "--site", "work"); err != nil {
+		t.Fatalf("api with %s=0: %v", timeoutEnvVar, err)
 	}
 }

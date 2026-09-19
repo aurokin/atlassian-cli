@@ -19,12 +19,11 @@ import (
 func newSearchCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "search",
-		Short: "Search repositories, pull requests, and issues with a raw Bitbucket query",
+		Short: "Search repositories and pull requests with a raw Bitbucket query",
 	}
 	cmd.AddCommand(
 		newSearchReposCommand(info, g),
 		newSearchPRsCommand(info, g),
-		newSearchIssuesCommand(info, g),
 	)
 	return cmd
 }
@@ -102,7 +101,7 @@ func newSearchPRsCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			search := bc.SearchPullRequests
 			if all {
 				search = bc.SearchPullRequestsAll
-				limit = allPageSize(limit)
+				limit = pageSize(limit, bitbucket.MaxPullRequestPageLen)
 			}
 			raw, err := search(cmd.Context(), target.Workspace, target.Repo, query, sort, limit)
 			if err != nil {
@@ -111,51 +110,6 @@ func newSearchPRsCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.PullRequestPage],
 				func(w io.Writer, page bitbucket.PullRequestPage) {
 					writePRList(w, page.Values)
-				})
-		},
-	}
-	addRepoFlags(cmd, &repoFlag, &workspaceFlag)
-	addSearchFlags(cmd, &sort, &limit, &all)
-	return cmd
-}
-
-func newSearchIssuesCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
-	var (
-		repoFlag      string
-		workspaceFlag string
-		sort          string
-		limit         int
-		all           bool
-	)
-	cmd := &cobra.Command{
-		Use:   "issues <query>",
-		Short: "Search a repository's issues with a raw Bitbucket query",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			query, err := requireQuery(args[0])
-			if err != nil {
-				return err
-			}
-			target, err := resolveRepoTarget(nil, repoFlag, workspaceFlag)
-			if err != nil {
-				return err
-			}
-			bc, err := bbClient(info, g)
-			if err != nil {
-				return err
-			}
-			search := bc.SearchIssues
-			if all {
-				search = bc.SearchIssuesAll
-				limit = allPageSize(limit)
-			}
-			raw, err := search(cmd.Context(), target.Workspace, target.Repo, query, sort, limit)
-			if err != nil {
-				return err
-			}
-			return cli.RenderDecoded(cmd, g, raw, bitbucket.Decode[bitbucket.IssuePage],
-				func(w io.Writer, page bitbucket.IssuePage) {
-					writeIssueList(w, page.Values)
 				})
 		},
 	}

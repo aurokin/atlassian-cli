@@ -40,6 +40,12 @@ caller would plausibly *branch on* get a dedicated code; rarer categories
 `response_decode_failed`, `result_truncated`, `request_failed`) intentionally
 share `1` rather than inflating the table with codes nobody branches on.
 
+> **Superseded in part.** `feature_disabled` was retired with the Bitbucket
+> issue tracker on 2026-08-20 (CHANGE-3401); see
+> [ADR 0008](0008-retire-bitbucket-issue-tracker.md). It shared exit `1`, so no
+> number changed — the category simply no longer exists. The current catalog is
+> [access-error-model.md](../access-error-model.md).
+
 The exit code and the `--json` error envelope carry the **same** stable code,
 so a consumer can use whichever is convenient (exit code for control flow,
 envelope for an in-band reason).

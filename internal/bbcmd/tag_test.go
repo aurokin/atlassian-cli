@@ -121,7 +121,7 @@ func TestTagDelete(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	loginBBSite(t, srv.URL)
 
-	out, err := execBB(t, "tag", "delete", "v0.1.0", "--repo", "acme/widgets", "--site", "work")
+	out, err := execBB(t, "tag", "delete", "v0.1.0", "--repo", "acme/widgets", "--site", "work", "--yes")
 	if err != nil {
 		t.Fatalf("tag delete: %v\n%s", err, out)
 	}

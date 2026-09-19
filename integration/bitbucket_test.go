@@ -8,47 +8,29 @@ import (
 	"time"
 )
 
-// bbSession builds an authenticated atl-bb session, skipping when Bitbucket is
-// not configured for this run.
+// bbSession builds an authenticated session and fails if selected setup is missing.
 func bbSession(t *testing.T) *session { return newSession(t, bbProduct) }
 
-// bbWorkspace returns the fixture workspace slug, skipping when unset.
+// bbWorkspace requires an explicit fixture workspace after Bitbucket is selected.
 func bbWorkspace(t *testing.T) string {
 	t.Helper()
 	ws := bbProduct.env("WORKSPACE")
 	if ws == "" {
-		t.Skip("set ATL_IT_BB_WORKSPACE to a workspace slug to run workspace-scoped Bitbucket tests")
+		t.Fatal("set ATL_IT_BB_WORKSPACE to a workspace slug to run workspace-scoped Bitbucket tests")
 	}
 	return ws
 }
 
-// bbRepo returns the fixture repository target as <workspace>/<repo>, skipping
-// when either piece is unset. Repo-scoped tests need a real repository with at
-// least one commit.
+// bbRepo requires an explicit read-only repository target for the legacy
+// discovery checks. Write tests create their own private repositories.
 func bbRepo(t *testing.T) (workspace, repo, target string) {
 	t.Helper()
 	workspace = bbWorkspace(t)
 	repo = bbProduct.env("REPO")
 	if repo == "" {
-		t.Skip("set ATL_IT_BB_REPO to a repository slug to run repo-scoped Bitbucket tests")
+		t.Fatal("set ATL_IT_BB_REPO to a repository slug to run repo-scoped Bitbucket tests")
 	}
 	return workspace, repo, workspace + "/" + repo
-}
-
-// headCommit returns the hash of the most recent commit on the repo's default
-// history, used as the target for branch/tag creation.
-func headCommit(t *testing.T, s *session, target string) string {
-	t.Helper()
-	var commits struct {
-		Values []struct {
-			Hash string `json:"hash"`
-		} `json:"values"`
-	}
-	s.mustJSON(&commits, "commit", "list", "--repo", target, "--limit", "1")
-	if len(commits.Values) == 0 || commits.Values[0].Hash == "" {
-		t.Skipf("repo %q has no commits to anchor branch/tag creation", target)
-	}
-	return commits.Values[0].Hash
 }
 
 func TestBitbucketStatus(t *testing.T) {
@@ -153,13 +135,13 @@ func TestBitbucketPRList(t *testing.T) {
 // write through the real branch create/delete commands.
 func TestBitbucketBranchLifecycle(t *testing.T) {
 	s := bbSession(t)
-	_, _, target := bbRepo(t)
-	head := headCommit(t, s, target)
+	target := ownedBBRepo(t, s)
+	head := seedBBCommit(t, s, target, "main", "", "README.md", "reference fixture\n")
 
 	name := "atl-cli-it/" + time.Now().UTC().Format("20060102-150405")
 
 	createRes := s.run("branch", "create", "--repo", target, "--name", name, "--target", head)
-	s.skipIfScopeOrPermission(createRes, "branch create")
+	s.failIfScopeOrPermission(createRes, "branch create")
 	if createRes.err != nil {
 		t.Fatalf("branch create failed: %v\nstdout:\n%s\nstderr:\n%s", createRes.err, createRes.stdout, createRes.stderr)
 	}
@@ -171,9 +153,9 @@ func TestBitbucketBranchLifecycle(t *testing.T) {
 		if deleted {
 			return
 		}
-		res := s.run("branch", "delete", name, "--repo", target)
+		res := s.run("branch", "delete", name, "--repo", target, "--yes")
 		if res.err != nil && !strings.Contains(res.stdout+res.stderr, "not_found") {
-			t.Logf("cleanup: failed to delete branch %q in %s (delete it manually): %v\n%s",
+			t.Errorf("cleanup: failed to delete branch %q in %s (delete it manually): %v\n%s",
 				name, target, res.err, res.stdout+res.stderr)
 		}
 	})
@@ -190,11 +172,12 @@ func TestBitbucketBranchLifecycle(t *testing.T) {
 		t.Fatalf("branch view returned name %q, want %q", branch.Name, name)
 	}
 
-	delRes := s.mustWrite("branch delete", "branch", "delete", name, "--repo", target)
+	delRes := s.mustWrite("branch delete", "branch", "delete", name, "--repo", target, "--yes")
 	if !strings.Contains(delRes.stdout, "deleted branch "+name) {
 		t.Fatalf("branch delete output unexpected: %q", delRes.stdout)
 	}
 	deleted = true
+	bbRequireMissing(t, s, "branch", "view", name, "--repo", target)
 }
 
 // TestBitbucketTagLifecycle creates a uniquely-named tag off the repo's head
@@ -202,13 +185,13 @@ func TestBitbucketBranchLifecycle(t *testing.T) {
 // create/delete commands.
 func TestBitbucketTagLifecycle(t *testing.T) {
 	s := bbSession(t)
-	_, _, target := bbRepo(t)
-	head := headCommit(t, s, target)
+	target := ownedBBRepo(t, s)
+	head := seedBBCommit(t, s, target, "main", "", "README.md", "reference fixture\n")
 
 	name := "atl-cli-it-" + time.Now().UTC().Format("20060102-150405")
 
 	createRes := s.run("tag", "create", "--repo", target, "--name", name, "--target", head)
-	s.skipIfScopeOrPermission(createRes, "tag create")
+	s.failIfScopeOrPermission(createRes, "tag create")
 	if createRes.err != nil {
 		t.Fatalf("tag create failed: %v\nstdout:\n%s\nstderr:\n%s", createRes.err, createRes.stdout, createRes.stderr)
 	}
@@ -220,9 +203,9 @@ func TestBitbucketTagLifecycle(t *testing.T) {
 		if deleted {
 			return
 		}
-		res := s.run("tag", "delete", name, "--repo", target)
+		res := s.run("tag", "delete", name, "--repo", target, "--yes")
 		if res.err != nil && !strings.Contains(res.stdout+res.stderr, "not_found") {
-			t.Logf("cleanup: failed to delete tag %q in %s (delete it manually): %v\n%s",
+			t.Errorf("cleanup: failed to delete tag %q in %s (delete it manually): %v\n%s",
 				name, target, res.err, res.stdout+res.stderr)
 		}
 	})
@@ -239,9 +222,10 @@ func TestBitbucketTagLifecycle(t *testing.T) {
 		t.Fatalf("tag view returned name %q, want %q", tag.Name, name)
 	}
 
-	delRes := s.mustWrite("tag delete", "tag", "delete", name, "--repo", target)
+	delRes := s.mustWrite("tag delete", "tag", "delete", name, "--repo", target, "--yes")
 	if !strings.Contains(delRes.stdout, "deleted tag "+name) {
 		t.Fatalf("tag delete output unexpected: %q", delRes.stdout)
 	}
 	deleted = true
+	bbRequireMissing(t, s, "tag", "view", name, "--repo", target)
 }

@@ -83,7 +83,7 @@ func newPRListCommand(info appinfo.Info, g *cli.GlobalFlags) *cobra.Command {
 			list := bc.ListPullRequests
 			if all {
 				list = bc.ListPullRequestsAll
-				limit = allPageSize(limit)
+				limit = pageSize(limit, bitbucket.MaxPullRequestPageLen)
 			}
 			raw, err := list(cmd.Context(), target.Workspace, target.Repo, st, limit)
 			if err != nil {

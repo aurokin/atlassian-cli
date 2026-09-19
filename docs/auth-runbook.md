@@ -283,8 +283,8 @@ note below.
 | `unauthorized` on an `oauth-3lo` site that worked before | The refresh token was revoked or expired | Re-run `auth login --token-style oauth-3lo …` to re-authorize. |
 | `forbidden` (403) | Token is valid but the account lacks the permission/scope | Use an account or token with the needed permission/scope. |
 | `not_found_or_not_visible` (404) | Resource doesn't exist *or* isn't visible to this account | Confirm the key/id and that the account can see it. |
-| `feature_disabled` (Bitbucket) | The repo's issue tracker or wiki is turned off | Enable it in repo settings, or target a repo that has it. |
 | `untrusted_url` | An absolute URL passed to `api`/`browse` doesn't match the site or gateway | Use a relative path, or an absolute URL on the configured host. |
+| `timeout` | The request outran the per-request deadline (30s by default) | Raise it with `--timeout 2m` or `ATL_TIMEOUT=2m`; `--timeout 0` removes the deadline entirely, which large attachment uploads/downloads may need. |
 | `auth login` warns the token isn't keychain-protected | No OS keychain available | Expected in CI/containers; the token is in a `0600` file. Prefer `--token-env` there. |
 | Token seems resolvable but calls fail | Style/URL mismatch | Run with `--trace` to see the exact request line, redacted headers, and status on stderr. |
 
