@@ -1,5 +1,9 @@
 # Expanded E2E validation — 2026-09-15
 
+Historical result: the second-account blocker below was resolved by the
+[September 19 validation](e2e-validation-2026-09-19.md), which passed the complete
+81-execution matrix including independent-user denial and PR approval/unapproval.
+
 ## Merge decision
 
 **High confidence in the tested behavior; keep the PR draft until the remaining

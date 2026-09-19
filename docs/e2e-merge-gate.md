@@ -72,6 +72,7 @@ The [earlier validation report](e2e-validation-2026-09-15.md) records the first
 production fixes or capability tests. Final execution results must be recorded
 separately, including blocked account capabilities and native-platform results.
 
-The [expanded validation report](e2e-validation-expanded-2026-09-15.md) records
-the passing 80-execution matrix, native CI, cleanup, and the remaining
-independent-user acceptance gate.
+The [September 19 validation report](e2e-validation-2026-09-19.md) records
+the passing 81-execution matrix, native CI and verified cleanup. The independent
+reviewer now passes live denial, approval and unapproval; the former account
+blocker is resolved. This evidence does not authorize automatic merging.

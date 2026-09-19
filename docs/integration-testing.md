@@ -204,9 +204,10 @@ names from the compiled suite; test count does not prove completeness.
 
 The [command inventory](../e2e/coverage.json) accounts for 152 canonical runnable
 commands and validates their evidence pointers. It does not claim complete
-workflow or flag coverage for every command. Remaining release-level gaps include
-restricted identities, independent-user PR approval/unapproval, and mixed
-non-page Confluence child types. Pipelines/deployments and native-platform
+workflow or flag coverage for every command. The explicitly selected reviewer
+cell proves restricted-identity denial and independent-user PR approval/unapproval;
+the [September 19 report](e2e-validation-2026-09-19.md) records its passing live run.
+Mixed non-page Confluence child types retain process-only evidence. Pipelines/deployments and native-platform
 coverage require their explicit live/CI execution evidence. Browser OAuth authorization remains a separately performed setup
 step. These capabilities are not silently counted as passed. See the broader
 [design](e2e-test-design.md) for the intended release suite and the

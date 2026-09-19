@@ -25,7 +25,8 @@ system is built and how to use it.
 - [e2e-test-design.md](e2e-test-design.md) — proposed full CLI process and live acceptance suite, coverage matrix, fixtures, and merge evidence.
 - [e2e-validation-2026-09-15.md](e2e-validation-2026-09-15.md) — restored credentials, live-discovered fixes, final validation evidence, and explicit exclusions.
 - [e2e-merge-gate.md](e2e-merge-gate.md) — expanded actual-binary and live acceptance requirements before merge.
-- [Expanded E2E validation, 2026-09-15](e2e-validation-expanded-2026-09-15.md) — final 80-execution matrix and remaining independent-user gate.
+- [Expanded E2E validation, 2026-09-15](e2e-validation-expanded-2026-09-15.md) — historical 80-execution matrix and former independent-user blocker.
+- [E2E validation, 2026-09-19](e2e-validation-2026-09-19.md) — complete 81-execution matrix, independent reviewer acceptance and verified cleanup.
 - [ergonomics-redesign-notes.md](ergonomics-redesign-notes.md) — deferred agent usability concerns and concrete setup friction to investigate.
 - [integration-testing.md](integration-testing.md) — the live, opt-in integration suite that drives the real binaries against a real tenant.
 - [adr/](adr/) — architecture decision records: the *why* behind standing choices (exit codes, the shared foundation, `--yes`, the mixed-version Confluence client, token storage, verbatim JSON, generated-docs delivery, the Bitbucket
